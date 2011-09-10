@@ -1,0 +1,233 @@
+<!DOCTYPE HTML>
+<html lang="en-US">
+	<head>
+		<meta charset="UTF-8">
+		<title>Seriously.js</title>
+<!--		<script type="text/javascript" src="webgl-debug.js"></script> -->
+		<script type="text/javascript" src="seriously.js"></script>
+		<script type="text/javascript" src="effects/seriously.bleach-bypass.js"></script>
+		<script type="text/javascript" src="effects/seriously.blend.js"></script>
+		<script type="text/javascript" src="effects/seriously.color.js"></script>
+		<script type="text/javascript" src="effects/seriously.dent.js"></script>
+		<script type="text/javascript" src="effects/seriously.edge.js"></script>
+		<script type="text/javascript" src="effects/seriously.exposure.js"></script>
+		<script type="text/javascript" src="effects/seriously.lumakey.js"></script>
+		<script type="text/javascript" src="effects/seriously.fader.js"></script>
+		<script type="text/javascript" src="effects/seriously.hue-saturation.js"></script>
+		<script type="text/javascript" src="effects/seriously.invert.js"></script>
+		<script type="text/javascript" src="effects/seriously.nightvision.js"></script>
+		<script type="text/javascript" src="effects/seriously.noise.js"></script>
+		<script type="text/javascript" src="effects/seriously.ripple.js"></script>
+		<script type="text/javascript" src="effects/seriously.sepia.js"></script>
+		<script type="text/javascript" src="effects/seriously.tone.js"></script>
+		<script type="text/javascript" src="effects/seriously.vignette.js"></script>
+		<script type="text/javascript" src="effects/seriously.split.js"></script>
+	</head>
+	<body>
+		<video id="video" controls width="360" preload>
+			<source src="video/protesters.mp4" type='video/mp4; codecs="avc1.42E01E, mp4a.40.2"' />
+			<source src="video/protesters.webm" type='video/webm; codecs="vp8, vorbis"' />
+		</video>
+		<select id="effects">
+			<option value="">None</option>
+		</select><br/>
+		<div id="options"></div>
+		<canvas id="canvas" width="960" height="540"></canvas>
+	</body>
+	<script type="text/javascript" src="lib/html5slider.js"></script>
+	<script type="text/javascript" src="lib/colorPicker/colorPicker.js"></script>
+	<script type="text/javascript">
+
+	(function () {
+	
+	var e, i,
+		input,
+		sources,
+		effect,
+		element,
+		source, target,
+		effects = Seriously.effects(),
+		effectObjects = {};
+		
+		//for now, only effects that process a single image
+		for (e in effects) {
+			effect = effects[e];
+			sources = 0;
+
+			for (i in effect.inputs) {
+				if (effect.inputs[i].type === 'image') {
+					sources++;
+					if (sources > 1) {
+						delete effects[e];
+						break;
+					}
+				}
+			}	
+		}
+		
+		window.addEventListener('DOMContentLoaded', function() {
+			var s = Seriously(),
+				options = document.getElementById('options'),
+				video = document.getElementById('video'),
+				select = document.getElementById('effects'),
+				active;
+
+			video.muted = true;
+
+			for (e in effects) {
+				effect = effects[e];
+				element = document.createElement('option');
+				element.value = e;
+				element.appendChild(document.createTextNode(effect.title));
+				select.appendChild(element);
+			}
+						
+			source = s.source(video);
+			target = s.target('#canvas');
+			target.source = source;
+			s.go();
+			
+			select.addEventListener('change', function() {
+				function arrayToHex(color) {
+					var i, val, s = '#';
+					for (i = 0; i < 4; i++) {
+						val = Math.min(255, Math.round(color[i] * 255 || 0));
+						s += val.toString(16);
+					}
+					return s;
+				}
+				
+				var form,
+					table,
+					row,
+					cell,
+					label,
+					element,
+					option,
+					i, j,
+					input,
+					obj,
+					effectType,
+					name = this.value;
+				
+				if (name && !effectObjects[name]) {
+					effectObjects[name] = obj = {
+						effect: s.effect(name),
+						form: document.createElement('div')
+					};
+					
+					//create form
+					options.appendChild(obj.form);
+					effectType = effects[name];
+					
+					//todo: title, description, set up table
+					
+					for (i in effectType.inputs) {
+						input = effectType.inputs[i];
+
+						//types: color, number (slider, number, text), enum (select), boolean (checkbox), vector
+						if (input.type === 'image') {
+							obj.source = i;
+							obj.effect[i] = source;
+						} else {
+
+							//todo: way later - arrays of inputs
+					
+							if (!table) {
+								table = document.createElement('table');
+								obj.form.appendChild(table);
+							}
+							
+							row = document.createElement('tr');
+							table.appendChild(row);
+
+							cell = document.createElement('th');
+							row.appendChild(cell);
+
+							label = document.createElement('label');
+							label.setAttribute('for','input-' + name + '-' + i);
+							label.appendChild(document.createTextNode(input.title));
+							cell.appendChild(label);
+
+							cell = document.createElement('td');
+							row.appendChild(cell);
+
+							if (input.type === 'number') {
+								element = document.createElement('input');
+								if (input.min !== -Infinity && input.min !== undefined &&
+									input.max !== Infinity && input.max !== undefined) {
+									
+									element.setAttribute('type', 'range');
+									element.setAttribute('min', input.min);
+									element.setAttribute('max', input.max);
+								} else {
+									element.setAttribute('type', 'number');
+									if (input.min !== -Infinity && input.min !== undefined) {
+										element.setAttribute('min', input.min);
+									}
+									if (input.max !== Infinity && input.max !== undefined) {
+										element.setAttribute('max', input.max);
+									}
+								}
+								if (input.step && !isNaN(input.step) && input.step > 0) {
+									element.setAttribute('step', input.step);
+								} else {
+									element.setAttribute('step', 0.000001);
+								}
+								element.value = input.defaultValue;
+							} else if (input.type === 'color') {
+								element = document.createElement('input');
+/*
+								element.addEventListener('click', function(e) {
+									e = e || window.event;
+									colorPicker(e);
+									colorPicker.cP.style.zIndex = 1;
+								}, false);
+*/
+								element.value = arrayToHex(input.defaultValue);
+							} else if (input.type === 'enum') {
+								element = document.createElement('select');
+								for (j = 0; j < input.options.length; j++) {
+									option = document.createElement('option');
+									if (input.options[j].length) {
+										option.value = input.options[j][0];
+										option.appendChild(document.createTextNode(input.options[j][1]));
+									} else {
+										option.value = input.options[j];
+										option.appendChild(document.createTextNode(input.options[j]));
+									}
+									element.appendChild(option);
+								}
+								element.value = input.defaultValue;
+							} else if (input.type === 'boolean') {
+								element = document.createElement('input');
+								element.setAttribute('type', 'checkbox');
+								element.checked = input.defaultValue;
+							} else {
+							}
+							
+							element.id = 'input-' + name + '-' + i;
+							cell.appendChild(element);
+							obj.effect[i] = element;
+						}
+					}
+	
+				}
+
+				if (active) {
+					active.form.style.display = 'none';
+				}
+				
+				if (name) {
+					active = effectObjects[name];
+					active.form.style.display = 'block';
+					target.source = active.effect;
+				} else {
+					target.source = source;
+				}
+
+			}, false);
+		}, false);
+	})();
+	</script>
+</html>
