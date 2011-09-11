@@ -1,0 +1,84 @@
+<!DOCTYPE HTML>
+<html lang="en-US">
+	<head>
+		<meta charset="UTF-8">
+		<title>Seriously.js vs. Rainbow</title>
+		<style type="text/css">
+		
+		#camera {
+			display: none;
+		}
+		
+		</style>
+	</head>
+	<body>
+		<canvas id="camera" width="640" height="480"></canvas>
+		<canvas id="canvas" width="640" height="480"></canvas>
+	</body>
+	<script type="text/javascript" src="../seriously.js"></script>
+	<script type="text/javascript" src="../effects/seriously.invert.js"></script>
+	<script type="text/javascript">
+	
+var requestAnimFrame = (function(){
+	return	window.requestAnimationFrame       || 
+			window.webkitRequestAnimationFrame || 
+			window.mozRequestAnimationFrame    || 
+			window.oRequestAnimationFrame      || 
+			window.msRequestAnimationFrame     || 
+			function(/* function */ callback, /* DOMElement */ element){
+				window.setTimeout(callback, 1000 / 60);
+			};
+}());
+
+	(function () {
+	var media = window.navigator.service && window.navigator.service.media,
+		camera = document.getElementById('camera'),
+		camCtx = camera.getContext('2d'),
+		seriously = Seriously(),
+		effect = seriously.effect('invert'),
+		target = seriously.target('#canvas'),
+		lastFrame = -1;
+	
+		target.source = effect;
+		effect.source = '#camera';
+		
+		(function draw() {
+			var now = Date.now();
+			
+			//throttle to 30fps
+			if (now - lastFrame > 30) {
+				camera.currentTime = now;
+				requestAnimFrame(draw);
+			}
+		}());
+
+		if (media) {
+		
+			//just in case
+			try {
+				media.endSession();
+			} catch (e) {
+			}
+
+			media.beginSession({}, camCtx, function() {
+				console.log('going');
+				seriously.go();
+			});
+			
+			document.onunload = function() {
+				media.endSession();
+			};
+			
+		} else {
+			camCtx.fillStyle = "rgb(200,0,0)";  
+			camCtx.fillRect (10, 10, 55, 50);  
+			
+			camCtx.fillStyle = "rgba(0, 0, 200, 0.5)";  
+			camCtx.fillRect (30, 30, 55, 50);  
+
+			seriously.go();
+		}
+	}());
+	
+	</script>
+</html>
