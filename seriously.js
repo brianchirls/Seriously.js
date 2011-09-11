@@ -2120,6 +2120,22 @@ function Seriously(options) {
 	}
 	
 	/*
+	Initialize Seriously object based on options
+	*/
+	
+	if (options instanceof HTMLCanvasElement) {
+		options = {
+			canvas: options
+		};
+	} else {
+		options = options || {};
+	}
+	
+	if (options.canvas) {
+		
+	}
+	
+	/*
 	priveleged methods
 	*/
 	this.effect = function(hook, options) {
