@@ -14,33 +14,74 @@
 	<body>
 		<canvas id="camera" width="640" height="480"></canvas>
 		<canvas id="canvas" width="640" height="480"></canvas>
+		<div>
+			<button id="none">Original</button>
+			<button id="invert">Invert</button>
+			<button id="night">Night</button>
+			<button id="ripple">Ripple</button>
+		</div>
+		<p>Requires WebGL and the Firefox add-on <a href="https://github.com/mozilla/rainbow">Rainbow</a> for camera access</p>
 	</body>
 	<script type="text/javascript" src="../seriously.js"></script>
 	<script type="text/javascript" src="../effects/seriously.invert.js"></script>
+	<script type="text/javascript" src="../effects/seriously.ripple.js"></script>
+	<script type="text/javascript" src="../effects/seriously.scanlines.js"></script>
+	<script type="text/javascript" src="../effects/seriously.nightvision.js"></script>
 	<script type="text/javascript">
 	
-var requestAnimFrame = (function(){
-	return	window.requestAnimationFrame       || 
-			window.webkitRequestAnimationFrame || 
-			window.mozRequestAnimationFrame    || 
-			window.oRequestAnimationFrame      || 
-			window.msRequestAnimationFrame     || 
-			function(/* function */ callback, /* DOMElement */ element){
-				window.setTimeout(callback, 1000 / 60);
-			};
-}());
+	var requestAnimFrame = (function(){
+		return	window.requestAnimationFrame       || 
+				window.webkitRequestAnimationFrame || 
+				window.mozRequestAnimationFrame    || 
+				window.oRequestAnimationFrame      || 
+				window.msRequestAnimationFrame     || 
+				function(/* function */ callback, /* DOMElement */ element){
+					window.setTimeout(callback, 1000 / 60);
+				};
+	}());
 
 	(function () {
 	var media = window.navigator.service && window.navigator.service.media,
 		camera = document.getElementById('camera'),
 		camCtx = camera.getContext('2d'),
 		seriously = Seriously(),
-		effect = seriously.effect('invert'),
 		target = seriously.target('#canvas'),
-		lastFrame = -1;
+		lastFrame = -1,
+
+		//effects		
+		invert = seriously.effect('invert'),
+		nightvision = seriously.effect('nightvision'),
+		scanlines = seriously.effect('scanlines'),
+		ripple = seriously.effect('ripple');
 	
-		target.source = effect;
-		effect.source = '#camera';
+		invert.source = '#camera';
+		
+		nightvision.source = '#camera';
+		nightvision.luminanceThreshold = 0.1;
+		nightvision.amplification = 1.5;
+		scanlines.source = nightvision;
+		scanlines.lines = 120;
+		scanlines.size = 0.5;
+		
+		ripple.source = '#camera';
+
+		target.source = '#camera';
+		
+		document.getElementById('none').addEventListener('click', function () {
+			target.source = '#camera';
+		}, false);
+		
+		document.getElementById('invert').addEventListener('click', function () {
+			target.source = invert;
+		}, false);
+		
+		document.getElementById('night').addEventListener('click', function () {
+			target.source = scanlines;
+		}, false);
+		
+		document.getElementById('ripple').addEventListener('click', function () {
+			target.source = ripple;
+		}, false);
 		
 		(function draw() {
 			var now = Date.now();
