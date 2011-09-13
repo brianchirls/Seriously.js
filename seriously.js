@@ -1643,6 +1643,7 @@ function Seriously(options) {
 			this.texture = source;
 			this.initialized = true;
 
+			//todo: if WebGLTexture source is from a different context render it and copy it over
 			this.render = function() { };
 		}
 		
@@ -1856,6 +1857,11 @@ function Seriously(options) {
 		this.stop = function() {
 			me.stop();
 		};
+
+		this.getTexture = function() {
+			return me.frameBuffer.texture;
+		};
+
 	};
 
 	/*
@@ -1869,14 +1875,15 @@ function Seriously(options) {
 			width = parseInt(opts.width, 10),
 			height = parseInt(opts.height, 10),
 			matchedType = false,
-			i, element, elements, context;
+			i, element, elements, context,
+			frameBuffer;
 
 		Node.call(this);
 		
 //		mat4.perspective(90, 1, 1, 100, this.transform);
 
-		//todo: if source is a renderbuffer...
-		//todo: allow passing a webgl context w/ a renderbuffer
+		this.renderToTexture = opts.renderToTexture;
+
 		if (typeof target === 'string') {
 			elements = document.querySelectorAll(target);
 			
@@ -1892,6 +1899,22 @@ function Seriously(options) {
 			}
 			
 			target = element;
+		} else if (target instanceof WebGLFramebuffer) {
+
+			frameBuffer = target;
+
+			if (opts instanceof HTMLCanvasElement) {
+				target = opts;
+			} else if (opts instanceof WebGLRenderingContext) {
+				target = opts.canvas
+			} else if (opts.canvas instanceof HTMLCanvasElement) {
+				target = opts.canvas;
+			} else if (opts.context instanceof WebGLRenderingContext) {
+				target = opts.context.canvas;
+			} else {
+				//todo: search all canvases for matching contexts?
+				throw "Must provide a canvas with WebGLFramebuffer target";
+			}
 		}
 		
 		if (target instanceof HTMLElement && target.tagName === 'CANVAS') {
@@ -1935,15 +1958,31 @@ function Seriously(options) {
 				//todo: set up ImageData and alternative drawing method (or drawImage)
 				this.render = this.render2D;
 				this.use2D = true;
-			} else if (!gl) {
+			} else if (!gl || gl === context) {
 				//this is our main WebGL canvas
-				attachContext(context);
+				if (!gl) {
+					attachContext(context);
+				}
 				this.render = this.renderWebGL;
+				if (opts.renderToTexture) {
+					this.frameBuffer = new FrameBuffer(gl, width, height, true, false);
+				} else {
+					this.frameBuffer = {
+						frameBuffer: frameBuffer || null
+					};
+				}
 			} else if (context !== gl) {
 				//set up alternative drawing method using ArrayBufferView
 				this.gl = context;
 				//this.pixels = new Uint8Array(width * height * 4);
-				this.frameBuffer = new FrameBuffer(this.gl, width, height, true, false);
+				//todo: probably need another framebuffer for renderToTexture
+				if (frameBuffer) {
+					this.frameBuffer = {
+						frameBuffer: frameBuffer
+					};
+				} else {
+					this.frameBuffer = new FrameBuffer(this.gl, width, height, true, false);
+				}
 				this.shader = new ShaderProgram(this.gl, baseVertexShader, baseFragmentShader);
 				this.model = buildModel.call(this, this.gl);
 
@@ -2062,7 +2101,7 @@ function Seriously(options) {
 			}
 			
 			this.uniforms.source = this.source.texture;
-			draw.call(this, baseShader, rectangleModel, this.uniforms, null);
+			draw.call(this, baseShader, rectangleModel, this.uniforms, this.frameBuffer.frameBuffer);
 
 			this.dirty = false;
 			
@@ -2154,7 +2193,9 @@ function Seriously(options) {
 		
 		for (i = 0; i < targets.length; i++) {
 			if (targets[i] === target || targets[i].target === target) {
-				return targets[i].pub;
+				if (!!(options && options.renderToTexture) === !!targets[i].renderToTexture) {
+					return targets[i].pub;
+				}
 			}
 		}
 		
