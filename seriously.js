@@ -1627,7 +1627,7 @@ function Seriously(options) {
 				width = height;
 			} else {
 				//todo: guess based on dimensions of target canvas
-				throw 'Must specify width and height when using a WebGL texture as a source';
+				//throw 'Must specify width and height when using a WebGL texture as a source';
 			}
 
 			if (opts.alpha === undefined) {
