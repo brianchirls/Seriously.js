@@ -27,7 +27,6 @@
                 scene.resize(canvas.width,canvas.height);
                 scene.setSkyBox(new CubicVR.SkyBox({texture:"cubemap.jpg"}));
                 
-                
                 scene.camera.setClip(0.1,1000);
                 scene.camera.position = [20,20,-20];  // set our camera position
                 scene.camera.target = [0,5,-5];  // set our camera position
@@ -41,11 +40,17 @@
                 video.muted = true;
                 var seriously = new Seriously();
                 var scanlines = seriously.effect('scanlines');
-                scanlines.input = video;
+                scanlines.lines = scanlines.videoHeight / 2;
+                scanlines.size = 1/scanlines.lines;
+                scanlines.source = video;
+                var preprocess = seriously.target(canvas, {
+                	renderToTexture: true
+                });
+                preprocess.source = scanlines;
                 
                 var projTex = new CubicVR.Texture();
                 projTex.setFilter(CubicVR.enums.texture.filter.NEAREST,CubicVR.enums.texture.filter.NEAREST);
-                
+                CubicVR.Textures[projTex.tex_id] = preprocess.getTexture();
 
                 // Create 4 shadowed spotlights, map resolution 1024, distance (far clip): 200, intensity 0.6, cutoff angle 25
                  var light = new CubicVR.Light({type:CubicVR.enums.light.type.SPOT_SHADOW_PROJECTOR,intensity:1,distance:200,map_res:1024,cutoff:90,projector:projTex});
@@ -90,6 +95,7 @@
                 // Start our main drawing loop, it provides a timer and the gl context as parameters
                 CubicVR.MainLoop(function(timer, gl) {
 
+					/*
                     gl.bindTexture(gl.TEXTURE_2D, CubicVR.Textures[projTex.tex_id]);
                     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
                     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, video);
@@ -97,12 +103,16 @@
                     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
                     
                     gl.bindTexture(gl.TEXTURE_2D, null);
+                    */
+
+					preprocess.render();
 
 					scene.updateShadows();
                     sceneRenderTex.update();
                     //scene.render();
                     glTex.currentTime = Date.now();
                     sceneSource.currentTime = Date.now();
+
                     target.render();
                     
                     if (mvc.isKeyPressed(CubicVR.enums.keyboard.KEY_A)) {
