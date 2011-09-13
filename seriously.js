@@ -660,7 +660,7 @@ function Seriously(options) {
 		index = thisGl.createBuffer();
 		thisGl.bindBuffer(thisGl.ELEMENT_ARRAY_BUFFER, index);
 		thisGl.bufferData(thisGl.ELEMENT_ARRAY_BUFFER, new Uint16Array([
-		  0, 2, 1,      0, 3, 2    // Front face
+		  0, 1, 2,      0, 2, 3    // Front face
 		]), thisGl.STATIC_DRAW);
 		
 		texCoord = thisGl.createBuffer();
@@ -782,19 +782,12 @@ function Seriously(options) {
 		thisGl.bindBuffer(thisGl.ELEMENT_ARRAY_BUFFER, model.index);
 
 		/* do this every time? */
-/*
-		thisGl.blendFunc(thisGl.SRC_ALPHA, thisGl.ONE_MINUS_SRC_ALPHA);
-		thisGl.blendEquation(thisGl.FUNC_ADD);
-		thisGl.enable(thisGl.BLEND);
-		thisGl.disable(thisGl.DEPTH_TEST);
-*/
 		gl.disable(gl.DEPTH_TEST);
 		gl.enable(gl.BLEND);
 		//gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 		gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, 
 							gl.SRC_ALPHA, gl.DST_ALPHA);
 		gl.blendEquation(gl.FUNC_ADD);
-
 
 		/* set uniforms to current values */
 		for (name in uniforms) {
@@ -828,6 +821,9 @@ function Seriously(options) {
 
 		// draw!
 		thisGl.drawElements(model.mode, model.length, thisGl.UNSIGNED_SHORT, 0);
+		
+		//to protect other 3D libraries that may not remember to turn their depth tests on
+		gl.enable(gl.DEPTH_TEST);
 	}
 	
 	function findInputNode(source) {
@@ -1631,7 +1627,7 @@ function Seriously(options) {
 				width = height;
 			} else {
 				//todo: guess based on dimensions of target canvas
-				throw 'Must specify width and height when using a WebGL texture as a source';
+				//throw 'Must specify width and height when using a WebGL texture as a source';
 			}
 
 			if (opts.alpha === undefined) {
