@@ -1,0 +1,133 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN">
+<html>
+    
+    <head>
+        <title>
+            CubicVR.js: Using a COLLADA scene from a .dae file
+        </title>
+        <script src="../../seriously.js" type="text/javascript"></script>
+<!--        <script src="../../lib/webgl-debug.js" type="text/javascript"></script> -->
+        <script src="../../effects/seriously.scanlines.js" type="text/javascript"></script>
+        <script src="../../effects/seriously.ripple.js" type="text/javascript"></script>
+        <script src="CubicVR.js" type="text/javascript">
+        </script>
+        <script type='text/javascript'>
+            function webGLStart() {
+                // by default generate a full screen canvas with automatic resize
+                var gl = CubicVR.init();
+                var canvas = CubicVR.getCanvas();
+
+                if (!gl) {
+                    alert("Sorry, no WebGL support.");
+                    return;
+                };
+
+                // load the collada file, specify path for images
+                var scene = CubicVR.loadCollada("DriveInTheater.dae","./");
+                scene.resize(canvas.width,canvas.height);
+                scene.setSkyBox(new CubicVR.SkyBox({texture:"cubemap.jpg"}));
+                
+                
+                scene.camera.setClip(0.1,1000);
+                scene.camera.position = [20,20,-20];  // set our camera position
+                scene.camera.target = [0,5,-5];  // set our camera position
+                scene.camera.motion = null; // remove any camera motion
+                scene.camera.rotation = [0,0,0];  // set our camera position
+                scene.lights = [];  // clear the loaded lights
+
+                CubicVR.setGlobalAmbient([0.03,0.03,0.03]);
+
+                var video = document.getElementById('videofile');
+                video.muted = true;
+                var seriously = new Seriously();
+                var scanlines = seriously.effect('scanlines');
+                scanlines.input = video;
+                
+                var projTex = new CubicVR.Texture();
+                projTex.setFilter(CubicVR.enums.texture.filter.NEAREST,CubicVR.enums.texture.filter.NEAREST);
+                
+
+                // Create 4 shadowed spotlights, map resolution 1024, distance (far clip): 200, intensity 0.6, cutoff angle 25
+                 var light = new CubicVR.Light({type:CubicVR.enums.light.type.SPOT_SHADOW_PROJECTOR,intensity:1,distance:200,map_res:1024,cutoff:90,projector:projTex});
+
+                // Add a simple shadowed directional light
+                var projectorLight = new CubicVR.Light({
+                  type:CubicVR.enums.light.type.SPOT_SHADOW_PROJECTOR,
+                  distance:120,
+                  specular:[1,1,1],
+                  map_res:1024,
+                  cutoff:36,
+                  projector:projTex,
+                  position:scene.getSceneObject("LightSource").position
+                });
+                
+
+                scene.camera.target = [0,10,-5]
+                
+                projectorLight.lookat(scene.getSceneObject("LightTarget").position);                
+                scene.bindLight(projectorLight);
+
+                
+                // Add a simple directional light
+                scene.bindLight(new CubicVR.Light({type:CubicVR.enums.light.type.DIRECTIONAL,specular:[0,0,0],intensity:0.1,direction:CubicVR.vec3.normalize([-0.2,-1,-0.5])}));
+
+                CubicVR.setSoftShadows(true);
+                
+                // Add our scene to the window resize list
+                CubicVR.addResizeable(scene);
+
+                // initialize a mouse view controller
+                mvc = new CubicVR.MouseViewController(canvas, scene.camera);
+
+                var ripple = seriously.effect('ripple');
+                var sceneRenderTex = new CubicVR.SceneRenderTexture(scene);
+                var glTex = CubicVR.Textures[sceneRenderTex.tex_id];
+                var sceneSource = seriously.source(glTex);
+                ripple.source = sceneSource;
+                var target = seriously.target(canvas);
+                target.source = ripple;
+
+                // Start our main drawing loop, it provides a timer and the gl context as parameters
+                CubicVR.MainLoop(function(timer, gl) {
+
+                    gl.bindTexture(gl.TEXTURE_2D, CubicVR.Textures[projTex.tex_id]);
+                    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+                    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, video);
+                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+                    
+                    gl.bindTexture(gl.TEXTURE_2D, null);
+
+					scene.updateShadows();
+                    sceneRenderTex.update();
+                    //scene.render();
+                    glTex.currentTime = Date.now();
+                    sceneSource.currentTime = Date.now();
+                    target.render();
+                    
+                    if (mvc.isKeyPressed(CubicVR.enums.keyboard.KEY_A)) {
+                      scene.getSceneObject("LightTarget").position[0] += 10.0*timer.getLastUpdateSeconds();
+                    }
+                    if (mvc.keyState[CubicVR.enums.keyboard.KEY_D]) {
+                      scene.getSceneObject("LightTarget").position[0] -= 10.0*timer.getLastUpdateSeconds();
+                    }
+                    if (mvc.isKeyPressed(CubicVR.enums.keyboard.KEY_W)) {
+                      scene.getSceneObject("LightTarget").position[1] += 10.0*timer.getLastUpdateSeconds();
+                    }
+                    if (mvc.keyState[CubicVR.enums.keyboard.KEY_S]) {
+                      scene.getSceneObject("LightTarget").position[1] -= 10.0*timer.getLastUpdateSeconds();
+                    }
+                    projectorLight.lookat(scene.getSceneObject("LightTarget").position);                
+                    
+                    
+                });
+
+            }
+        </script>
+    </head>
+    
+    <body onLoad="webGLStart();"><video controls id="videofile" autoplay="true" src="NinjaTest1.webm" width="512" height="384" style='z-index:100; position:absolute; display:none; top:0px; left:0px'></video>
+    <canvas id="c2" width="200" height="200" style="position: absolute; z-index: 999"/>
+    </body>
+
+</html>
