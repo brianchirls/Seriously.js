@@ -283,11 +283,9 @@ function extend(dest, src) {
 //http://www.w3.org/TR/css3-color/#hsl-color
 function hslToRgb(h, s, l, a) {
 	function hueToRgb(m1, m2, h) {
-		//todo: proper fractional modulo, in case h > 1 or h < -1
+		h = h % 1;
 		if (h < 0) {
 			h += 1;
-		} else if (h > 1) {
-			h -= 1;
 		}
 		if (h < 1 / 6) {
 			return m1 + (m2 - m1) * h * 6;
