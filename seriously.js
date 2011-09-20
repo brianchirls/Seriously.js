@@ -336,21 +336,11 @@ window.addEventListener('message', function(event) {
 	helper Classes
 */
 
-function FrameBuffer(gl, width, height, alpha, useFloat) {
-	//todo: make sure format/type matches with alpha
-
-	var bytes,
-		frameBuffer,
+function FrameBuffer(gl, width, height, useFloat) {
+	var frameBuffer,
 		renderBuffer,
 		tex,
 		status;
-	if (alpha || alpha === undefined) {
-		this.format = gl.RGBA;
-		bytes = 4;
-	} else {
-		this.format = gl.RGB;
-		bytes = 3;
-	}
 
 	//todo: check float webgl extension
 useFloat = false;
@@ -372,17 +362,17 @@ useFloat = false;
 
 	try {
 		if (this.type === gl.FLOAT) {
-			tex = new Float32Array(width * height * bytes);
-			gl.texImage2D(gl.TEXTURE_2D, 0, this.format, width, height, 0, this.format, gl.FLOAT, tex);
+			tex = new Float32Array(width * height * 4);
+			gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.FLOAT, tex);
 		} else {
-			gl.texImage2D(gl.TEXTURE_2D, 0, this.format, width, height, 0, this.format, gl.UNSIGNED_BYTE, null);
+			gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
 			this.type = gl.UNSIGNED_BYTE;
 		}
 	} catch (e) {
 		// Null rejected
 		this.type = gl.UNSIGNED_BYTE;
-		tex = new Uint8Array(width * height * bytes);
-		gl.texImage2D(gl.TEXTURE_2D, 0, this.format, width, height, 0, this.format, gl.UNSIGNED_BYTE, tex);
+		tex = new Uint8Array(width * height * 4);
+		gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, tex);
 	}
 
 	renderBuffer = gl.createRenderbuffer();
@@ -867,7 +857,6 @@ function Seriously(options) {
 			transform: this.transform
 		};
 
-		this.alpha = true;
 		this.dirty = true;
 
 		this.seriously = seriously;
@@ -899,7 +888,7 @@ function Seriously(options) {
 				this.height = this.desiredHeight || glCanvas.height;
 			}
 
-			this.frameBuffer = new FrameBuffer(gl, this.width, this.height, this.alpha, useFloat);
+			this.frameBuffer = new FrameBuffer(gl, this.width, this.height, useFloat);
 		}
 	};
 
@@ -1505,8 +1494,6 @@ function Seriously(options) {
 	*/
 	SourceNode = function (source, options) {
 		var opts = options || {},
-			alpha = true,
-			bytes = opts.bytes || 4,
 			flip = opts.flip === undefined ? true : opts.flip,
 			width = this.desiredWidth,
 			height = this.desiredHeight,
@@ -1522,17 +1509,11 @@ function Seriously(options) {
 
 		if (source instanceof HTMLElement) {
 			if (source.tagName === 'CANVAS') {
-				alpha = true;
-				bytes = 4;
 				this.desiredWidth = width = source.width;
 				this.desiredHeight = height = source.height;
 
 				this.render = this.renderImageCanvas;
 			} else if (source.tagName === 'IMG') {
-				//alpha in case it's png. todo: figure out a way to detect this?
-				alpha = true;
-				bytes = 4;
-
 				width = source.naturalWidth;
 				height = source.naturalHeight;
 
@@ -1553,9 +1534,6 @@ function Seriously(options) {
 
 				this.render = this.renderImageCanvas;
 			} else if (source.tagName === 'VIDEO') {
-				//alpha = false;
-				bytes = 3;
-
 				that.desiredWidth = width = source.videoWidth;
 				that.desiredHeight = height = source.videoHeight;
 
@@ -1589,8 +1567,6 @@ function Seriously(options) {
 
 			this.desiredWidth = width = source.width;
 			this.desiredHeight = height = source.height;
-			//alpha = true;
-			bytes = 4;
 			matchedType = true;
 
 			this.render = this.renderImageCanvas;
@@ -1599,11 +1575,10 @@ function Seriously(options) {
 				throw 'Height and width must be provided with an Array';
 			}
 
-			if (width * height * bytes !== source.length) {
-				throw 'Array length must be height x width x bytes.';
+			if (width * height * 4 !== source.length) {
+				throw 'Array length must be height x width x 4.';
 			}
 
-			alpha = bytes > 3;
 			matchedType = true;
 //todo: typed arrays, use opposite default for flip
 		} else if (source instanceof WebGLTexture) {
@@ -1622,11 +1597,6 @@ function Seriously(options) {
 				//todo: guess based on dimensions of target canvas
 				//throw 'Must specify width and height when using a WebGL texture as a source';
 			}
-
-			if (opts.alpha === undefined) {
-				alpha = true;
-			}
-			bytes = 4;
 
 			if (opts.flip === undefined) {
 				flip = false;
@@ -1649,8 +1619,6 @@ function Seriously(options) {
 		}
 
 		this.source = source;
-		this.alpha = alpha;
-		this.bytes = bytes;
 		this.flip = flip;
 		this.width = width;
 		this.height = height;
@@ -1682,8 +1650,6 @@ function Seriously(options) {
 
 		this.texture = texture;
 		this.initialized = true;
-
-		this.format = this.alpha ? gl.RGBA : gl.RGB;
 	};
 
 	SourceNode.prototype.setTarget = function (target) {
@@ -1723,7 +1689,7 @@ function Seriously(options) {
 
 			gl.bindTexture(gl.TEXTURE_2D, this.texture);
 			gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, this.flip);
-			gl.texImage2D(gl.TEXTURE_2D, 0, this.format, this.format, gl.UNSIGNED_BYTE, video);
+			gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, video);
 			//gl.bindTexture(gl.TEXTURE_2D, null);
 			this.lastRenderTime = video.currentTime;
 			this.lastRenderFrame = video.mozPresentedFrames;
@@ -1751,7 +1717,7 @@ function Seriously(options) {
 		if (this.lastRenderTime === undefined || this.lastRenderTime !== this.currentTime) {
 			gl.bindTexture(gl.TEXTURE_2D, this.texture);
 			gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, this.flip);
-			gl.texImage2D(gl.TEXTURE_2D, 0, this.format, this.format, gl.UNSIGNED_BYTE, media);
+			gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, media);
 			//gl.bindTexture(gl.TEXTURE_2D, null);
 
 			this.lastRenderTime = this.currentTime;
@@ -1862,8 +1828,6 @@ function Seriously(options) {
 	*/
 	TargetNode = function (target, options) {
 		var opts = options || {},
-			alpha = true,
-			bytes = opts.bytes || 4,
 			flip = opts.flip === undefined ? true : opts.flip,
 			width = parseInt(opts.width, 10),
 			height = parseInt(opts.height, 10),
@@ -1911,8 +1875,6 @@ function Seriously(options) {
 		}
 
 		if (target instanceof HTMLElement && target.tagName === 'CANVAS') {
-			alpha = true;
-			bytes = 4;
 			width = target.width;
 			height = target.height;
 
@@ -1958,7 +1920,7 @@ function Seriously(options) {
 				}
 				this.render = this.renderWebGL;
 				if (opts.renderToTexture) {
-					this.frameBuffer = new FrameBuffer(gl, width, height, true, false);
+					this.frameBuffer = new FrameBuffer(gl, width, height, false);
 				} else {
 					this.frameBuffer = {
 						frameBuffer: frameBuffer || null
@@ -1974,7 +1936,7 @@ function Seriously(options) {
 						frameBuffer: frameBuffer
 					};
 				} else {
-					this.frameBuffer = new FrameBuffer(this.gl, width, height, true, false);
+					this.frameBuffer = new FrameBuffer(this.gl, width, height, false);
 				}
 				this.shader = new ShaderProgram(this.gl, baseVertexShader, baseFragmentShader);
 				this.model = buildModel.call(this, this.gl);
@@ -1999,8 +1961,6 @@ function Seriously(options) {
 		}
 
 		this.target = target;
-		this.alpha = alpha;
-		this.bytes = bytes;
 		this.flip = flip;
 		this.width = width;
 		this.height = height;
