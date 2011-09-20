@@ -738,7 +738,6 @@ function Seriously(options) {
 		}
 	}
 
-	//todo: make a version of this with another name that uses main "gl" variable without needing to be .call'ed
 	function draw(shader, model, uniforms, frameBuffer, node) {
 		var numTextures = 0,
 			name, value, setter,
