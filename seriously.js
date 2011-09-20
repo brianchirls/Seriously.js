@@ -1185,8 +1185,6 @@ function Seriously(options) {
 		this.hook = hook;
 		this.options = options;
 
-		//todo: set up frame buffer(s), inputs, transforms, stencils, draw method. allow plugin to override
-
 		this.inputs = {};
 		var name, input;
 		for (name in this.effect.inputs) {
@@ -2186,8 +2184,21 @@ function Seriously(options) {
 		}
 	};
 
-	//this.__defineSetter__('effects', Seriously.__lookupSetter__('effects'));
-	//this.__defineGetter__('effects', Seriously.__lookupGetter__('effects'));
+	this.save = function() {
+		var i, node,
+			obj = {
+				sources: [],
+				nodes: [],
+				targets: [],
+				aliases: {},
+				auto: auto
+			};
+		
+		function saveSource(source) {
+			
+		}
+		
+	};
 
 	//todo: load, save, find
 
