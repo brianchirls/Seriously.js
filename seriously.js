@@ -693,19 +693,7 @@ function Seriously(options) {
 		for (i = 0; i < effects.length; i++) {
 			node = effects[i];
 			
-			//if (!node.model) {
-			//	node.model = rectangleModel;
-			//}
-			
 			node.gl = gl;
-
-			//if (!node.frameBuffer) {
-			//	node.initFrameBuffer(true);
-			//}
-			
-			//if (!node.initialized && typeof node.effect.initialize === 'function') {
-			//	node.effect.initialize.call(node);
-			//}
 
 			if (node.initialized) {
 				node.buildShader();
