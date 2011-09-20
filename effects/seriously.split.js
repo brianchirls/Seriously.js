@@ -67,13 +67,13 @@ Seriously.plugin('split', (function () {
 		draw: function (shader, model, uniforms, frameBuffer, parent) {
 			if (uniforms.split >= 1) {
 				uniforms.source = uniforms.sourceB;
-				parent.call(this, baseShader, model, uniforms, frameBuffer);
+				parent(baseShader, model, uniforms, frameBuffer);
 				return;
 			}
 			
 			if (uniforms.split <= 0) {
 				uniforms.source = uniforms.sourceA;
-				parent.call(this, baseShader, model, uniforms, frameBuffer);
+				parent(baseShader, model, uniforms, frameBuffer);
 				return;
 			}
 

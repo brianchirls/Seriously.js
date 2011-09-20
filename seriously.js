@@ -740,32 +740,41 @@ function Seriously(options) {
 	}
 	
 	//todo: make a version of this with another name that uses main "gl" variable without needing to be .call'ed
-	function draw(shader, model, uniforms, frameBuffer) {
+	function draw(shader, model, uniforms, frameBuffer, node) {
 		var numTextures = 0,
 			name, value, setter,
-			thisGl = this.gl || gl;
+			width, height,
+			nodeGl = node && node.gl || gl;
 
-		if (!thisGl) {
+		if (!nodeGl) {
 			return;
+		}
+		
+		if (node) {
+			width = node.width || nodeGl.canvas.width;
+			height = node.height || nodeGl.canvas.height;
+		} else {
+			width = nodeGl.canvas.width;
+			height = nodeGl.canvas.height;
 		}
 		
 		shader.useProgram();
 		
-		thisGl.viewport(0, 0, this.width || thisGl.canvas.width, this.height || thisGl.canvas.height);
+		nodeGl.viewport(0, 0, width, height);
 
-		thisGl.bindFramebuffer(thisGl.FRAMEBUFFER, frameBuffer);
+		nodeGl.bindFramebuffer(nodeGl.FRAMEBUFFER, frameBuffer);
 
 		/* todo: do this all only once at the beginning, since we only have one model? */
-		thisGl.enableVertexAttribArray(shader.location_position);
-		thisGl.enableVertexAttribArray(shader.location_texCoord);
+		nodeGl.enableVertexAttribArray(shader.location_position);
+		nodeGl.enableVertexAttribArray(shader.location_texCoord);
 
-		thisGl.bindBuffer(thisGl.ARRAY_BUFFER, model.texCoord);
-		thisGl.vertexAttribPointer(shader.location_texCoord, model.texCoord.size, thisGl.FLOAT, false, 0, 0);
+		nodeGl.bindBuffer(nodeGl.ARRAY_BUFFER, model.texCoord);
+		nodeGl.vertexAttribPointer(shader.location_texCoord, model.texCoord.size, nodeGl.FLOAT, false, 0, 0);
 
-		thisGl.bindBuffer(thisGl.ARRAY_BUFFER, model.vertex);
-		thisGl.vertexAttribPointer(shader.location_position, model.vertex.size, thisGl.FLOAT, false, 0, 0);
+		nodeGl.bindBuffer(nodeGl.ARRAY_BUFFER, model.vertex);
+		nodeGl.vertexAttribPointer(shader.location_position, model.vertex.size, nodeGl.FLOAT, false, 0, 0);
 
-		thisGl.bindBuffer(thisGl.ELEMENT_ARRAY_BUFFER, model.index);
+		nodeGl.bindBuffer(nodeGl.ELEMENT_ARRAY_BUFFER, model.index);
 
 		/* do this every time? */
 		gl.disable(gl.DEPTH_TEST);
@@ -782,14 +791,14 @@ function Seriously(options) {
 				setter = 'set_' + name;
 				if (shader[setter]) {
 					if (value instanceof WebGLTexture) {
-						thisGl.activeTexture(thisGl.TEXTURE0 + numTextures);
-						thisGl.bindTexture(thisGl.TEXTURE_2D, value);
+						nodeGl.activeTexture(nodeGl.TEXTURE0 + numTextures);
+						nodeGl.bindTexture(nodeGl.TEXTURE_2D, value);
 						shader[setter](numTextures); //todo: make this faster
 						numTextures++;
 					} else if (value instanceof SourceNode || value instanceof EffectNode) {
 						if (value.texture) {
-							thisGl.activeTexture(thisGl.TEXTURE0 + numTextures);
-							thisGl.bindTexture(thisGl.TEXTURE_2D, value.texture);
+							nodeGl.activeTexture(nodeGl.TEXTURE0 + numTextures);
+							nodeGl.bindTexture(nodeGl.TEXTURE_2D, value.texture);
 							shader[setter](numTextures); //todo: make this faster
 							numTextures++;
 						}
@@ -801,12 +810,12 @@ function Seriously(options) {
 		}
 
 		//if (this.originalFrameBuffer) {
-			thisGl.clearColor(0.0, 0.0, 0.0, 0.0);
-			thisGl.clear(thisGl.COLOR_BUFFER_BIT | thisGl.DEPTH_BUFFER_BIT);
+			nodeGl.clearColor(0.0, 0.0, 0.0, 0.0);
+			nodeGl.clear(nodeGl.COLOR_BUFFER_BIT | nodeGl.DEPTH_BUFFER_BIT);
 		//}
 
 		// draw!
-		thisGl.drawElements(model.mode, model.length, thisGl.UNSIGNED_SHORT, 0);
+		nodeGl.drawElements(model.mode, model.length, nodeGl.UNSIGNED_SHORT, 0);
 		
 		//to protect other 3D libraries that may not remember to turn their depth tests on
 		gl.enable(gl.DEPTH_TEST);
@@ -1362,11 +1371,11 @@ function Seriously(options) {
 			
 			if (typeof effect.draw === 'function') {
 				effect.draw.call(this, this.shader, this.model, this.uniforms, frameBuffer,
-					function(shader, model, uniforms, frameBuffer) {
-						draw.call(that, shader, model, uniforms, frameBuffer);
+					function(shader, model, uniforms, frameBuffer, node) {
+						draw(shader, model, uniforms, frameBuffer, node || that);
 					});
 			} else if (frameBuffer) {
-				draw.call(this, this.shader, this.model, this.uniforms, frameBuffer);
+				draw(this.shader, this.model, this.uniforms, frameBuffer, this);
 			}
 			
 			this.dirty = false;
@@ -1577,8 +1586,8 @@ function Seriously(options) {
 			source.width * source.height * 4 === source.data.length
 			) {
 
-		//Because of this bug, Firefox doesn't recognize ImageData, so we have to duck type
-		//https://bugzilla.mozilla.org/show_bug.cgi?id=637077
+			//Because of this bug, Firefox doesn't recognize ImageData, so we have to duck type
+			//https://bugzilla.mozilla.org/show_bug.cgi?id=637077
 
 			this.desiredWidth = width = source.width;
 			this.desiredHeight = height = source.height;
@@ -2087,7 +2096,7 @@ function Seriously(options) {
 			}
 			
 			this.uniforms.source = this.source.texture;
-			draw.call(this, baseShader, rectangleModel, this.uniforms, this.frameBuffer.frameBuffer);
+			draw(baseShader, rectangleModel, this.uniforms, this.frameBuffer.frameBuffer, this);
 
 			this.dirty = false;
 			
@@ -2115,7 +2124,7 @@ function Seriously(options) {
 				this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, width, height, 0, this.gl.RGBA, this.gl.UNSIGNED_BYTE, this.pixels);
 				
 				this.uniforms.source = this.texture;
-				draw.call(this, this.shader, this.model, this.uniforms, null);
+				draw(this.shader, this.model, this.uniforms, null, this);
 			}
 			
 			this.dirty = false;
