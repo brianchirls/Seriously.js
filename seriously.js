@@ -743,7 +743,7 @@ function Seriously(options) {
 		var numTextures = 0,
 			name, value, setter,
 			width, height,
-			nodeGl = node && node.gl || gl;
+			nodeGl = (node && node.gl) || gl;
 
 		if (!nodeGl) {
 			return;
@@ -1900,7 +1900,7 @@ function Seriously(options) {
 			if (opts instanceof HTMLCanvasElement) {
 				target = opts;
 			} else if (opts instanceof WebGLRenderingContext) {
-				target = opts.canvas
+				target = opts.canvas;
 			} else if (opts.canvas instanceof HTMLCanvasElement) {
 				target = opts.canvas;
 			} else if (opts.context instanceof WebGLRenderingContext) {
@@ -2072,9 +2072,9 @@ function Seriously(options) {
 	TargetNode.prototype.go = function (options) {
 		if (options) {
 			if (typeof options === 'function') {
-				this.callback === options;
+				this.callback = options;
 			} else if (options.callback && typeof options.callback === 'function') {
-				this.callback === options.callback;
+				this.callback = options.callback;
 			} else {
 				this.callback = false;
 			}
