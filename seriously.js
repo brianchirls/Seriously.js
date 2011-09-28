@@ -487,7 +487,12 @@ function ShaderProgram(gl, vertexShaderSource, fragmentShaderSource) {
 
 		if (info.type === gl.FLOAT_VEC2) {
 			return function(obj) {
-				gl.uniform2f(loc, obj.x, obj.y);
+				//todo: standardize this so we don't have to do this check
+				if ( Array.isArray(obj) ) {
+					gl.uniform2f(loc, obj[0], obj[1]);
+				} else {
+					gl.uniform2f(loc, obj.x, obj.y);
+				}
 			};
 		}
 
@@ -1650,6 +1655,7 @@ function Seriously(options) {
 
 		this.texture = texture;
 		this.initialized = true;
+		this.setDirty();
 	};
 
 	SourceNode.prototype.setTarget = function (target) {
@@ -1721,6 +1727,8 @@ function Seriously(options) {
 			//gl.bindTexture(gl.TEXTURE_2D, null);
 
 			this.lastRenderTime = this.currentTime;
+
+			this.dirty = false;
 		}
 	};
 
