@@ -893,7 +893,6 @@ function Seriously(options) {
 	};
 
 	Node.prototype.readPixels = function (x, y, width, height, dest) {
-
 		if (gl && this.frameBuffer) {
 			//todo: check on x, y, width, height
 
@@ -1086,21 +1085,97 @@ function Seriously(options) {
 			return me.inputs[inputName];
 		}
 
+		function setInputArrayIndex(inputName, input, index) {
+			setInput(inputName + '[' + index + ']', input);
+		}
+
+		function setInputArray(inputName, input) {
+			var effectInput, i, max;
+			
+			effectInput = me.effect.inputs[inputName];
+
+			if (Array.isArray(input)) {
+				//see if this is an array of arrays
+				//todo: handle matrix input types
+				if ( (effectInput.type === 'color' || effectInput.type === 'vector') &&
+					!Array.isArray(input[0]) ) {
+					
+					setInputArray(inputName, input);
+					return;
+				}
+				
+				max = Math.min(effectInput.maxCount, input.length);
+				for (i = 0; i < max; i++) {
+					setInputArrayIndex(inputName, input, i);
+				}
+			}
+
+			setInputArray(inputName, input);
+			
+		}
+
 		//priveleged publicly accessible methods/setters/getters
 		//todo: provide an alternate method
 		for (name in me.effect.inputs) {
 			if (this[name] === undefined) {
-				this.__defineSetter__(name, (function (inputName) {
-					return function (value) {
-						return setInput(inputName, value);
-					};
-				}(name)));
+				if (me.effect.inputs[name].multi) {
+					this.__defineSetter__(name, (function (inputName) {
+						return function (value) {
+							return setInputArray(inputName, value);
+						};
+					}(name)));
+					
+					(function() {
+						var j, obj, pubNode = this, input = me.effect.inputs[inputName];
+					}());
+					this.__defineGetter__(name, (function (inputName) {
+						var j, obj, pubNode = this, input = me.effect.inputs[inputName];
+						obj = new (function() {
+							var values = me.inputs[inputName];
+							
+							return {
+								set length(value) {
+									var i;
 
-				this.__defineGetter__(name, (function (inputName) {
-					return function () {
-						return me.inputs[inputName];
-					};
-				}(name)));
+									if (value < input.minCount) {
+										value = input.minCount;
+									} else if (value > input.maxCount) {
+										value = input.maxCount;
+									}
+									
+									if (value < values.length) {
+										values.splice(value);
+										if (input.uniform) {
+											for (i = value; i < values.length; i++) {
+												delete me.uniforms[input.uniform + '[' + i + ']'];
+											}
+										}
+									} else {
+										for (i = value; i < values.length; i++) {
+											values[i] = input.defaultValue;
+											if (input.uniform) {
+												me.uniforms[input.uniform + '[' + i + ']'] = input.defaultValue;
+											}
+										}
+									}
+								}
+							}
+						}());
+					}(name)));
+					
+				} else {
+					this.__defineSetter__(name, (function (inputName) {
+						return function (value) {
+							return setInput(inputName, value);
+						};
+					}(name)));
+	
+					this.__defineGetter__(name, (function (inputName) {
+						return function () {
+							return me.inputs[inputName];
+						};
+					}(name)));
+				}
 			} else {
 				//todo: this is temporary. get rid of it.
 				throw 'Cannot overwrite Seriously.' + name;
@@ -1188,13 +1263,23 @@ function Seriously(options) {
 		//todo: set up frame buffer(s), inputs, transforms, stencils, draw method. allow plugin to override
 
 		this.inputs = {};
-		var name, input;
+		var name, input, i;
 		for (name in this.effect.inputs) {
 			input = this.effect.inputs[name];
-
-			this.inputs[name] = input.defaultValue;
-			if (input.uniform) {
-				this.uniforms[input.uniform] = input.defaultValue;
+			
+			if (input.multi) {
+				this.inputs[name] = [];
+				for (i = 0; i < input.minCount; i++) {
+					this.inputs[name].push(input.defaultValue);
+					if (input.uniform) {
+						this.uniforms[input.uniform + '[' + i + ']'] = input.defaultValue;
+					}
+				}
+			} else {
+				this.inputs[name] = input.defaultValue;
+				if (input.uniform) {
+					this.uniforms[input.uniform] = input.defaultValue;
+				}
 			}
 		}
 
@@ -2366,18 +2451,29 @@ Seriously.plugin = function (hook, effect) {
 				input.max = Infinity;
 			}
 
-			if (isNaN(input.minCount)) {
-				input.minCount = -Infinity;
-			}
+			input.multi = !!input.multi;
 
-			if (isNaN(input.maxCount)) {
-				input.maxCount = Infinity;
+			if (!input.multi) {
+				input.minCount = 1;
+				input.maxCount = 1;
+			} else {
+				if (isNaN(input.minCount)) {
+					input.minCount = 0;
+				}
+	
+				if (isNaN(input.maxCount)) {
+					input.maxCount = Infinity;
+				}
+				
+				if (input.maxCount < input.minCount) {
+					input.minCount = input.maxCount;
+				}
 			}
 
 			if (isNaN(input.step)) {
 				input.step = 0;
 			}
-
+			
 			if (input.defaultValue === undefined || input.defaultValue === null) {
 				if (input.type === 'number') {
 					input.defaultValue = Math.min(Math.max(0, input.min), input.max);
