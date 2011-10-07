@@ -431,7 +431,7 @@ FrameBuffer.prototype.destroy = function() {
 	delete this.frameBuffer;
 	delete this.renderBuffer;
 	delete this.texture;
-}
+};
 
 /* ShaderProgram - utility class for building and accessing WebGL shaders */
 
@@ -1259,7 +1259,7 @@ function Seriously(options) {
 			}
 			
 			//todo: remove getters/setters
-		}
+		};
 	};
 
 	EffectNode = function (hook, options) {
@@ -1583,6 +1583,12 @@ function Seriously(options) {
 		}
 		delete this.shader;
 		
+		//stop watching any input elements
+		for (i in this.inputElements) {
+			item = this.inputElements[i];
+			item.element.removeEventListener('change', item.listener, true);
+		}
+		
 		//sources
 		for (i in this.sources) {
 			item = this.sources[i];
@@ -1607,7 +1613,13 @@ function Seriously(options) {
 			}
 		}
 		
-		//todo: remove any aliases
+		//remove any aliases
+		for (i in aliases) {
+			item = aliases[i];
+			if (item.node === this) {
+				seriously.removeAlias(i);
+			}
+		}
 		
 		//remove self from master list of effects
 		i = effects.indexOf(this);
@@ -1656,7 +1668,7 @@ function Seriously(options) {
 					}
 				}
 			}
-		}
+		};
 	};
 
 	/*
@@ -2038,7 +2050,7 @@ function Seriously(options) {
 					}
 				}
 			}
-		}
+		};
 	};
 
 	/*
