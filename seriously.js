@@ -419,6 +419,20 @@ useFloat = false;
 	this.height = height;
 }
 
+FrameBuffer.prototype.destroy = function() {
+	var gl = this.gl;
+	
+	if (gl) {
+		gl.deleteFramebuffer(this.frameBuffer);
+		gl.deleteRenderbuffer(this.renderBuffer);
+		gl.deleteTexture(this.texture);
+	}
+
+	delete this.frameBuffer;
+	delete this.renderBuffer;
+	delete this.texture;
+};
+
 /* ShaderProgram - utility class for building and accessing WebGL shaders */
 
 function ShaderProgram(gl, vertexShaderSource, fragmentShaderSource) {
@@ -598,6 +612,27 @@ function ShaderProgram(gl, vertexShaderSource, fragmentShaderSource) {
 
 	this.gl = gl;
 	this.program = program;
+	
+	this.destroy = function() {
+		var i;
+
+		if (gl) {
+			gl.deleteProgram(program);
+			gl.deleteShader(vertexShader);
+			gl.deleteShader(fragmentShader);
+		}
+		
+		for (i in this) {
+			if (this.hasOwnProperty(i)) {
+				
+				delete this[i];
+			}
+		}
+		
+		program = null;
+		vertexShader = null;
+		fragmentShader = null;
+	};
 }
 
 ShaderProgram.prototype.useProgram = function() {
@@ -696,7 +731,6 @@ function Seriously(options) {
 
 		for (i = 0; i < sources.length; i++) {
 			node = sources[i];
-
 			node.initialize();
 		}
 
@@ -716,7 +750,7 @@ function Seriously(options) {
 	//target nodes that are set to auto by .go() will render immediately when set to dirty
 	function monitorSources() {
 		var i, node, media;
-		if (sources.length) {
+		if (sources && sources.length) {
 			for (i = 0; i < sources.length; i++) {
 				node = sources[i];
 
@@ -875,7 +909,7 @@ function Seriously(options) {
 		//loop through all targets calling setDirty (depth-first)
 		var i;
 
-		if (!this.dirty) {
+		if (!this.dirty && this.targets) {
 			this.dirty = true;
 			for (i = 0; i < this.targets.length; i++) {
 				this.targets[i].setDirty();
@@ -998,6 +1032,36 @@ function Seriously(options) {
 		mat[6] = a02*-sin + a12*cos;
 		mat[7] = a03*-sin + a13*cos;
 		this.setDirty();
+	};
+
+	Node.prototype.destroy = function () {
+		var i;
+		
+		delete this.gl;
+		delete this.seriously;
+		
+		//clear out uniforms
+		for (i in this.uniforms) {
+			delete this.uniforms[i];
+		}
+		
+		//clear out list of targets and disconnect each
+		if (this.targets) {
+			delete this.targets;
+		}
+		
+		//clear out frameBuffer
+		if (this.frameBuffer && this.frameBuffer.destroy) {
+			this.frameBuffer.destroy();
+			delete this.frameBuffer;
+		}
+
+		//remove from main nodes index
+		i = nodes.indexOf(this);
+		if (i >= 0) {
+			nodes.splice(i, 1);
+		}
+		
 	};
 
 	Effect = function (effectNode) {
@@ -1176,6 +1240,26 @@ function Seriously(options) {
 		this.rotateZ = function(angle) {
 			me.rotateZ(angle);
 		};
+
+		this.destroy = function() {
+			var i, nop = function() { };
+
+			me.destroy();
+			
+			for (i in this) {
+				if (this.hasOwnProperty(i)) {
+					if (this.__lookupGetter__(i) ||
+						typeof this[i] !== 'function') {
+						
+						delete this[i];
+					} else {
+						this[i] = nop;
+					}
+				}
+			}
+			
+			//todo: remove getters/setters
+		};
 	};
 
 	EffectNode = function (hook, options) {
@@ -1302,15 +1386,28 @@ function Seriously(options) {
 	};
 
 	EffectNode.prototype.removeTarget = function (target) {
-		var i;
-		for (i = 0; i < this.targets.length; i++) {
-			if (this.targets[i] === target) {
-				this.targets.splice(i, 1);
-				break;
-			}
+		var i = this.targets && this.targets.indexOf(target);
+		if (i >= 0) {
+			this.targets.splice(i, 1);
 		}
 
 		this.setSize();
+	};
+
+	EffectNode.prototype.removeSource = function (source) {
+		var i, pub = source && source.pub;
+		
+		for (i in this.inputs) {
+			if (this.inputs[i] === source || this.inputs[i] === pub) {
+				this.inputs[i] = null;
+			}
+		}
+		
+		for (i in this.sources) {
+			if (this.sources[i] === source || this.sources[i] === pub) {
+				this.sources[i] = null;
+			}
+		}
 	};
 
 	EffectNode.prototype.buildShader = function () {
@@ -1471,6 +1568,68 @@ function Seriously(options) {
 		return this;
 	};
 
+	EffectNode.prototype.destroy = function () {
+		var i, item;
+		
+		//let effect destroy itself
+		if (this.effect.destroy && typeof this.effect.destroy === 'function') {
+			this.effect.destroy.call(this);
+		}
+		delete this.effect;
+		
+		//shader
+		if (this.shader && this.shader.destroy) {
+			this.shader.destroy();
+		}
+		delete this.shader;
+		
+		//stop watching any input elements
+		for (i in this.inputElements) {
+			item = this.inputElements[i];
+			item.element.removeEventListener('change', item.listener, true);
+		}
+		
+		//sources
+		for (i in this.sources) {
+			item = this.sources[i];
+			if (item && item.removeTarget) {
+				item.removeTarget(this);
+			}
+			delete this.sources[i];
+		}
+
+		//targets
+		for (i = 0; i < this.targets.length; i++) {
+			item = this.targets[i];
+			if (item && item.removeSource) {
+				item.removeSource(this);
+			}
+			delete this.targets[i];
+		}
+
+		for (i in this) {
+			if (this.hasOwnProperty(i)) {
+				delete this[i];
+			}
+		}
+		
+		//remove any aliases
+		for (i in aliases) {
+			item = aliases[i];
+			if (item.node === this) {
+				seriously.removeAlias(i);
+			}
+		}
+		
+		//remove self from master list of effects
+		i = effects.indexOf(this);
+		if (i >= 0) {
+			effects.splice(i, 1);
+		}
+		
+		Node.prototype.destroy.call(this);
+	};
+
 	Source = function (sourceNode) {
 		var me = sourceNode;
 
@@ -1491,6 +1650,24 @@ function Seriously(options) {
 
 		this.render = function() {
 			me.render();
+		};
+		
+		this.destroy = function() {
+			var i, nop = function() { };
+
+			me.destroy();
+			
+			for (i in this) {
+				if (this.hasOwnProperty(i)) {
+					if (this.__lookupGetter__(i) ||
+						typeof this[i] !== 'function') {
+						
+						delete this[i];
+					} else {
+						this[i] = nop;
+					}
+				}
+			}
 		};
 	};
 
@@ -1670,12 +1847,9 @@ function Seriously(options) {
 	};
 
 	SourceNode.prototype.removeTarget = function (target) {
-		var i;
-		for (i = 0; i < this.targets.length; i++) {
-			if (this.targets[i] === target) {
-				this.targets.splice(i, 1);
-				break;
-			}
+		var i = this.targets && this.targets.indexOf(target);
+		if (i >= 0) {
+			this.targets.splice(i, 1);
 		}
 	};
 
@@ -1729,6 +1903,37 @@ function Seriously(options) {
 			this.lastRenderTime = this.currentTime;
 
 			this.dirty = false;
+		}
+	};
+
+	SourceNode.prototype.destroy = function() {
+		var i, item;
+
+		if (this.gl && this.texture) {
+			this.gl.deleteTexture(this.texture);
+		}
+	
+		//targets
+		for (i = 0; i < this.targets.length; i++) {
+			item = this.targets[i];
+			if (item && item.removeSource) {
+				item.removeSource(this);
+			}
+			delete this.targets[i];
+		}
+
+		//remove self from master list of sources
+		i = sources.indexOf(this);
+		if (i >= 0) {
+			sources.splice(i, 1);
+		}
+		
+		Node.prototype.destroy.call(this);
+		
+		for (i in this) {
+			if (this.hasOwnProperty(i)) {
+				delete this[i];
+			}
 		}
 	};
 
@@ -1829,6 +2034,23 @@ function Seriously(options) {
 			return me.frameBuffer.texture;
 		};
 
+		this.destroy = function() {
+			var i, nop = function() { };
+
+			me.destroy();
+			
+			for (i in this) {
+				if (this.hasOwnProperty(i)) {
+					if (this.__lookupGetter__(i) ||
+						typeof this[i] !== 'function') {
+						
+						delete this[i];
+					} else {
+						this[i] = nop;
+					}
+				}
+			}
+		};
 	};
 
 	/*
@@ -2057,9 +2279,11 @@ function Seriously(options) {
 
 	TargetNode.prototype.renderWebGL = function() {
 		if (this.dirty) {
-			if (this.source) {
-				this.source.render();
+			if (!this.source) {
+				return;
 			}
+			
+			this.source.render();
 
 			this.uniforms.source = this.source.texture;
 			draw(baseShader, rectangleModel, this.uniforms, this.frameBuffer.frameBuffer, this);
@@ -2107,6 +2331,35 @@ function Seriously(options) {
 		if (this.callback) {
 			this.callback();
 		}
+	};
+
+	TargetNode.prototype.removeSource = function (source) {
+		if (this.source === source || this.source === source.pub) {
+			this.source = null;
+		}
+	};
+
+	TargetNode.prototype.destroy = function() {
+		var i, item;
+		
+		//source
+		if (this.source && this.source.removeTarget) {
+			this.source.removeTarget(this);
+		}
+		delete this.source;
+
+		delete this.target;
+		delete this.pub;
+		delete this.uniforms;
+		delete this.pixels;
+		
+		//remove self from master list of targets
+		i = targets.indexOf(this);
+		if (i >= 0) {
+			targets.splice(i, 1);
+		}
+		
+		Node.prototype.destroy.call(this);
 	};
 
 	if (benchmarkResults === undefined) {
@@ -2192,6 +2445,51 @@ function Seriously(options) {
 		for (i = 0; i < targets.length; i++) {
 			targets[i].render(options);
 		}
+	};
+
+	this.destroy = function() {
+		var i, node, nop = function() { };
+		while (nodes.length) {
+			node = nodes.shift();
+			node.destroy();
+		}
+	
+		if (baseShader) {
+			baseShader.destroy();
+			baseShader = null;
+		}
+		
+		//clean up rectangleModel
+		if (gl) {
+			gl.deleteBuffer(rectangleModel.vertex);
+			gl.deleteBuffer(rectangleModel.texCoord);
+			gl.deleteBuffer(rectangleModel.index);
+		}
+		delete rectangleModel.vertex;
+		delete rectangleModel.texCoord;
+		delete rectangleModel.index;
+		
+		for (i in this) {
+			if (this.hasOwnProperty(i)) {
+				if (this.__lookupGetter__(i) ||
+					typeof this[i] !== 'function') {
+					
+					delete this[i];
+				} else {
+					this[i] = nop;
+				}
+			}
+		}
+
+		baseFragmentShader = null;
+		baseVertexShader = null;
+		rectangleModel = null;
+		gl = null;
+		seriously = null;
+		sources = [];
+		targets = null;
+		effects = null;
+		nodes = null;
 	};
 
 	//this.__defineSetter__('effects', Seriously.__lookupSetter__('effects'));
