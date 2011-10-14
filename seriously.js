@@ -1543,7 +1543,15 @@ function Seriously(options) {
 	};
 
 	EffectNode.prototype.alias = function (inputName, aliasName) {
-		var that = this;
+		var that = this,
+			reservedNames = ['source', 'target', 'effect', 'effects', 'benchmark',
+				'utilities', 'ShaderProgram', 'inputValidators', 'save', 'load',
+				'plugin', 'alias', 'removeAlias', 'stop', 'go'];
+		
+		if (reservedNames.indexOf(aliasName) >= 0) {
+			throw aliasName + ' is a reserved name and cannot be used as an alias.';
+		}
+
 		if (this.effect.inputs.hasOwnProperty(inputName)) {
 			if (!aliasName) {
 				aliasName = inputName;
