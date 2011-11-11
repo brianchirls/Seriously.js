@@ -1161,6 +1161,16 @@ function Seriously(options) {
 			me.reset();
 		};
 
+		this.monitor = function(inputName, object, property) {
+			me.monitor(inputName, object, property);
+			return this;
+		};
+
+		this.unmonitor = function(inputName, object, property) {
+			me.unmonitor(inputName, object, property);
+			return this;
+		};
+
 		this.translate = function(x, y, z) {
 			me.translate(x, y, z);
 		};
@@ -1189,6 +1199,7 @@ function Seriously(options) {
 		this.shaderDirty = true;
 		this.hook = hook;
 		this.options = options;
+		this.monitors = [];
 
 		//todo: set up frame buffer(s), inputs, transforms, stencils, draw method. allow plugin to override
 
@@ -1466,6 +1477,82 @@ function Seriously(options) {
 			seriously.__defineGetter__(aliasName, function () {
 				return that.inputs[inputName];
 			});
+		}
+
+		return this;
+	};
+
+	EffectNode.prototype.monitor = function (inputName, object, property) {
+		var i, fn, that = this,
+		runMonitor = function() {
+			var i, monitor, value, fn;
+
+			if (that.monitors.length) {
+				for (i = 0; i < that.monitors.length; i++) {
+					monitor = that.monitors[i];
+					value = monitor.fn();
+					if (value !== monitor.lastValue) {
+						that.setInput(monitor.name, value);
+						monitor.lastValue = value;
+					}
+				}
+
+				requestAnimFrame(runMonitor);
+			}
+		}
+
+		if (!inputName || !object || !property ||
+			typeof inputName !== 'string') {
+
+			return this;
+		}
+
+		if (typeof object === 'function') {
+			fn = object;
+		} else if (typeof object === 'object' && typeof property === 'string') {
+			fn = (function (input) {
+				return function() {
+					return input.validate.call(that, object[property], input, name);
+				}
+			}(this.effect.inputs[inputName]));
+		} else {
+			return this;
+		}
+
+		if (!this.effect.inputs.hasOwnProperty(inputName)) {
+			return this;
+		}
+
+		for (i = 0; i < this.monitors.length; i++) {
+			if (this.monitors[i].name === inputName) {
+				this.monitors.splice(i, 1);
+				break;
+			}
+		}
+
+		this.monitors.push({
+			name: inputName,
+			node: this,
+			object: object,
+			property: property,
+			fn: fn,
+			lastValue: this.inputs[inputName]
+		});
+
+		if (this.monitors.length === 1) {
+			runMonitor();
+		}
+
+		return this;
+	};
+	
+	EffectNode.prototype.unmonitor = function (inputName, object, property) {
+		var i;
+		for (i = 0; i < this.monitors.length; i++) {
+			if (this.monitors[i].name === inputName) {
+				this.monitors.splice(i, 1);
+				break;
+			}
 		}
 
 		return this;
