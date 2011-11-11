@@ -1499,7 +1499,7 @@ function Seriously(options) {
 
 				requestAnimFrame(runMonitor);
 			}
-		}
+		};
 
 		if (!inputName || !object || !property ||
 			typeof inputName !== 'string') {
