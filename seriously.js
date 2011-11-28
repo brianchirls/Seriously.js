@@ -901,26 +901,36 @@ function Seriously(options) {
 
 	Node.prototype.readPixels = function (x, y, width, height, dest) {
 
-		if (gl && this.frameBuffer) {
-			//todo: check on x, y, width, height
-
-			//todo: should we render here?
-
-			//todo: figure out formats and types
-			if (dest === undefined) {
-				dest = new Uint8Array(width * height * 4);
-			} else if ( !dest instanceof Uint8Array ) {
-				throw 'Incompatible array type';
-			}
-
-			gl.bindFramebuffer(gl.FRAMEBUFFER, this.frameBuffer); //todo: are we sure about this?
-			gl.readPixels(x, y, width, height, gl.RGBA, gl.UNSIGNED_BYTE, dest);
-
-			return dest;
-		} else {
-			//todo: what happens here?
+		if (!gl) {
+			//todo: is this the best approach?
 			throw 'Cannot read pixels until a canvas is connected';
 		}
+
+		//todo: check on x, y, width, height
+
+		if (!this.frameBuffer) {
+			this.initFrameBuffer();
+		}
+
+		if (this instanceof SourceNode) {
+			//todo: move this to SourceNode.render so it only runs when it changes
+			this.uniforms.source = this.texture;
+			draw(baseShader, rectangleModel, this.uniforms, this.frameBuffer.frameBuffer, this);
+		}
+
+		//todo: should we render here?
+
+		//todo: figure out formats and types
+		if (dest === undefined) {
+			dest = new Uint8Array(width * height * 4);
+		} else if ( !dest instanceof Uint8Array ) {
+			throw 'Incompatible array type';
+		}
+
+		gl.bindFramebuffer(gl.FRAMEBUFFER, this.frameBuffer.frameBuffer); //todo: are we sure about this?
+		gl.readPixels(x, y, width, height, gl.RGBA, gl.UNSIGNED_BYTE, dest);
+
+		return dest;
 	};
 
 	Node.prototype.reset = function () {
@@ -2172,15 +2182,12 @@ function Seriously(options) {
 				this.pixels = new Uint8Array(width * height * 4);
 			}
 
-			if (this.source.frameBuffer) {
-				gl.bindFramebuffer(gl.FRAMEBUFFER, this.source.frameBuffer.frameBuffer);
-				gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, this.pixels);
+			this.source.readPixels(0, 0, this.source.width, this.source.height, this.pixels);
 
-				this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, width, height, 0, this.gl.RGBA, this.gl.UNSIGNED_BYTE, this.pixels);
+			this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, width, height, 0, this.gl.RGBA, this.gl.UNSIGNED_BYTE, this.pixels);
 
-				this.uniforms.source = this.texture;
-				draw(this.shader, this.model, this.uniforms, null, this);
-			}
+			this.uniforms.source = this.texture;
+			draw(this.shader, this.model, this.uniforms, null, this);
 
 			this.dirty = false;
 
