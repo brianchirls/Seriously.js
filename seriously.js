@@ -332,6 +332,51 @@ window.addEventListener('message', function(event) {
 	}
 }, true);
 
+function checkSource(source) {
+	var element, canvas, gl, texture;
+	
+	element = getElement(source, ['img', 'canvas', 'video']);
+	if (!element) {
+		return false;
+	}
+	
+	if (!window.WebGLRenderingContext) {
+		console.log('Browser does not support WebGL or Seriously.js');
+		return false;
+	}
+	
+	canvas = document.createElement('canvas');
+	if (!canvas) {
+		return false;
+	}
+	
+	try {
+		gl = canvas.getContext('experimental-webgl');
+	} catch (webglError) {
+		console.log('Unable to access WebGL');
+		return false;
+	}
+	
+	texture = gl.createTexture();
+	gl.bindTexture(gl.TEXTURE_2D, texture);
+	
+	try {
+		gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, element);
+	} catch (textureError) {
+		if (textureError.name === 'SECURITY_ERR') {
+			console.log('Unable to access cross-domain image');
+		} else {
+			console.log('Error: ' + textureError.message);
+		}
+		return false;
+	}
+	
+	// This method will return a false positive for resources that aren't
+	// actually images or haven't loaded yet
+	
+	return true;
+}
+
 /*
 	helper Classes
 */
@@ -3000,6 +3045,7 @@ if (window.Seriously) {
 //expose Seriously to the global object
 Seriously.ShaderProgram = ShaderProgram;
 Seriously.utilities = {
+	checkSource: checkSource,
 	hslToRgb: hslToRgb,
 	colors: colorNames,
 	setTimeoutZero: setTimeoutZero,
