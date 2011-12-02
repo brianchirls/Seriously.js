@@ -1,3 +1,4 @@
+/*jslint devel: true, bitwise: true, browser: true, white: true, nomen: true, plusplus: true, maxerr: 50, indent: 4 */
 (function (window, undefined) {
 "use strict";
 
