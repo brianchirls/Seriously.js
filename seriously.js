@@ -2483,9 +2483,12 @@ function Seriously(options) {
 			gl.deleteBuffer(rectangleModel.texCoord);
 			gl.deleteBuffer(rectangleModel.index);
 		}
-		delete rectangleModel.vertex;
-		delete rectangleModel.texCoord;
-		delete rectangleModel.index;
+		
+		if (rectangleModel) {
+			delete rectangleModel.vertex;
+			delete rectangleModel.texCoord;
+			delete rectangleModel.index;
+		}
 		
 		for (i in this) {
 			if (this.hasOwnProperty(i)) {
