@@ -1,4 +1,8 @@
+/*jslint devel: true, bitwise: true, browser: true, white: true, nomen: true, plusplus: true, maxerr: 50, indent: 4 */
+/* global module, test, asyncTest, expect, ok, equal, start, stop, Seriously */
 (function() {
+	"use strict";
+
 	module('Core');
 	test('Core', function() {
 		var p, props = 0,
@@ -332,7 +336,7 @@
 		
 		Seriously.plugin('testEnumInput', {
 			inputs: {
-				enum: {
+				input: {
 					type: 'enum',
 					defaultValue: 'foo',
 					options: [
@@ -347,18 +351,18 @@
 		s = Seriously();
 		e = s.effect('testEnumInput');
 
-		equal(e.enum, 'foo', 'Default value');
+		equal(e.input, 'foo', 'Default value');
 
-		e.enum = 'bar';
-		val = e.enum;
+		e.input = 'bar';
+		val = e.input;
 		equal(val, 'bar', 'Simply set a value');
 
-		e.enum = 'baz';
-		val = e.enum;
+		e.input = 'baz';
+		val = e.input;
 		equal(val, 'baz', 'Set a different value');
 
-		e.enum = 'biddle';
-		val = e.enum;
+		e.input = 'biddle';
+		val = e.input;
 		equal(val, 'foo', 'Set unknown value reverts to default');
 
 		s.destroy();
