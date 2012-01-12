@@ -378,6 +378,23 @@
 
 	module('Utilities');
 	
+	asyncTest('setTimeoutZero', function() {
+		var countdown = 2, startTime = Date.now();
+		
+		expect(2);
+
+		Seriously.utilities.setTimeoutZero(function() {
+			countdown--;
+			ok(countdown === 1, 'First callback runs first after ' + (Date.now() - startTime) + 'ms');
+		});
+
+		Seriously.utilities.setTimeoutZero(function() {
+			countdown--;
+			ok(countdown === 0, 'Second callback runs second after ' + (Date.now() - startTime) + 'ms');
+			start();
+		});
+	});
+	
 	asyncTest('checkSource', function() {
 		var pass, fail,
 			tests = 2;
