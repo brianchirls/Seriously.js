@@ -2786,7 +2786,7 @@ Seriously.inputValidators = {
 				return a;
 			}
 
-			s = (/^#(([0-9a-fA-F]{3,4}){1,2})/).exec(value);
+			s = (/^#(([0-9a-fA-F]{3,8}))/).exec(value);
 			if (s && s.length) {
 				s = s[1];
 				if (s.length === 3) {
