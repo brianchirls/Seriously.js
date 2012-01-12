@@ -42,6 +42,35 @@ module('Plugin');
  * define plugin
 */
 
+test('Remove Plugin', function() {
+	var p, s, error, e;
+
+	expect(2);
+
+	p = Seriously.plugin('removeme', {});
+	ok(p && p.title === 'removeme', 'First plugin loaded');
+	
+	s = Seriously();
+	e = s.effect('removeme');
+
+	Seriously.removePlugin('removeme');
+
+	/*
+	 * todo: get list of plugins from Seriously and compare title
+	 * todo: test that created effect is destroyed
+	 */
+	
+	try {
+		s.effect('removeme');
+	} catch (ee) {
+		error = true;
+	}
+
+	ok(error, 'Plugin doesn\'t exist; using throws error');
+	
+	s.destroy();
+});
+
 test('Define plugin with duplicate name', function() {
 	var p;
 
@@ -57,6 +86,8 @@ test('Define plugin with duplicate name', function() {
 	 */
 	
 	ok(p === undefined, 'Duplicate plugin ignored');
+	
+	Seriously.removePlugin('pluginDuplicate');
 });
 
 test('Define plugin with reserved input name', function() {
@@ -88,6 +119,7 @@ test('Define plugin with reserved input name', function() {
 	ok(error2, 'Plugin doesn\'t exist; using throws error');
 	
 	s.destroy();
+	Seriously.removePlugin('badPlugin');
 });
 
 asyncTest('Plugin loaded before Seriously', function() {
@@ -127,6 +159,7 @@ asyncTest('Plugin loaded before Seriously', function() {
 
 			s.destroy();
 			document.body.removeChild(iframe);
+			win.Seriously.removePlugin('test');
 			start();
 		}, false);
 		doc.head.appendChild(script);
@@ -203,6 +236,7 @@ test('Number', function() {
 	equal(val, 42, 'Bad number reverts to default value');
 
 	s.destroy();
+	Seriously.removePlugin('testNumberInput');
 });
 
 test('Color', function() {
@@ -293,6 +327,7 @@ test('Color', function() {
 	//todo: set color by object
 
 	s.destroy();
+	Seriously.removePlugin('testColorInput');
 });
 
 test('Enum', function() {
@@ -331,6 +366,7 @@ test('Enum', function() {
 	equal(val, 'foo', 'Set unknown value reverts to default');
 
 	s.destroy();
+	Seriously.removePlugin('testEnumInput');
 });
 
 module('Alias');
