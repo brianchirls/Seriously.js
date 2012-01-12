@@ -2871,7 +2871,7 @@ Seriously.inputValidators = {
 		}
 
 		if (input.step) {
-			return Math.round(value, input.step);
+			return Math.round(value / input.step) * input.step;
 		}
 
 		return value;
