@@ -377,4 +377,59 @@
 	module('Alias');
 
 	module('Utilities');
+	
+	asyncTest('checkSource', function() {
+		var pass, fail,
+			tests = 2;
+		
+		expect(4);
+		
+		function checkImagePass() {
+			var canvas, ctx;
+
+			ok(Seriously.utilities.checkSource(this), this.title);
+
+			canvas = document.createElement('canvas');
+			ctx = canvas.getContext('2d');
+			ctx.drawImage(this, 0, 0);
+			ok(Seriously.utilities.checkSource(canvas), 'Same-origin canvas checks true');
+
+			tests--;
+			if (!tests) {
+				start();
+			}
+
+		}
+		
+		function checkImageFail() {
+			var canvas, ctx;
+
+			ok(!Seriously.utilities.checkSource(this), this.title);
+
+			canvas = document.createElement('canvas');
+			ctx = canvas.getContext('2d');
+			ctx.drawImage(this, 0, 0);
+			ok(!Seriously.utilities.checkSource(canvas), 'Cross-origin canvas checks false');
+
+			tests--;
+			if (!tests) {
+				start();
+			}
+		}
+		
+		pass = document.getElementById('colorbars');
+		pass.title = "Same-origin image checks true";
+		if (pass.width) {
+			checkImagePass.call(pass);
+		} else {
+			pass.addEventListener('load', checkImagePass, false);
+		}
+		
+		fail = document.createElement('img');
+		pass.title = "Cross-origin image checks false";
+		fail.src = 'http://www.mozilla.org/images/template/screen/logo_footer.png';
+		fail.addEventListener('load', checkImageFail, false);
+
+		
+	});
 }());
