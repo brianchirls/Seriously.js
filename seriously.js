@@ -12,6 +12,7 @@ var document = window.document,
 benchmarkResults,
 seriousEffects = {},
 timeouts = [],
+allEffectsByHook = {},
 
 /*
 	Global reference variables
@@ -332,6 +333,54 @@ window.addEventListener('message', function(event) {
 		}
 	}
 }, true);
+
+function checkSource(source) {
+	var element, canvas, gl, texture;
+	
+	element = getElement(source, ['img', 'canvas', 'video']);
+	if (!element) {
+		return false;
+	}
+	
+	if (!window.WebGLRenderingContext) {
+		console.log('Browser does not support WebGL or Seriously.js');
+		return false;
+	}
+	
+	canvas = document.createElement('canvas');
+	if (!canvas) {
+		return false;
+	}
+	
+	try {
+		gl = canvas.getContext('experimental-webgl');
+	} catch (webglError) {
+		console.log('Unable to access WebGL');
+		return false;
+	}
+	
+	texture = gl.createTexture();
+	gl.bindTexture(gl.TEXTURE_2D, texture);
+	
+	try {
+		gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, element);
+	} catch (textureError) {
+		if (textureError.name === 'SECURITY_ERR') {
+			console.log('Unable to access cross-domain image');
+		} else {
+			console.log('Error: ' + textureError.message);
+		}
+		gl.deleteTexture(texture);
+		return false;
+	}
+	
+	// This method will return a false positive for resources that aren't
+	// actually images or haven't loaded yet
+	
+	gl.deleteTexture(texture);
+
+	return true;
+}
 
 /*
 	helper Classes
@@ -1307,6 +1356,8 @@ function Seriously(options) {
 		this.pub = new Effect(this);
 
 		effects.push(this);
+		
+		allEffectsByHook[hook].push(this);
 	};
 
 	extend(EffectNode, Node);
@@ -1559,7 +1610,7 @@ function Seriously(options) {
 		var that = this,
 			reservedNames = ['source', 'target', 'effect', 'effects', 'benchmark',
 				'utilities', 'ShaderProgram', 'inputValidators', 'save', 'load',
-				'plugin', 'alias', 'removeAlias', 'stop', 'go'];
+				'plugin', 'removePlugin', 'alias', 'removeAlias', 'stop', 'go'];
 		
 		if (reservedNames.indexOf(aliasName) >= 0) {
 			throw aliasName + ' is a reserved name and cannot be used as an alias.';
@@ -1590,7 +1641,7 @@ function Seriously(options) {
 	};
 
 	EffectNode.prototype.destroy = function () {
-		var i, item;
+		var i, item, hook = this.hook;
 		
 		//let effect destroy itself
 		if (this.effect.destroy && typeof this.effect.destroy === 'function') {
@@ -1646,6 +1697,11 @@ function Seriously(options) {
 		i = effects.indexOf(this);
 		if (i >= 0) {
 			effects.splice(i, 1);
+		}
+		
+		i = allEffectsByHook[hook].indexOf(this);
+		if (i >= 0) {
+			allEffectsByHook[hook].splice(i, 1);
 		}
 		
 		Node.prototype.destroy.call(this);
@@ -1853,6 +1909,7 @@ function Seriously(options) {
 
 		this.texture = texture;
 		this.initialized = true;
+		this.allowRefresh = true;
 		this.setDirty();
 	};
 
@@ -1884,14 +1941,24 @@ function Seriously(options) {
 		if (!this.initialized) {
 			this.initialize();
 		}
+		
+		if (!this.allowRefresh) {
+			return;
+		}
 
 		if (this.lastRenderFrame !== video.mozPresentedFrames ||
 			this.lastRenderTime !== video.currentTime) {
 
 			gl.bindTexture(gl.TEXTURE_2D, this.texture);
 			gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, this.flip);
-			gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, video);
-			//gl.bindTexture(gl.TEXTURE_2D, null);
+			try {
+				gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, video);
+			} catch (securityError) {
+				if (securityError.name === 'SECURITY_ERR') {
+					this.allowRefresh = false;
+					console.log('Unable to access cross-domain image');
+				}
+			}
 			this.lastRenderTime = video.currentTime;
 			this.lastRenderFrame = video.mozPresentedFrames;
 
@@ -1915,11 +1982,21 @@ function Seriously(options) {
 		}
 		this.currentTime = media.currentTime;
 
+		if (!this.allowRefresh) {
+			return;
+		}
+
 		if (this.lastRenderTime === undefined || this.lastRenderTime !== this.currentTime) {
 			gl.bindTexture(gl.TEXTURE_2D, this.texture);
 			gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, this.flip);
-			gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, media);
-			//gl.bindTexture(gl.TEXTURE_2D, null);
+			try {
+				gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, media);
+			} catch (securityError) {
+				if (securityError.name === 'SECURITY_ERR') {
+					this.allowRefresh = false;
+					console.log('Unable to access cross-domain image');
+				}
+			}
 
 			this.lastRenderTime = this.currentTime;
 
@@ -2758,8 +2835,36 @@ Seriously.plugin = function (hook, effect) {
 	}
 
 	seriousEffects[hook] = effect;
+	allEffectsByHook[hook] = [];
 
 	return effect;
+};
+
+Seriously.removePlugin = function (hook) {
+	var all, effect, plugin, i;
+	
+	if (!hook) {
+		return this;
+	}
+	
+	plugin = seriousEffects[hook];
+
+	if (!plugin) {
+		return this;
+	}
+	
+	all = allEffectsByHook[hook];
+	if (all) {
+		while (all.length) {
+			effect = all[0];
+			effect.destroy();
+		}
+		delete allEffectsByHook[hook];
+	}
+	
+	delete seriousEffects[hook];
+	
+	return this;
 };
 
 Seriously.inputValidators = {
@@ -3004,6 +3109,7 @@ if (window.Seriously) {
 //expose Seriously to the global object
 Seriously.ShaderProgram = ShaderProgram;
 Seriously.utilities = {
+	checkSource: checkSource,
 	hslToRgb: hslToRgb,
 	colors: colorNames,
 	setTimeoutZero: setTimeoutZero,
