@@ -144,6 +144,7 @@ module('Source');
 /*
  * create source: all different types
  * destroy source before img loaded
+ * checkSource on cross-origin image, dirty canvas
 */
 
 module('Target');
