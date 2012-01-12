@@ -1140,7 +1140,7 @@ function Seriously(options) {
 		}
 
 		function setInput(inputName, input) {
-			var lookup, value, effectInput, element, i;
+			var lookup, value, effectInput, i;
 
 			effectInput = me.effect.inputs[inputName];
 
@@ -2436,7 +2436,7 @@ function Seriously(options) {
 	};
 
 	TargetNode.prototype.destroy = function() {
-		var i, item;
+		var i;
 		
 		//source
 		if (this.source && this.source.removeTarget) {
@@ -2842,7 +2842,7 @@ Seriously.plugin = function (hook, effect) {
 };
 
 Seriously.removePlugin = function (hook) {
-	var all, effect, plugin, i;
+	var all, effect, plugin;
 	
 	if (!hook) {
 		return this;
