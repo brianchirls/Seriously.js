@@ -1144,8 +1144,8 @@ function Seriously(options) {
 			if ( typeof input === 'string' && isNaN(input)) {
 				if (effectInput.type === 'enum') {
 					if (effectInput.options && effectInput.options.filter) {
+						i = ('' + input).toLowerCase();
 						value = effectInput.options.filter(function (e) {
-							i = ('' + input).toLowerCase();
 							return (typeof e === 'string' && e.toLowerCase() === i) ||
 								(e.length && typeof e[0] === 'string' && e[0].toLowerCase() === i);
 						});
@@ -2549,9 +2549,12 @@ function Seriously(options) {
 			gl.deleteBuffer(rectangleModel.texCoord);
 			gl.deleteBuffer(rectangleModel.index);
 		}
-		delete rectangleModel.vertex;
-		delete rectangleModel.texCoord;
-		delete rectangleModel.index;
+		
+		if (rectangleModel) {
+			delete rectangleModel.vertex;
+			delete rectangleModel.texCoord;
+			delete rectangleModel.index;
+		}
 		
 		for (i in this) {
 			if (this.hasOwnProperty(i)) {
@@ -2849,7 +2852,7 @@ Seriously.inputValidators = {
 				return a;
 			}
 
-			s = (/^#(([0-9a-fA-F]{3,4}){1,2})/).exec(value);
+			s = (/^#(([0-9a-fA-F]{3,8}))/).exec(value);
 			if (s && s.length) {
 				s = s[1];
 				if (s.length === 3) {
@@ -2934,7 +2937,7 @@ Seriously.inputValidators = {
 		}
 
 		if (input.step) {
-			return (value / input.step | 0) * input.step; //faster round http://jsperf.com/math-floor-vs-math-round-vs-parseint/5
+			return Math.round(value / input.step) * input.step;
 		}
 
 		return value;
