@@ -43,9 +43,9 @@
 	*/
 
 	test('Remove Plugin', function() {
-		var p, s, error, e;
+		var p, s, error, e, allEffects;
 
-		expect(2);
+		expect(3);
 
 		p = Seriously.plugin('removeme', {});
 		ok(p && p.title === 'removeme', 'First plugin loaded');
@@ -55,8 +55,10 @@
 
 		Seriously.removePlugin('removeme');
 
+		allEffects = Seriously.effects();
+		ok(allEffects.removeme === undefined, 'Plugin no longer listed.');
+
 		/*
-		 * todo: get list of plugins from Seriously and compare title
 		 * todo: test that created effect is destroyed
 		 */
 		
@@ -72,20 +74,23 @@
 	});
 
 	test('Define plugin with duplicate name', function() {
-		var p;
+		var p, allEffects;
 
-		expect(2);
+		expect(3);
 
-		p = Seriously.plugin('pluginDuplicate', {});
-		ok(p && p.title === 'pluginDuplicate', 'First plugin loaded');
+		p = Seriously.plugin('pluginDuplicate', {
+			title: 'Original'
+		});
+		ok(p && p.title === 'Original', 'First plugin loaded');
 
-		p = Seriously.plugin('pluginDuplicate', {});
-		
-		/*
-		 * todo: get list of plugins from Seriously and compare title
-		 */
+		p = Seriously.plugin('pluginDuplicate', {
+			title: 'Duplicate'
+		});
 		
 		ok(p === undefined, 'Duplicate plugin ignored');
+		
+		allEffects = Seriously.effects();
+		equal(allEffects.pluginDuplicate.title, 'Original', 'Original plugin remains');
 		
 		Seriously.removePlugin('pluginDuplicate');
 	});
