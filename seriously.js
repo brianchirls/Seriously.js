@@ -2871,7 +2871,7 @@ Seriously.inputValidators = {
 		}
 
 		if (input.step) {
-			return (value / input.step | 0) * input.step; //faster round http://jsperf.com/math-floor-vs-math-round-vs-parseint/5
+			return Math.round(value, input.step);
 		}
 
 		return value;
