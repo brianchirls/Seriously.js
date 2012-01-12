@@ -369,12 +369,15 @@ function checkSource(source) {
 		} else {
 			console.log('Error: ' + textureError.message);
 		}
+		gl.deleteTexture(texture);
 		return false;
 	}
 	
 	// This method will return a false positive for resources that aren't
 	// actually images or haven't loaded yet
 	
+	gl.deleteTexture(texture);
+
 	return true;
 }
 
