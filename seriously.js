@@ -1099,8 +1099,8 @@ function Seriously(options) {
 			if ( typeof input === 'string' && isNaN(input)) {
 				if (effectInput.type === 'enum') {
 					if (effectInput.options && effectInput.options.filter) {
+						i = ('' + input).toLowerCase();
 						value = effectInput.options.filter(function (e) {
-							i = ('' + input).toLowerCase();
 							return (typeof e === 'string' && e.toLowerCase() === i) ||
 								(e.length && typeof e[0] === 'string' && e[0].toLowerCase() === i);
 						});
