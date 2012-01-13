@@ -1,4 +1,5 @@
 /*jslint devel: true, bitwise: true, browser: true, white: true, nomen: true, plusplus: true, maxerr: 50, indent: 4 */
+/*global Float32Array, Uint8Array, Uint16Array, WebGLTexture, HTMLInputElement, HTMLSelectElement, HTMLElement, WebGLFramebuffer, HTMLCanvasElement, WebGLRenderingContext */
 (function (window, undefined) {
 "use strict";
 
@@ -715,7 +716,8 @@ function Seriously(options) {
 		baseVertexShader, baseFragmentShader,
 		Node, SourceNode, EffectNode, TargetNode,
 		Effect, Source, Target,
-		auto = false;
+		auto = false,
+		isDestroyed = false;
 
 	function buildModel(thisGl) {
 		var vertex, index, texCoord;
@@ -949,6 +951,7 @@ function Seriously(options) {
 		};
 
 		this.dirty = true;
+		this.isDestroyed = false;
 
 		this.seriously = seriously;
 
@@ -1124,6 +1127,7 @@ function Seriously(options) {
 			nodes.splice(i, 1);
 		}
 		
+		this.isDestroyed = true;
 	};
 
 	Effect = function (effectNode) {
@@ -1139,7 +1143,7 @@ function Seriously(options) {
 		}
 
 		function setInput(inputName, input) {
-			var lookup, value, effectInput, element, i;
+			var lookup, value, effectInput, i;
 
 			effectInput = me.effect.inputs[inputName];
 
@@ -1309,7 +1313,7 @@ function Seriously(options) {
 			me.destroy();
 			
 			for (i in this) {
-				if (this.hasOwnProperty(i)) {
+				if (this.hasOwnProperty(i) && i !== 'isDestroyed') {
 					if (this.__lookupGetter__(i) ||
 						typeof this[i] !== 'function') {
 						
@@ -1322,6 +1326,10 @@ function Seriously(options) {
 			
 			//todo: remove getters/setters
 		};
+		
+		this.isDestroyed = function() {
+			return me.isDestroyed;
+		}
 	};
 
 	EffectNode = function (hook, options) {
@@ -1476,7 +1484,7 @@ function Seriously(options) {
 
 	EffectNode.prototype.buildShader = function () {
 		var shader, effect = this.effect;
-		if (this.shaderDirty) {
+		if (effect.shader && this.shaderDirty) {
 			shader = effect.shader.call(this, this.inputs, {
 				vertex: baseVertexShader,
 				fragment: baseFragmentShader
@@ -1610,7 +1618,8 @@ function Seriously(options) {
 		var that = this,
 			reservedNames = ['source', 'target', 'effect', 'effects', 'benchmark',
 				'utilities', 'ShaderProgram', 'inputValidators', 'save', 'load',
-				'plugin', 'removePlugin', 'alias', 'removeAlias', 'stop', 'go'];
+				'plugin', 'removePlugin', 'alias', 'removeAlias', 'stop', 'go',
+				'destroy', 'isDestroyed'];
 		
 		if (reservedNames.indexOf(aliasName) >= 0) {
 			throw aliasName + ' is a reserved name and cannot be used as an alias.';
@@ -1735,7 +1744,7 @@ function Seriously(options) {
 			me.destroy();
 			
 			for (i in this) {
-				if (this.hasOwnProperty(i)) {
+				if (this.hasOwnProperty(i) && i !== 'isDestroyed') {
 					if (this.__lookupGetter__(i) ||
 						typeof this[i] !== 'function') {
 						
@@ -1746,6 +1755,10 @@ function Seriously(options) {
 				}
 			}
 		};
+
+		this.isDestroyed = function() {
+			return me.isDestroyed;
+		}
 	};
 
 	/*
@@ -2026,13 +2039,13 @@ function Seriously(options) {
 			sources.splice(i, 1);
 		}
 		
-		Node.prototype.destroy.call(this);
-		
 		for (i in this) {
 			if (this.hasOwnProperty(i)) {
 				delete this[i];
 			}
 		}
+
+		Node.prototype.destroy.call(this);		
 	};
 
 	//todo: implement render for array and typed array
@@ -2138,7 +2151,7 @@ function Seriously(options) {
 			me.destroy();
 			
 			for (i in this) {
-				if (this.hasOwnProperty(i)) {
+				if (this.hasOwnProperty(i) && i !== 'isDestroyed') {
 					if (this.__lookupGetter__(i) ||
 						typeof this[i] !== 'function') {
 						
@@ -2149,6 +2162,10 @@ function Seriously(options) {
 				}
 			}
 		};
+
+		this.isDestroyed = function() {
+			return me.isDestroyed;
+		}
 	};
 
 	/*
@@ -2435,7 +2452,7 @@ function Seriously(options) {
 	};
 
 	TargetNode.prototype.destroy = function() {
-		var i, item;
+		var i;
 		
 		//source
 		if (this.source && this.source.removeTarget) {
@@ -2568,7 +2585,7 @@ function Seriously(options) {
 		}
 		
 		for (i in this) {
-			if (this.hasOwnProperty(i)) {
+			if (this.hasOwnProperty(i) && i !== 'isDestroyed') {
 				if (this.__lookupGetter__(i) ||
 					typeof this[i] !== 'function') {
 					
@@ -2588,7 +2605,13 @@ function Seriously(options) {
 		targets = null;
 		effects = null;
 		nodes = null;
+		
+		isDestroyed = true;
 	};
+
+	this.isDestroyed = function() {
+		return isDestroyed;
+	}
 
 	//this.__defineSetter__('effects', Seriously.__lookupSetter__('effects'));
 	//this.__defineGetter__('effects', Seriously.__lookupGetter__('effects'));
@@ -2738,7 +2761,7 @@ Seriously.plugin = function (hook, effect) {
 		'transform', 'translate', 'translateX', 'translateY', 'translateZ',
 		'rotate', 'rotateX', 'rotateY', 'rotateZ', 'scale', 'scaleX', 'scaleY',
 		'scaleZ', 'benchmark', 'plugin', 'alias', 'reset',
-		'prototype'],
+		'prototype', 'destroy', 'isDestroyed'],
 		name, input;
 
 	function nop(value) {
@@ -2841,7 +2864,7 @@ Seriously.plugin = function (hook, effect) {
 };
 
 Seriously.removePlugin = function (hook) {
-	var all, effect, plugin, i;
+	var all, effect, plugin;
 	
 	if (!hook) {
 		return this;
