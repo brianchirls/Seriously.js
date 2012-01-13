@@ -443,7 +443,7 @@
 		function checkImagePass() {
 			var canvas, ctx;
 
-			ok(Seriously.utilities.checkSource(this), this.title);
+			ok(Seriously.utilities.checkSource(this), 'Same-origin image checks true');
 
 			canvas = document.createElement('canvas');
 			ctx = canvas.getContext('2d');
@@ -460,7 +460,7 @@
 		function checkImageFail() {
 			var canvas, ctx;
 
-			ok(!Seriously.utilities.checkSource(this), this.title);
+			ok(!Seriously.utilities.checkSource(this), 'Cross-origin image checks false');
 
 			canvas = document.createElement('canvas');
 			ctx = canvas.getContext('2d');
@@ -474,7 +474,6 @@
 		}
 		
 		pass = document.getElementById('colorbars');
-		pass.title = "Same-origin image checks true";
 		if (pass.width) {
 			checkImagePass.call(pass);
 		} else {
@@ -482,7 +481,6 @@
 		}
 		
 		fail = document.createElement('img');
-		pass.title = "Cross-origin image checks false";
 		fail.src = 'http://www.mozilla.org/images/template/screen/logo_footer.png';
 		fail.addEventListener('load', checkImageFail, false);
 
