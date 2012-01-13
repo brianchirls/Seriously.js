@@ -32,11 +32,6 @@
 		s.destroy();
 	});
 
-	module('Destroy');
-	/*
-	 * todo: need way to detect destroyed
-	 */
-
 	module('Plugin');
 	/*
 	 * define plugin
@@ -372,6 +367,50 @@
 
 		s.destroy();
 		Seriously.removePlugin('testEnumInput');
+	});
+
+	module('Destroy');
+	test('Destroy things', function() {
+		var seriously, source, target, effect, canvas;
+		
+		expect(12);
+		
+		Seriously.plugin('test', {});
+		
+		canvas = document.createElement('canvas');
+
+		seriously = new Seriously();		
+		source = seriously.source('#colorbars');
+		effect = seriously.effect('test');
+		target = seriously.target(canvas);
+		
+		ok(!seriously.isDestroyed(), 'New Seriously instance is not destroyed');
+		ok(!source.isDestroyed(), 'New source is not destroyed');
+		ok(!effect.isDestroyed(), 'New effect is not destroyed');
+		ok(!target.isDestroyed(), 'New target is not destroyed');
+
+		source.destroy();
+		effect.destroy();
+		target.destroy();
+
+		ok(source.isDestroyed(), 'Destroyed source is destroyed');
+		ok(effect.isDestroyed(), 'Destroyed effect is destroyed');
+		ok(target.isDestroyed(), 'Destroyed target is destroyed');
+
+		source = seriously.source('#colorbars');
+		effect = seriously.effect('test');
+		target = seriously.target(canvas);
+
+		seriously.destroy();
+		ok(seriously.isDestroyed(), 'Destroyed Seriously instance is destroyed');
+
+		ok(source.isDestroyed(), 'Destroy Seriously instance destroys source');
+		ok(effect.isDestroyed(), 'Destroy Seriously instance destroys effect');
+		ok(target.isDestroyed(), 'Destroy Seriously instance destroys target');
+
+		ok(seriously.effect() === undefined, 'Attempt to create effect with destroyed Seriously does nothing');
+		
+		Seriously.removePlugin('test');
 	});
 
 	module('Alias');
