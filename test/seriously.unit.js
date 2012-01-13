@@ -6,6 +6,7 @@
 	module('Core');
 	test('Core', function() {
 		var p, props = 0,
+			newGlobals = [],
 			s;
 		
 		expect(5);
@@ -18,10 +19,14 @@
 			props++;
 			if (window.globalProperties.indexOf(p) < 0) {
 				console.log('new property: ' + p);
+				newGlobals.push(p);
 			}
 		}
 		
-		equal(props - window.globalProperties.length, 1, 'Only 1 property added to global');
+		props -= window.globalProperties.length;
+		p = props + (props === 1 ? ' property' : ' properties') + ' added to global: [' +
+			newGlobals.join(', ') + ']';
+		equal(props, 1, p);
 		
 		s = new Seriously();
 		ok(s instanceof Seriously, 'Create Seriously instance with new');
