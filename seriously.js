@@ -1758,7 +1758,7 @@ function Seriously(options) {
 
 		this.isDestroyed = function() {
 			return me.isDestroyed;
-		}
+		};
 	};
 
 	/*
@@ -2165,7 +2165,7 @@ function Seriously(options) {
 
 		this.isDestroyed = function() {
 			return me.isDestroyed;
-		}
+		};
 	};
 
 	/*
@@ -2611,7 +2611,7 @@ function Seriously(options) {
 
 	this.isDestroyed = function() {
 		return isDestroyed;
-	}
+	};
 
 	//this.__defineSetter__('effects', Seriously.__lookupSetter__('effects'));
 	//this.__defineGetter__('effects', Seriously.__lookupGetter__('effects'));
