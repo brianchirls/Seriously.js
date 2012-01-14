@@ -2613,9 +2613,6 @@ function Seriously(options) {
 		return isDestroyed;
 	};
 
-	//this.__defineSetter__('effects', Seriously.__lookupSetter__('effects'));
-	//this.__defineGetter__('effects', Seriously.__lookupGetter__('effects'));
-
 	//todo: load, save, find
 
 	baseVertexShader = '#ifdef GL_ES\n' +
@@ -3054,22 +3051,6 @@ Seriously.inputValidators = {
 	//todo: date/time
 };
 
-//todo: this should probably just be a function, to indicate that it can't be set
-//      and to encourage caching of output for performance
-//      or just save the structure and update it when plugins are added
-//todo: also return inputs with information on type, constraints, descriptions, etc
-/*
-Seriously.__defineSetter__('effects', function() {});
-Seriously.__defineGetter__('effects', function() {
-	var name;
-	var effects = [];
-	for (name in seriousEffects) {
-		effects.push(name);
-	}
-
-	return effects;
-});
-*/
 Seriously.prototype.effects = Seriously.effects = function () {
 	var name,
 		effect,
