@@ -184,7 +184,43 @@
 	 * destroy source before img loaded
 	 * checkSource on cross-origin image, dirty canvas
 	*/
+	
+	test('Create two Source objects on identical sources', function() {
+		var img, seriously, source1, source2;
 
+		seriously = Seriously();
+		img = document.getElementById('colorbars');
+		source1 = seriously.source(img);
+		source2 = seriously.source('#colorbars');
+
+		ok(source1 === source2, 'Source objects are the same');
+		
+		seriously.destroy();
+	});
+
+	test('Create Source object implicitly', function() {
+		var seriously, source1, source2, effect;
+
+		Seriously.plugin('test', {
+			inputs: {
+				source: {
+					type: 'image'
+				}
+			}
+		});
+
+		seriously = Seriously();
+		effect = seriously.effect('test');
+		effect.source = '#colorbars';
+		source1 = effect.source;
+		source2 = seriously.source('#colorbars');
+
+		ok(source1 === source2, 'Source objects are the same');
+		
+		seriously.destroy();
+		Seriously.removePlugin('test');
+	});
+	
 	module('Target');
 	/*
 	 * create target
@@ -196,8 +232,8 @@
 	 * test html elements as inputs (with overwriting)
 	 */
 	test('Number', function() {
-		var s, e, val;
-		expect(5);
+		var s, e, val, input;
+		expect(6);
 		
 		Seriously.plugin('testNumberInput', {
 			inputs: {
@@ -239,9 +275,18 @@
 		e.number = 'not a number';
 		val = e.number;
 		equal(val, 42, 'Bad number reverts to default value');
+		
+		input = document.createElement('input');
+		input.setAttribute('type', 'text');
+		input.value = 75;
+		e.number = input;
+		equal(e.number, 75, 'Set to value of input element');
+
+		//todo: make test for changing value of input
 
 		s.destroy();
 		Seriously.removePlugin('testNumberInput');
+
 	});
 
 	test('Color', function() {
