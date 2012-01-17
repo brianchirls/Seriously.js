@@ -194,6 +194,8 @@
 		source2 = seriously.source('#colorbars');
 
 		ok(source1 === source2, 'Source objects are the same');
+		
+		seriously.destroy();
 	});
 
 	module('Target');
