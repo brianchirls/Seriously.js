@@ -184,6 +184,17 @@
 	 * destroy source before img loaded
 	 * checkSource on cross-origin image, dirty canvas
 	*/
+	
+	test('Create two Source objects on identical sources', function() {
+		var img, seriously, source1, source2;
+
+		seriously = Seriously();
+		img = document.getElementById('colorbars');
+		source1 = seriously.source(img);
+		source2 = seriously.source('#colorbars');
+
+		ok(source1 === source2, 'Source objects are the same');
+	});
 
 	module('Target');
 	/*
