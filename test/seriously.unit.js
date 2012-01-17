@@ -232,8 +232,8 @@
 	 * test html elements as inputs (with overwriting)
 	 */
 	test('Number', function() {
-		var s, e, val;
-		expect(5);
+		var s, e, val, input;
+		expect(6);
 		
 		Seriously.plugin('testNumberInput', {
 			inputs: {
@@ -275,9 +275,18 @@
 		e.number = 'not a number';
 		val = e.number;
 		equal(val, 42, 'Bad number reverts to default value');
+		
+		input = document.createElement('input');
+		input.setAttribute('type', 'text');
+		input.value = 75;
+		e.number = input;
+		equal(e.number, 75, 'Set to value of input element');
+
+		//todo: make test for changing value of input
 
 		s.destroy();
 		Seriously.removePlugin('testNumberInput');
+
 	});
 
 	test('Color', function() {
