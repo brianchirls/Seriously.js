@@ -198,6 +198,29 @@
 		seriously.destroy();
 	});
 
+	test('Create Source object implicitly', function() {
+		var seriously, source1, source2, effect;
+
+		Seriously.plugin('test', {
+			inputs: {
+				source: {
+					type: 'image'
+				}
+			}
+		});
+
+		seriously = Seriously();
+		effect = seriously.effect('test');
+		effect.source = '#colorbars';
+		source1 = effect.source;
+		source2 = seriously.source('#colorbars');
+
+		ok(source1 === source2, 'Source objects are the same');
+		
+		seriously.destroy();
+		Seriously.removePlugin('test');
+	});
+	
 	module('Target');
 	/*
 	 * create target
