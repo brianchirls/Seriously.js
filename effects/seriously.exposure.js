@@ -10,7 +10,7 @@ http://v002.info/?page_id=34
 
 */
 
-var Seriously = window.Seriously = window.Seriously ||
+window.Seriously = window.Seriously ||
 	{ plugin: function (name, opt) { this[name] = opt; } };
 
 Seriously.plugin('exposure', {

@@ -1,7 +1,7 @@
 (function (window, undefined) {
 "use strict";
 
-var Seriously = window.Seriously = window.Seriously ||
+window.Seriously = window.Seriously ||
 	{ plugin: function (name, opt) { this[name] = opt; } };
 
 //http://msdn.microsoft.com/en-us/library/bb313868(v=xnagamestudio.10).aspx

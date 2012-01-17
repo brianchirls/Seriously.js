@@ -1,7 +1,7 @@
 (function (window, undefined) {
 "use strict";
 
-var Seriously = window.Seriously = window.Seriously ||
+window.Seriously = window.Seriously ||
 	{ plugin: function (name, opt) { this[name] = opt; } };
 
 //based on tutorial by to Gregg Tavares 
