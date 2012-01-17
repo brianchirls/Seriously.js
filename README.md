@@ -14,7 +14,7 @@ Full documentation is in progress at the [wiki](https://github.com/brianchirls/S
 ## Features
 
 - Optimized rendering path and GPU accelerated up to 60 frames per second
-- Accept input from varied sources: videos, images, canvases, arrays or WebGL Textures
+- Accept image input from varied sources: videos, images, canvases and arrays
 - Output to multiple canvases
 - Effect parameters accept multiple formats and can monitor HTML form inputs
 - Basic 2D transforms (translate, rotate, scale, skew) on effect nodes
@@ -74,9 +74,10 @@ to host your own video files.
 - API documentation and plugin developer guidelines
 - More examples
 - 3D transforms (perspective) on any node
-- Accept input from typed arrays
+- Accept input from typed arrays and WebGL Textures
 - Benchmarking utility to determine client capabilities
 - Automatic resolution tuning to maintain minimum frame rate
+- Handle lost WebGL context
 - Debug mode
 - Graphical interface
 - Effects:
