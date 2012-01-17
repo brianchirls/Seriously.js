@@ -5,6 +5,12 @@ Inspired by professional software such as After Effects and Nuke,
 Seriously.js renders high-quality video effects, but allows them to be
 dynamic and interactive.
 
+## Getting Started
+
+Full documentation is in progress at the [wiki](https://github.com/brianchirls/Seriously.js/wiki). Start with the
+[Tutorial](https://github.com/brianchirls/Seriously.js/wiki/Tutorial) and
+[FAQ](https://github.com/brianchirls/Seriously.js/wiki/Frequently-Asked-Questions).
+
 ## Features
 
 - Optimized rendering path and GPU accelerated up to 60 frames per second
