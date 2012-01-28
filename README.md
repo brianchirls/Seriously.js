@@ -72,7 +72,7 @@ to host your own video files.
 ### Roadmap:
 
 - API documentation and plugin developer guidelines
-- More examples
+- More examples and tutorials
 - 3D transforms (perspective) on any node
 - Accept input from typed arrays and WebGL Textures
 - Benchmarking utility to determine client capabilities
