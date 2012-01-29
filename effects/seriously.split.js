@@ -11,7 +11,7 @@ Seriously.plugin('split', (function () {
 			parent();
 		},
 		shader: function(inputs, shaderSource, utilities) {
-			baseShader = new Seriously.ShaderProgram(this.gl, shaderSource.vertex, shaderSource.fragment);
+			baseShader = new Seriously.util.ShaderProgram(this.gl, shaderSource.vertex, shaderSource.fragment);
 			
 			shaderSource.vertex = '#ifdef GL_ES\n' +
 				'precision highp float;\n' +

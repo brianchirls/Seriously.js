@@ -472,12 +472,12 @@
 		
 		expect(2);
 
-		Seriously.utilities.setTimeoutZero(function() {
+		Seriously.util.setTimeoutZero(function() {
 			countdown--;
 			ok(countdown === 1, 'First callback runs first after ' + (Date.now() - startTime) + 'ms');
 		});
 
-		Seriously.utilities.setTimeoutZero(function() {
+		Seriously.util.setTimeoutZero(function() {
 			countdown--;
 			ok(countdown === 0, 'Second callback runs second after ' + (Date.now() - startTime) + 'ms');
 			start();
@@ -493,12 +493,12 @@
 		function checkImagePass() {
 			var canvas, ctx;
 
-			ok(Seriously.utilities.checkSource(this), 'Same-origin image checks true');
+			ok(Seriously.util.checkSource(this), 'Same-origin image checks true');
 
 			canvas = document.createElement('canvas');
 			ctx = canvas.getContext('2d');
 			ctx.drawImage(this, 0, 0);
-			ok(Seriously.utilities.checkSource(canvas), 'Same-origin canvas checks true');
+			ok(Seriously.util.checkSource(canvas), 'Same-origin canvas checks true');
 
 			tests--;
 			if (!tests) {
@@ -510,12 +510,12 @@
 		function checkImageFail() {
 			var canvas, ctx;
 
-			ok(!Seriously.utilities.checkSource(this), 'Cross-origin image checks false');
+			ok(!Seriously.util.checkSource(this), 'Cross-origin image checks false');
 
 			canvas = document.createElement('canvas');
 			ctx = canvas.getContext('2d');
 			ctx.drawImage(this, 0, 0);
-			ok(!Seriously.utilities.checkSource(canvas), 'Cross-origin canvas checks false');
+			ok(!Seriously.util.checkSource(canvas), 'Cross-origin canvas checks false');
 
 			tests--;
 			if (!tests) {

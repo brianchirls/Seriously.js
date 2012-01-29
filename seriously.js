@@ -1488,7 +1488,7 @@ function Seriously(options) {
 			shader = effect.shader.call(this, this.inputs, {
 				vertex: baseVertexShader,
 				fragment: baseFragmentShader
-			}, Seriously.utilities);
+			}, Seriously.util);
 
 			if (shader instanceof ShaderProgram) {
 				this.shader = shader;
@@ -1617,7 +1617,7 @@ function Seriously(options) {
 	EffectNode.prototype.alias = function (inputName, aliasName) {
 		var that = this,
 			reservedNames = ['source', 'target', 'effect', 'effects', 'benchmark',
-				'utilities', 'ShaderProgram', 'inputValidators', 'save', 'load',
+				'util', 'ShaderProgram', 'inputValidators', 'save', 'load',
 				'plugin', 'removePlugin', 'alias', 'removeAlias', 'stop', 'go',
 				'destroy', 'isDestroyed'];
 		
@@ -3111,12 +3111,13 @@ if (window.Seriously) {
 }
 
 //expose Seriously to the global object
-Seriously.ShaderProgram = ShaderProgram;
-Seriously.utilities = {
+Seriously.util = {
 	checkSource: checkSource,
 	hslToRgb: hslToRgb,
 	colors: colorNames,
 	setTimeoutZero: setTimeoutZero,
+	ShaderProgram: ShaderProgram,
+	FrameBuffer: FrameBuffer,
 	shader: {
 		makeNoise: 'float makeNoise(float u, float v, float timer) {\n' +
 					'	float x = u * v * mod(timer * 1000.0, 100.0);\n' +
