@@ -1,7 +1,7 @@
 (function (window, undefined) {
 "use strict";
 
-var Seriously = window.Seriously = window.Seriously ||
+window.Seriously = window.Seriously ||
 	{ plugin: function (name, opt) { this[name] = opt; } };
 
 //	Adapted from http://rastergrid.com/blog/2011/01/frei-chen-edge-detector/
@@ -11,7 +11,7 @@ Seriously.plugin('edge', (function () {
 		i, j,
 		flatMatrices = [],
 		matrices,
-		freiChanMatrixConstants,
+		freiChenMatrixConstants,
 		sobelMatrixConstants;
 	
 	//initialize shader matrix arrays
@@ -41,7 +41,7 @@ Seriously.plugin('edge', (function () {
 		}
 	}
 	
-	freiChanMatrixConstants = new Float32Array(flatMatrices);
+	freiChenMatrixConstants = new Float32Array(flatMatrices);
 	
 	sobelMatrixConstants = new Float32Array([
 		1.0, 2.0, 1.0, 0.0, 0.0, 0.0, -1.0, -2.0, -1.0,
@@ -56,7 +56,7 @@ Seriously.plugin('edge', (function () {
 				defines = '#define N_MATRICES 2\n' +
 				'#define SOBEL\n';
 			} else {
-				//frei-chan
+				//frei-chen
 				defines = '#define N_MATRICES 9\n';
 			}
 			
@@ -105,7 +105,7 @@ Seriously.plugin('edge', (function () {
 				'	tc = vec3(0.5 * sqrt(cnv[0]*cnv[0]+cnv[1]*cnv[1]));\n' +
 				'#else\n' +
 
-				//Frei-Chan
+				//Frei-Chen
 				// Line detector
 				'	float M = (cnv[4] + cnv[5]) + (cnv[6] + cnv[7]);\n' + 
 				'	float S = (cnv[0] + cnv[1]) + (cnv[2] + cnv[3]) + (cnv[4] + cnv[5]) + (cnv[6] + cnv[7]) + cnv[8];\n' +
@@ -126,7 +126,7 @@ Seriously.plugin('edge', (function () {
 			if (this.inputs.mode === 'sobel') {
 				uniforms['G[0]'] = sobelMatrixConstants;
 			} else {
-				uniforms['G[0]'] = freiChanMatrixConstants;
+				uniforms['G[0]'] = freiChenMatrixConstants;
 			}
 
 			parent(shader, model, uniforms, frameBuffer);
@@ -142,7 +142,7 @@ Seriously.plugin('edge', (function () {
 				defaultValue: 'sobel',
 				options: [
 					['sobel', 'Sobel'],
-					['frei-chan', 'Frei-Chan']
+					['frei-chen', 'Frei-Chen']
 				]
 			}
 		},

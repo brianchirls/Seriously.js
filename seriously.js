@@ -11,6 +11,7 @@ var document = window.document,
 */
 
 benchmarkResults,
+incompatibility,
 seriousEffects = {},
 timeouts = [],
 allEffectsByHook = {},
@@ -336,50 +337,62 @@ window.addEventListener('message', function(event) {
 }, true);
 
 function checkSource(source) {
-	var element, canvas, gl, texture;
+	var element, canvas, ctx, texture;
 	
 	element = getElement(source, ['img', 'canvas', 'video']);
 	if (!element) {
 		return false;
 	}
 	
-	if (!window.WebGLRenderingContext) {
-		console.log('Browser does not support WebGL or Seriously.js');
-		return false;
-	}
-	
 	canvas = document.createElement('canvas');
 	if (!canvas) {
+		console.log('Browser does not support canvas or Seriously.js');
 		return false;
 	}
 	
-	try {
-		gl = canvas.getContext('experimental-webgl');
-	} catch (webglError) {
-		console.log('Unable to access WebGL');
-		return false;
-	}
-	
-	texture = gl.createTexture();
-	gl.bindTexture(gl.TEXTURE_2D, texture);
-	
-	try {
-		gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, element);
-	} catch (textureError) {
-		if (textureError.name === 'SECURITY_ERR') {
-			console.log('Unable to access cross-domain image');
-		} else {
-			console.log('Error: ' + textureError.message);
+	if (window.WebGLRenderingContext) {
+		try {
+			ctx = canvas.getContext('experimental-webgl');
+		} catch (webglError) {
+			console.log('Unable to access WebGL. Trying 2D canvas.');
 		}
-		gl.deleteTexture(texture);
-		return false;
 	}
-	
+
+	if (ctx) {
+		texture = ctx.createTexture();
+		ctx.bindTexture(ctx.TEXTURE_2D, texture);
+
+		try {
+			ctx.texImage2D(ctx.TEXTURE_2D, 0, ctx.RGBA, ctx.RGBA, ctx.UNSIGNED_BYTE, element);
+		} catch (textureError) {
+			if (textureError.name === 'SECURITY_ERR') {
+				console.log('Unable to access cross-domain image');
+			} else {
+				console.log('Error: ' + textureError.message);
+			}
+			ctx.deleteTexture(texture);
+			return false;
+		}
+		ctx.deleteTexture(texture);
+	} else {
+		ctx = canvas.getContext('2d');
+		try {
+			ctx.drawImage(element, 0, 0);
+			ctx.getImageData(0, 0, 1, 1);
+		} catch (drawImageError) {
+			if (drawImageError.name === 'SECURITY_ERR') {
+				console.log('Unable to access cross-domain image');
+			} else {
+				console.log('Error: ' + drawImageError.message);
+			}
+			return false;
+		}
+	}
+		
+
 	// This method will return a false positive for resources that aren't
 	// actually images or haven't loaded yet
 	
-	gl.deleteTexture(texture);
-
 	return true;
 }
 
@@ -1488,7 +1501,7 @@ function Seriously(options) {
 			shader = effect.shader.call(this, this.inputs, {
 				vertex: baseVertexShader,
 				fragment: baseFragmentShader
-			}, Seriously.utilities);
+			}, Seriously.util);
 
 			if (shader instanceof ShaderProgram) {
 				this.shader = shader;
@@ -1616,8 +1629,8 @@ function Seriously(options) {
 
 	EffectNode.prototype.alias = function (inputName, aliasName) {
 		var that = this,
-			reservedNames = ['source', 'target', 'effect', 'effects', 'benchmark',
-				'utilities', 'ShaderProgram', 'inputValidators', 'save', 'load',
+			reservedNames = ['source', 'target', 'effect', 'effects', 'benchmark', 'incompatible',
+				'util', 'ShaderProgram', 'inputValidators', 'save', 'load',
 				'plugin', 'removePlugin', 'alias', 'removeAlias', 'stop', 'go',
 				'destroy', 'isDestroyed'];
 		
@@ -2612,6 +2625,33 @@ function Seriously(options) {
 	this.isDestroyed = function() {
 		return isDestroyed;
 	};
+	
+	this.incompatible = function (pluginHook) {
+		var i,
+			plugin,
+			failure = false;
+
+		failure = Seriously.incompatible(pluginHook);
+
+		if (failure) {
+			return failure;
+		}
+		
+		if (!pluginHook) {
+			for (pluginHook in allEffectsByHook) {
+				if (allEffectsByHook[pluginHook].length) {
+					plugin = seriousEffects[pluginHook];
+					if (plugin && typeof plugin.compatible === 'function' &&
+						!plugin.compatible.call(this)) {
+
+						return 'plugin-' + pluginHook;
+					}
+				}
+			}
+		}
+		
+		return false;
+	};
 
 	//todo: load, save, find
 
@@ -2751,6 +2791,45 @@ Seriously.prototype.benchmark = Seriously.benchmark = function (options, cb) {
 	}
 
 	return true;
+};
+
+Seriously.incompatible = function (pluginHook) {
+	var canvas, gl, plugin;
+	
+	if (incompatibility === undefined) {
+		canvas = document.createElement('canvas');
+		if (!canvas || !canvas.getContext) {
+			incompatibility = 'canvas';
+		}
+		
+		try {
+			gl = canvas.getContext('experimental-webgl');
+		} catch(expError) {
+			try {
+				gl = canvas.getContext('webgl');
+			} catch(webglError) {
+			}
+		}
+		
+		if (!gl) {
+			incompatibility = 'context';
+		}
+	}
+	
+	if (incompatibility) {
+		return incompatibility;
+	}
+	
+	if (pluginHook) {
+		plugin = seriousEffects[pluginHook];
+		if (plugin && typeof plugin.compatible === 'function' &&
+			!plugin.compatible(gl)) {
+
+			return 'plugin-' + pluginHook;
+		}
+	}
+	
+	return false;
 };
 
 Seriously.plugin = function (hook, effect) {
@@ -3111,12 +3190,13 @@ if (window.Seriously) {
 }
 
 //expose Seriously to the global object
-Seriously.ShaderProgram = ShaderProgram;
-Seriously.utilities = {
+Seriously.util = {
 	checkSource: checkSource,
 	hslToRgb: hslToRgb,
 	colors: colorNames,
 	setTimeoutZero: setTimeoutZero,
+	ShaderProgram: ShaderProgram,
+	FrameBuffer: FrameBuffer,
 	shader: {
 		makeNoise: 'float makeNoise(float u, float v, float timer) {\n' +
 					'	float x = u * v * mod(timer * 1000.0, 100.0);\n' +
