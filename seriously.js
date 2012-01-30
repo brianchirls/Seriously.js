@@ -2800,19 +2800,21 @@ Seriously.incompatible = function (pluginHook) {
 		canvas = document.createElement('canvas');
 		if (!canvas || !canvas.getContext) {
 			incompatibility = 'canvas';
-		}
-		
-		try {
-			gl = canvas.getContext('experimental-webgl');
-		} catch(expError) {
+		} else if (!window.WebGLRenderingContext) {
+			incompatibility = 'webgl';
+		} else {
 			try {
-				gl = canvas.getContext('webgl');
-			} catch(webglError) {
+				gl = canvas.getContext('experimental-webgl');
+			} catch(expError) {
+				try {
+					gl = canvas.getContext('webgl');
+				} catch(webglError) {
+				}
 			}
-		}
-		
-		if (!gl) {
-			incompatibility = 'context';
+			
+			if (!gl) {
+				incompatibility = 'context';
+			}
 		}
 	}
 	
