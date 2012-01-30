@@ -22,12 +22,16 @@
 		<script type="text/javascript" src="effects/seriously.tone.js"></script>
 		<script type="text/javascript" src="effects/seriously.vignette.js"></script>
 		<script type="text/javascript" src="effects/seriously.split.js"></script>
+		<style>
+		
+		body {
+			background-color: #aaa;
+		}
+		
+		</style>
 	</head>
 	<body>
-		<video id="video" controls width="360" preload>
-			<source src="video/protesters.mp4" type='video/mp4; codecs="avc1.42E01E, mp4a.40.2"' />
-			<source src="video/protesters.webm" type='video/webm; codecs="vp8, vorbis"' />
-		</video>
+		<img id="img" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAANwAAAClCAYAAAA3d5OIAAAABmJLR0QA/wD/AP+gvaeTAAAAB3RJTUUH2gIPFxcpA4p/0AAAA2BJREFUeJzt2r9qVHkcxuHvmRyHhCASRcRStErnwnYWWdgljaX1doqCld5CRNhLELtd8AJs1sq5AmFTuMUqoiABXSZIxEgyzngDyWbI4vsrfJ72/HnPwHw4U0w3Go1m1cjz59drdfWfJtt/j8/XrdOPmmxXVfUvrtXk0r9Ntq/8caU2Hm402a6qGg9+qdPT/Sbb909cqyf7t5tsV1UNmi3Dd0hwECQ4CBIcBAkOggQHQYKDIMFBkOAgSHAQJDgIEhwECQ6CBAdBgoMgwUGQ4CBIcBAkOAgSHAQJDoIEB0GCgyDBQZDgIEhwECQ4CBIcBAkOggQHQYKDIMFBkOAgSHAQJDgIEhwECQ6CBAdBgoMgwUGQ4CBIcBAkOAgSHAQJDoIEB0GCgyDBQZDgIEhwECQ4CBIcBAkOggQHQYKDIMFBkOAgSHAQJDgIEhwECQ6CBAdBgoMgwUGQ4CBIcBAkOAgSHAQJDoIEB0GCgyDBQZDgIEhwECQ4CBIcBAkOggQHQYKDIMFBkOAgSHAQJDgIEhwECQ6CBAdBgoMgwUGQ4CBIcBAkOAgSHAQJDoIEB0GCgyDBQZDgIEhwECQ4CBIcBAkOggQHQYKDIMFBkOAgSHAQJDgIEhwECQ6C+rW1duPLyz/W4uK4yfbZ6akabTeZrqqqeycv17Phsybbf/2wVGujJtNVVbVy82IN3r9vsr2+PqzRjSbTVeUNB1GCgyDBQZDgIEhwECQ4CBIcBAkOggQHQYKDIMFBkOAgqO9PPm02PhuOa78/dejxy6sX6szK4cf/j+Xpcm1/Pv6/l7dejevNy3fHvv7DtGpx/9yxr/9P3bQ+94f/OXiws1MnNje/zfYcph8/1uzLlyPP67quBoP53gkLCwtznbe1tVWbDT97VxeuzpqtH+HPB3dq/eefWj/Gge7++luNfn/d+jEONBl8qrcrj1s/xqF2d3drNjv6a9f3fQ2Hw7nuubS0VF3XHXneZDKpvb29ue75LfhJCUGCgyDBQZDgIEhwECQ4CBIcBAkOggQHQYKDIMFBkOAgSHAQJDgIEhwECQ6CBAdBgoMgwUGQ4CBIcBAkOAgSHAQJDoIEB0GCgyDBQZDgIEhwECQ4CBIcBAkOggQHQYKDIMFBkOAgSHAQJDgIEhwECQ6CvgJd+V3gFFLyFgAAAABJRU5ErkJggg=="/>
 		<select id="effects">
 			<option value="">None</option>
 		</select><br/>
@@ -68,11 +72,9 @@
 		window.addEventListener('DOMContentLoaded', function() {
 			var s = Seriously(),
 				options = document.getElementById('options'),
-				video = document.getElementById('video'),
+				img = document.getElementById('img'),
 				select = document.getElementById('effects'),
 				active;
-
-			video.muted = true;
 
 			for (e in effects) {
 				effect = effects[e];
@@ -82,7 +84,7 @@
 				select.appendChild(element);
 			}
 						
-			source = s.source(video);
+			source = s.source(img);
 			target = s.target('#canvas');
 			target.source = source;
 			s.go();
@@ -92,7 +94,11 @@
 					var i, val, s = '#';
 					for (i = 0; i < 4; i++) {
 						val = Math.min(255, Math.round(color[i] * 255 || 0));
-						s += val.toString(16);
+						val = val.toString(16);
+						if (val.length === 1) {
+							val = '0' + val;
+						}
+						s += val;
 					}
 					return s;
 				}
