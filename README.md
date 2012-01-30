@@ -95,4 +95,6 @@ Individual plugins may be licensed differently. Check source code comments.
 
 ## Credits
 
-Seriously.js is created and maintained by [Brian Chirls](http://chirls.com) with support from <a href="http://mozillapopcorn.org">Mozilla</a>
+Seriously.js is created and maintained by [Brian Chirls](http://chirls.com) with support from:
+
+<a href="http://mozillapopcorn.org"><img src="http://seriouslyjs.org/images/mozilla.png" alt="Mozilla"/></a>
