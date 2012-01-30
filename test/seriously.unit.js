@@ -37,6 +37,31 @@
 		s.destroy();
 	});
 
+	test('Incompatible', function() {
+		var s, e, msg;
+
+		expect(2);
+
+		Seriously.plugin('removeme', {
+			compatible: function(gl) {
+				return false;
+			}
+		});
+
+		s = Seriously();
+
+		msg = s.incompatible('removeme');
+		equal(msg, 'plugin-removeme', 'Incompatibity test on plugin');
+
+		e = s.effect('removeme');
+		msg = s.incompatible();
+		equal(msg, 'plugin-removeme', 'Incompatibity test on network with incompatible plugin');
+
+		//clean up
+		s.destroy();
+		Seriously.removePlugin('removeme');
+	});
+
 	module('Plugin');
 	/*
 	 * define plugin
