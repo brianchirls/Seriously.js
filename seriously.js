@@ -337,50 +337,62 @@ window.addEventListener('message', function(event) {
 }, true);
 
 function checkSource(source) {
-	var element, canvas, gl, texture;
+	var element, canvas, ctx, texture;
 	
 	element = getElement(source, ['img', 'canvas', 'video']);
 	if (!element) {
 		return false;
 	}
 	
-	if (!window.WebGLRenderingContext) {
-		console.log('Browser does not support WebGL or Seriously.js');
-		return false;
-	}
-	
 	canvas = document.createElement('canvas');
 	if (!canvas) {
+		console.log('Browser does not support canvas or Seriously.js');
 		return false;
 	}
 	
-	try {
-		gl = canvas.getContext('experimental-webgl');
-	} catch (webglError) {
-		console.log('Unable to access WebGL');
-		return false;
-	}
-	
-	texture = gl.createTexture();
-	gl.bindTexture(gl.TEXTURE_2D, texture);
-	
-	try {
-		gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, element);
-	} catch (textureError) {
-		if (textureError.name === 'SECURITY_ERR') {
-			console.log('Unable to access cross-domain image');
-		} else {
-			console.log('Error: ' + textureError.message);
+	if (window.WebGLRenderingContext) {
+		try {
+			ctx = canvas.getContext('experimental-webgl');
+		} catch (webglError) {
+			console.log('Unable to access WebGL. Trying 2D canvas.');
 		}
-		gl.deleteTexture(texture);
-		return false;
 	}
-	
+
+	if (ctx) {
+		texture = ctx.createTexture();
+		ctx.bindTexture(ctx.TEXTURE_2D, texture);
+
+		try {
+			ctx.texImage2D(ctx.TEXTURE_2D, 0, ctx.RGBA, ctx.RGBA, ctx.UNSIGNED_BYTE, element);
+		} catch (textureError) {
+			if (textureError.name === 'SECURITY_ERR') {
+				console.log('Unable to access cross-domain image');
+			} else {
+				console.log('Error: ' + textureError.message);
+			}
+			ctx.deleteTexture(texture);
+			return false;
+		}
+		ctx.deleteTexture(texture);
+	} else {
+		ctx = canvas.getContext('2d');
+		try {
+			ctx.drawImage(element, 0, 0);
+			ctx.getImageData(0, 0, 1, 1);
+		} catch (drawImageError) {
+			if (drawImageError.name === 'SECURITY_ERR') {
+				console.log('Unable to access cross-domain image');
+			} else {
+				console.log('Error: ' + drawImageError.message);
+			}
+			return false;
+		}
+	}
+		
+
 	// This method will return a false positive for resources that aren't
 	// actually images or haven't loaded yet
 	
-	gl.deleteTexture(texture);
-
 	return true;
 }
 
