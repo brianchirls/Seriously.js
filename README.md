@@ -59,7 +59,8 @@ run slower, especially when using high-resolution videos.
 Mobile browser support for WebGL is limited. Mobile Firefox has some
 support, but the Android Browser and Mobile Safari do not.
 
-Seriously.js will provide methods to detect browser support wherever possible.
+Seriously.js provides a method to detect browser support and offer
+descriptive error messages wherever possible.
 
 #### Cross-Origin Videos and Images
 
