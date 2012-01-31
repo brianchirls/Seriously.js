@@ -230,7 +230,39 @@ requestAnimFrame = (function(){
 			function(/* function */ callback, /* DOMElement */ element){
 				window.setTimeout(callback, 1000 / 60);
 			};
-}());
+}()),
+/*
+faster than setTimeout(fn, 0);
+http://dbaron.org/log/20100309-faster-timeouts
+*/
+
+setTimeoutZero = function () {
+	var msgName = Date.now() + '' + Math.random() + 'seriously-timeout-message',
+		timeoutQueue = [];
+
+	window.addEventListener('message', function(event) {
+		var current, fn;
+		if (event.source === window && event.data === msgName) {
+			event.stopPropagation();
+
+			current = timeoutQueue;
+			timeoutQueue = [];
+			while (current.length) {
+				fn = current.shift();
+				fn();
+			}
+		}
+	}, true);
+
+	return function(fn) {
+		if (typeof fn === 'function') {
+			if (!timeoutQueue.length) {
+				window.postMessage(msgName, window.location);
+			}
+			timeoutQueue.push(fn);
+		}
+	}
+}();
 
 function getElement(input, tags) {
 	var element,
@@ -316,25 +348,6 @@ function hslToRgb(h, s, l, a) {
 		a
 	];
 }
-
-/*
-faster than setTimeout(fn, 0);
-http://dbaron.org/log/20100309-faster-timeouts
-*/
-function setTimeoutZero(fn) {
-	timeouts.push(fn);
-	window.postMessage('seriously-timeout-message', window.location);
-}
-
-window.addEventListener('message', function(event) {
-	if (event.source === window && event.data === 'seriously-timeout-message') {
-		event.stopPropagation();
-		if (timeouts.length > 0) {
-			var fn = timeouts.shift();
-			fn();
-		}
-	}
-}, true);
 
 function checkSource(source) {
 	var element, canvas, ctx, texture;
