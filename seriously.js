@@ -231,11 +231,11 @@ requestAnimFrame = (function(){
 				window.setTimeout(callback, 1000 / 60);
 			};
 }()),
+
 /*
 faster than setTimeout(fn, 0);
 http://dbaron.org/log/20100309-faster-timeouts
 */
-
 setTimeoutZero = function () {
 	var msgName = Date.now() + '' + Math.random() + 'seriously-timeout-message',
 		timeoutQueue = [];
