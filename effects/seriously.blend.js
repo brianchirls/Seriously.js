@@ -54,7 +54,7 @@ Seriously.plugin('blend', (function () {
 			
 			shaderSource.fragment = '#define BlendFunction ' + mode + '\n' +
 				'#ifdef GL_ES\n\n' +
-				'precision highp float;\n\n' +
+				'precision mediump float;\n\n' +
 				'#endif\n\n' +
 				'\n' +
 				'#define BlendLinearDodgef				BlendAddf\n' +

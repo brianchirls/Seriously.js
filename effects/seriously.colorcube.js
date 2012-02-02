@@ -11,7 +11,7 @@ window.Seriously = window.Seriously ||
 Seriously.plugin('colorcube', {
 	shader: function(inputs, shaderSource, utilities) {
 		shaderSource.fragment = '#ifdef GL_ES\n' +
-			'precision highp float;\n' +
+			'precision mediump float;\n' +
 			'#endif\n' +
 			'uniform sampler2D source;\n' +
 			'uniform sampler2D colorCube;\n' +

@@ -7,7 +7,7 @@ window.Seriously = window.Seriously ||
 Seriously.plugin('tone', {
 	shader: function(inputs, shaderSource, utilities) {
 		shaderSource.fragment = '#ifdef GL_ES\n\n' +
-			'precision highp float;\n\n' +
+			'precision mediump float;\n\n' +
 			'#endif\n\n' +
 			'\n' +
 			'varying vec2 vTexCoord;\n' +

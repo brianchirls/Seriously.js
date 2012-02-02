@@ -62,7 +62,7 @@ Seriously.plugin('edge', (function () {
 			
 			shaderSource.fragment = defines +
 				'#ifdef GL_ES\n' +
-				'precision highp float;\n' +
+				'precision mediump float;\n' +
 				'#endif\n' +
 				'\n' +
 				'varying vec2 vTexCoord;\n' +

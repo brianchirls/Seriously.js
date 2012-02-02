@@ -2656,7 +2656,7 @@ function Seriously(options) {
 	//todo: load, save, find
 
 	baseVertexShader = '#ifdef GL_ES\n' +
-		'precision highp float;\n' +
+		'precision mediump float;\n' +
 		'#endif \n' +
 		'\n' +
 		'attribute vec3 position;\n' +
@@ -2674,7 +2674,7 @@ function Seriously(options) {
 		'}\n';
 
 	baseFragmentShader = '#ifdef GL_ES\n\n' +
-		'precision highp float;\n\n' +
+		'precision mediump float;\n\n' +
 		'#endif\n\n' +
 		'\n' +
 		'varying vec2 vTexCoord;\n' +
