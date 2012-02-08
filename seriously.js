@@ -1838,7 +1838,7 @@ function Seriously(options) {
 
 				this.render = this.renderVideo;
 			} else {
-				throw 'Not a valid HTML element (must be img, video or canvas)';
+				throw 'Not a valid HTML element: ' + source.tagName + ' (must be img, video or canvas)';
 			}
 			matchedType = true;
 
