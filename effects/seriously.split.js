@@ -1,7 +1,7 @@
 (function (window, undefined) {
 "use strict";
 
-var Seriously = window.Seriously = window.Seriously ||
+window.Seriously = window.Seriously ||
 	{ plugin: function (name, opt) { this[name] = opt; } };
 
 Seriously.plugin('split', (function () {
@@ -11,10 +11,10 @@ Seriously.plugin('split', (function () {
 			parent();
 		},
 		shader: function(inputs, shaderSource, utilities) {
-			baseShader = new Seriously.ShaderProgram(this.gl, shaderSource.vertex, shaderSource.fragment);
+			baseShader = new Seriously.util.ShaderProgram(this.gl, shaderSource.vertex, shaderSource.fragment);
 			
 			shaderSource.vertex = '#ifdef GL_ES\n' +
-				'precision highp float;\n' +
+				'precision mediump float;\n' +
 				'#endif \n' +
 				'\n' +
 				'attribute vec3 position;\n' +
@@ -40,7 +40,7 @@ Seriously.plugin('split', (function () {
 				'	vTexCoord = vec2(texCoord.s, texCoord.t);\n' +
 				'}\n';
 			shaderSource.fragment = '#ifdef GL_ES\n\n' +
-				'precision highp float;\n\n' +
+				'precision mediump float;\n\n' +
 				'#endif\n\n' +
 				'\n' +
 				'varying vec2 vTexCoord;\n' +

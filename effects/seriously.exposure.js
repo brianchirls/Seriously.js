@@ -10,13 +10,13 @@ http://v002.info/?page_id=34
 
 */
 
-var Seriously = window.Seriously = window.Seriously ||
+window.Seriously = window.Seriously ||
 	{ plugin: function (name, opt) { this[name] = opt; } };
 
 Seriously.plugin('exposure', {
 	shader: function(inputs, shaderSource, utilities) {
 		shaderSource.fragment = '#ifdef GL_ES\n\n' +
-			'precision highp float;\n\n' +
+			'precision mediump float;\n\n' +
 			'#endif\n\n' +
 			'\n' +
 			'varying vec2 vTexCoord;\n' +

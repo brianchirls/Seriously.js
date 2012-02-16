@@ -1,7 +1,7 @@
 (function (window, undefined) {
 "use strict";
 
-var Seriously = window.Seriously = window.Seriously ||
+window.Seriously = window.Seriously ||
 	{ plugin: function (name, opt) { this[name] = opt; } };
 
 //based on tutorial by to Gregg Tavares 
@@ -11,7 +11,7 @@ var Seriously = window.Seriously = window.Seriously ||
 Seriously.plugin('colorcube', {
 	shader: function(inputs, shaderSource, utilities) {
 		shaderSource.fragment = '#ifdef GL_ES\n' +
-			'precision highp float;\n' +
+			'precision mediump float;\n' +
 			'#endif\n' +
 			'uniform sampler2D source;\n' +
 			'uniform sampler2D colorCube;\n' +

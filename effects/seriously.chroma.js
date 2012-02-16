@@ -1,7 +1,7 @@
 (function (window, undefined) {
 "use strict";
 
-var Seriously = window.Seriously = window.Seriously ||
+window.Seriously = window.Seriously ||
 	{ plugin: function (name, opt) { this[name] = opt; } };
 
 /*	experimental chroma key algorithm
@@ -14,7 +14,7 @@ var Seriously = window.Seriously = window.Seriously ||
 Seriously.plugin('chroma', {
 	shader: function(inputs, shaderSource, utilities) {
 		shaderSource.vertex = '#ifdef GL_ES\n' +
-			'precision highp float;\n' +
+			'precision mediump float;\n' +
 			'#endif \n' +
 			'\n' +
 			'attribute vec3 position;\n' +
@@ -45,7 +45,7 @@ Seriously.plugin('chroma', {
 			'	vTexCoord = vec2(texCoord.s, texCoord.t);\n' +
 			'}\n';
 		shaderSource.fragment = '#ifdef GL_ES\n' +
-			'precision highp float;\n' +
+			'precision mediump float;\n' +
 			'#endif\n' +
 			'\n' +
 			'varying vec2 vTexCoord;\n' +

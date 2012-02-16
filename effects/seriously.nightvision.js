@@ -1,7 +1,7 @@
 (function (window, undefined) {
 "use strict";
 
-var Seriously = window.Seriously = window.Seriously ||
+window.Seriously = window.Seriously ||
 	{ plugin: function (name, opt) { this[name] = opt; } };
 
 //based on tutorial: http://www.geeks3d.com/20091009/shader-library-night-vision-post-processing-filter-glsl/
@@ -10,7 +10,7 @@ var Seriously = window.Seriously = window.Seriously ||
 Seriously.plugin('nightvision', {
 	shader: function(inputs, shaderSource, utilities) {
 		shaderSource.fragment = '#ifdef GL_ES\n\n' +
-				'precision highp float;\n\n' +
+				'precision mediump float;\n\n' +
 				'#endif\n\n' +
 				'\n' +
 				'varying vec2 vTexCoord;\n' +

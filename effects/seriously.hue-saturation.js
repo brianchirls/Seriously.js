@@ -1,7 +1,7 @@
 (function (window, undefined) {
 "use strict";
 
-var Seriously = window.Seriously = window.Seriously ||
+window.Seriously = window.Seriously ||
 	{ plugin: function (name, opt) { this[name] = opt; } };
 	
 //inspired by Evan Wallace (https://github.com/evanw/glfx.js)
@@ -9,7 +9,7 @@ var Seriously = window.Seriously = window.Seriously ||
 Seriously.plugin('hue-saturation', {
 	shader: function(inputs, shaderSource, utilities) {
 		shaderSource.vertex =  '#ifdef GL_ES\n' +
-			'precision highp float;\n' +
+			'precision mediump float;\n' +
 			'#endif \n' +
 			'\n' +
 			'attribute vec3 position;\n' +
@@ -35,7 +35,7 @@ Seriously.plugin('hue-saturation', {
 			'	vTexCoord = vec2(texCoord.s, texCoord.t);\n' +
 			'}\n';
 		shaderSource.fragment = '#ifdef GL_ES\n\n' +
-			'precision highp float;\n\n' +
+			'precision mediump float;\n\n' +
 			'#endif\n\n' +
 			'\n' +
 			'varying vec2 vTexCoord;\n' +
