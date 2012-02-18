@@ -524,6 +524,9 @@
 			inputs: {
 				source: {
 					type: 'image'
+				},
+				num: {
+					type: 'number', defaultValue: 1
 				}
 			}
 		});
@@ -553,6 +556,21 @@
 		effect.num = 42;
 		output = seriously.save();
 		equal(JSON.stringify(output), '{"nodes":[{"type":"effect","effect":"simple","num":42}]}', 'Saved simple image Source with id');
+		effect.destroy();
+		
+		//save simple target
+		canvas.id = 'target-canvas-';
+		target = seriously.target(canvas);
+		output = seriously.save();
+		equal(JSON.stringify(output), '{"nodes":[{"type":"target","target":"#target-canvas-"}]}', 'Saved simple canvas target with id');
+
+		//source/effect/target connections
+		source = seriously.source('#colorbars');
+		effect = seriously.effect('image');
+		effect.source = source;
+		target.source = effect;
+		output = seriously.save();
+		
 
 		console.log(output);
 		console.log(JSON.stringify(output));
