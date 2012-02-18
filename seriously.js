@@ -2647,18 +2647,8 @@ function Seriously(options) {
 
 	this.save = function() {
 		var i, node,
-			defaultTransform,
 			obj = {};
 
-		//todo: cache defaultTransform globally
-		defaultTransform = new Float32Array([
-			1, 0, 0, 0,
-			0, 1, 0, 0,
-			0, 0, 1, 0,
-			0, 0, 0, 1
-		]);
-		mat4.perspective(90, 1, 1, 100, defaultTransform);
-		
 		function saveTransform(transform) {
 			var i, copy = [], different = false;
 			for (i = 0; i < 16; i++) {
