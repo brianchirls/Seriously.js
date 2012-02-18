@@ -2653,17 +2653,206 @@ function Seriously(options) {
 
 	this.save = function() {
 		var i, node,
-			obj = {
-				sources: [],
-				nodes: [],
-				targets: [],
-				aliases: {},
-				auto: auto
-			};
+			defaultTransform,
+			obj = {};
+
+		//todo: cache defaultTransform globally
+		defaultTransform = new Float32Array([
+			1, 0, 0, 0,
+			0, 1, 0, 0,
+			0, 0, 1, 0,
+			0, 0, 0, 1
+		]);
+		mat4.perspective(90, 1, 1, 100, defaultTransform);
 		
-		function saveSource(source) {
+		function saveTransform(transform) {
+			var i, copy = [], different = false;
+			for (i = 0; i < 16; i++) {
+				if (transform[i] !== defaultTransform[i]) {
+					different = true;
+				}
+				copy.push(transform[i]);
+			}
 			
+			if (different) {
+				return copy;
+			}
+			
+			return false;
 		}
+		
+		function saveSourceNode(node) {
+			var transform, saved, source;
+			
+			saved = {
+				type: 'source'
+			};
+			
+			source = node.source;
+			if (source instanceof window.HTMLElement) {
+				if (source.id) {
+					saved.source = '#' + source.id;
+				} else {
+					saved.source = source;
+				}
+
+				if (node.width !== (source.naturalWidth || source.videoWidth || source.width) ||
+					node.height !== (source.naturalHeight || source.videoHeight || source.height)) {
+					
+					saved.height = node.height;
+					saved.width = node.width;
+				}
+
+				if (!node.flip) {
+					saved.flip = node.flip;
+				}
+			} else {
+				saved.height = node.height;
+				saved.width = node.width;
+
+				if (node.flip) {
+					saved.flip = node.flip;
+				}
+			}
+			//todo: handle array, typed array, Imagedata. set to empty
+			
+			//save transform
+			transform = saveTransform(node.transform);
+			if (transform) {
+				saved.transform = transform;
+			}
+			
+			obj.nodes.push(saved);
+		}
+
+		function saveEffectNode(node) {
+			var transform, saved,
+				i, input, idx;
+			
+			//todo: what happens if there is an input called 'type'?
+			
+			saved = {
+				type: 'effect',
+				effect: node.hook
+			};
+
+			//todo: save desired height and width
+
+			//save all value inputs
+			for (i in node.inputs) {
+				input = node.inputs[i];
+				//todo: make saving input elements optional
+				if (node.effect.inputs[i].type !== 'image') {
+					saved[i] = input;
+				}
+			}
+
+			//save all sources
+			for (i in node.sources) {
+				input = node.sources[i];
+				if (input) {
+					idx = nodes.indexOf(input);
+					if (idx >= 0) {
+						saved[i] = idx;
+					}
+				}
+			}
+
+			//save transform
+			transform = saveTransform(node.transform);
+			if (transform) {
+				saved.transform = transform;
+			}
+			
+			obj.nodes.push(saved);
+		}
+
+		function saveTargetNode(node) {
+			var transform, saved, idx,
+				target, source;
+			
+			saved = {
+				type: 'target'
+			};
+
+			if (auto) {
+				saved.auto = true;
+			}
+
+			target = node.target;
+			if (target instanceof window.HTMLCanvasElement) {
+				if (target.id) {
+					saved.target = '#' + target.id;
+				} else {
+					saved.target = target;
+				}
+
+				if (node.width !== target.width ||
+					node.height !== target.height) {
+					
+					saved.height = node.height;
+					saved.width = node.width;
+				}
+
+				if (!node.flip) {
+					saved.flip = node.flip;
+				}
+			} else {
+				saved.height = node.height;
+				saved.width = node.width;
+
+				if (node.flip) {
+					saved.flip = node.flip;
+				}
+			}
+
+
+			//save source
+			source = node.source;
+			if (source) {
+				idx = nodes.indexOf(source);
+				if (idx >= 0) {
+					saved.source = idx;
+				}
+			}
+
+			//save transform
+			transform = saveTransform(node.transform);
+			if (transform) {
+				saved.transform = transform;
+			}
+			
+			obj.nodes.push(saved);
+		}
+		
+		//save all nodes
+		if (nodes.length) {
+			obj.nodes = [];
+			for (i = 0; i < nodes.length; i++) {
+				node = nodes[i];
+				if (!node.isDestroyed) {
+					if (node instanceof SourceNode) {
+						saveSourceNode(node);
+					} else if (node instanceof EffectNode) {
+						saveEffectNode(node);
+					} else if (node instanceof TargetNode) {
+						saveTargetNode(node);
+					}
+				}
+			}
+		}
+		
+		if (auto) {
+			obj.auto = true;
+		}
+		
+		if (aliases.length) {
+			obj.aliases = {};
+			for (i = 0; i < aliases.length; i++) {
+			}
+		}
+		
+		return obj;
 	};
 
 	baseVertexShader = '#ifdef GL_ES\n' +

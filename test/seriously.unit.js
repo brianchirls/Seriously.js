@@ -490,6 +490,105 @@
 
 	module('Alias');
 
+	module('Loading and Saving');
+	
+	test('Save empty composition', function() {
+		var seriously,
+			output;
+		
+		expect(1);
+
+		seriously = Seriously();		
+		output = seriously.save();
+
+		equal(JSON.stringify(output), '{}', 'Empty composition saves as empty object');
+		
+		seriously.destroy();
+	});
+
+	test('Save Nodes', function() {
+		var img, seriously,
+			source, effect, target,
+			input, canvas,
+			output;
+
+		Seriously.plugin('simple', {
+			inputs: {
+				num: {
+					type: 'number', defaultValue: 1
+				}
+			}
+		});
+
+		Seriously.plugin('image', {
+			inputs: {
+				source: {
+					type: 'image'
+				}
+			}
+		});
+
+		seriously = Seriously();
+
+		//save basic source
+		source = seriously.source('#colorbars');
+		output = seriously.save();
+		equal(JSON.stringify(output), '{"nodes":[{"type":"source","source":"#colorbars"}]}', 'Saved simple image Source with id');
+
+		//destroy node
+		source.destroy();
+		output = seriously.save();
+		equal(JSON.stringify(output), '{}', 'Destroyed node is not saved.');
+
+		//source element without id
+		canvas = document.createElement('canvas');
+		source = seriously.source(canvas);
+		output = seriously.save();
+		ok(output.nodes && output.nodes[0] && output.nodes[0].source === canvas,
+			'Source without id saves reference to original element');
+		source.destroy();
+
+		//save basic effect
+		effect = seriously.effect('simple');
+		effect.num = 42;
+		output = seriously.save();
+		equal(JSON.stringify(output), '{"nodes":[{"type":"effect","effect":"simple","num":42}]}', 'Saved simple image Source with id');
+
+		console.log(output);
+		console.log(JSON.stringify(output));
+
+		input = document.createElement('input');
+		input.setAttribute('type', 'text');
+		input.value = 75;
+		input.id = 'textinput';
+		effect.num = input;
+		
+		canvas = document.createElement('canvas');
+		canvas.id = 'mycanvas';
+		target = seriously.target(canvas);
+		target.source = '#colorbars';
+
+		/*
+		 * todo:
+		 * - save transforms
+		 * - save height/width
+		 * - save source array, typed array, element w/o id, ImageData
+		 * - save input types
+		 */
+
+		seriously.destroy();
+		Seriously.removePlugin('simple');
+		Seriously.removePlugin('image');
+	});
+	
+	/*
+	 * load/save tests todo:
+	 * - load/save empty compositions
+	 * - load/save aliases
+	 * - save composition, load it back up and check that it's the same
+	 * - save destroyed nodes skipped
+	 */
+
 	module('Utilities');
 	
 	asyncTest('setTimeoutZero', function() {
