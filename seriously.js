@@ -15,6 +15,7 @@ incompatibility,
 seriousEffects = {},
 timeouts = [],
 allEffectsByHook = {},
+defaultTransform,
 
 /*
 	Global reference variables
@@ -943,14 +944,7 @@ function Seriously(options) {
 	}
 
 	Node = function (options) {
-		this.transform = new Float32Array([
-			1, 0, 0, 0,
-			0, 1, 0, 0,
-			0, 0, 1, 0,
-			0, 0, 0, 1
-		]);
-//		this.scale(1, 16/9);
-		mat4.perspective(90, 1, 1, 100, this.transform);
+		this.transform = new Float32Array(defaultTransform);
 
 		if (options) {
 			this.desiredWidth = parseInt(options.width, 10);
@@ -3170,6 +3164,17 @@ Seriously.prototype.effects = Seriously.effects = function () {
 
 	return effects;
 };
+
+if (window.Float32Array) {
+	defaultTransform = new Float32Array([
+		1, 0, 0, 0,
+		0, 1, 0, 0,
+		0, 0, 1, 0,
+		0, 0, 0, 1
+	]);
+	//todo: set scale
+	mat4.perspective(90, 1, 1, 100, defaultTransform);
+}
 
 //check for plugins loaded out of order
 if (window.Seriously) {
