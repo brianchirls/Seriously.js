@@ -718,6 +718,7 @@ function Seriously(options) {
 	//initialize object, private properties
 	var seriously = this,
 		nodes = [],
+		nodesById = {},
 		nodeId = 0,
 		sources = [],
 		targets = [],
@@ -921,7 +922,7 @@ function Seriously(options) {
 		if (source instanceof SourceNode || source instanceof EffectNode) {
 			node = source;
 		} else if (source instanceof Effect || source instanceof Source) {
-			node = nodes[source.id];
+			node = nodesById[source.id];
 
 			if (!node) {
 				throw 'Cannot connect a foreign node';
@@ -962,8 +963,9 @@ function Seriously(options) {
 
 		this.seriously = seriously;
 
-		nodes.push(this);
 		this.id = nodeId;
+		nodes.push(this);
+		nodesById[nodeId] = this;
 		nodeId++;
 	};
 
@@ -1133,6 +1135,7 @@ function Seriously(options) {
 		if (i >= 0) {
 			nodes.splice(i, 1);
 		}
+		delete nodesById[this.id];
 		
 		this.isDestroyed = true;
 	};
@@ -1694,7 +1697,7 @@ function Seriously(options) {
 		}
 
 		for (i in this) {
-			if (this.hasOwnProperty(i)) {
+			if (i !== 'id' && this.hasOwnProperty(i)) {
 				delete this[i];
 			}
 		}
@@ -2045,7 +2048,7 @@ function Seriously(options) {
 		}
 		
 		for (i in this) {
-			if (this.hasOwnProperty(i)) {
+			if (i !== 'id' && this.hasOwnProperty(i)) {
 				delete this[i];
 			}
 		}
@@ -2336,7 +2339,7 @@ function Seriously(options) {
 		if (source instanceof SourceNode || source instanceof EffectNode) {
 			newSource = source;
 		} else if (source instanceof Effect || source instanceof Source) {
-			newSource = nodes[source.id];
+			newSource = nodesById[source.id];
 
 			if (!newSource) {
 				throw 'Cannot connect a foreign node';

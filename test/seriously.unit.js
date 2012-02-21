@@ -488,6 +488,33 @@
 		Seriously.removePlugin('test');
 	});
 
+	test('Connect after nodes destroyed', function() {
+		var source, target, seriously,
+			canvas;
+
+		expect(2);
+
+		seriously = Seriously();
+		//create and destroy source twice
+		source = seriously.source('#colorbars');
+		source.destroy();
+		source = seriously.source('#colorbars');
+		source.destroy();
+
+		//id should be 2
+		source = seriously.source('#colorbars');
+		equal(source.id, 2, 'Third node created should have id=2');
+
+		canvas = document.createElement('canvas');
+		target = seriously.target(canvas);
+
+		//should have two nodes, highest index should be 1
+		target.source = source;
+		ok(true, 'Can still create new source after multiple sources deleted.');
+
+		seriously.destroy();
+	});
+
 	module('Alias');
 
 	module('Loading and Saving');
