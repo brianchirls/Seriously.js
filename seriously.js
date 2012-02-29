@@ -2648,8 +2648,89 @@ function Seriously(options) {
 		return false;
 	};
 
+	this.load = function(obj) {
+		var i, data, node,
+			loadedNodes = [],
+			effect, j, input, val;
+
+		if (!obj) {
+			return false;
+		}
+
+		if (typeof obj === 'string') {
+			try {
+				obj = JSON.parse(obj);
+			} catch (jsonError) {
+				console.log('Unable to parse JSON string:\n' + obj);
+				return false;
+			}
+		}
+
+		if (!obj || !obj.nodes) {
+			return false;
+		}
+
+		//load up all nodes
+		for (i = 0; i < obj.nodes.length; i++) {
+			data = obj.nodes[i];
+			if (data.type === 'source') {
+				node = this.source(data.source);
+			} else if (data.type === 'target') {
+				node = this.target(data.target);
+			} else if (data.type === 'effect') {
+				node = this.effect(data.effect);
+			} else {
+				node = false;
+			}
+			if (node) {
+				loadedNodes.push(node);
+			}
+		}
+
+		//connect nodes and set options
+		for (i = 0; i < obj.nodes.length; i++) {
+			data = obj.nodes[i];
+			if (data.type === 'effect') {
+				effect = seriousEffects[data.effect];
+				for (j in effect.inputs) {
+					input = effect.inputs[j];
+					val = data[j];
+					if (val !== undefined) {
+						if (input.type !== 'image') {
+							loadedNodes[i][j] = val;
+						} else if (!isNaN(val) && val >= 0 &&
+							val < loadedNodes.length) {
+							
+							loadedNodes[i].source = loadedNodes[val];
+						}
+					}
+				}
+			} else if (data.type === 'target') {
+				if (!isNaN(data.source) && data.source >= 0 &&
+					data.source < loadedNodes.length) {
+					
+					loadedNodes[i].source = loadedNodes[data.source];
+				}
+			}
+		}
+
+		//load aliases
+		if (obj.aliases) {
+			for (i in obj.aliases) {
+				data = obj.aliases[i];
+				node = loadedNodes[data.node];
+				if (data.input && node && node instanceof Effect) {
+					node.alias(data.input, i);
+				}
+			}
+		}
+		
+		return true;
+	};
+
 	this.save = function() {
 		var i, node,
+			alias,
 			obj = {};
 
 		function saveTransform(transform) {
@@ -2716,7 +2797,7 @@ function Seriously(options) {
 			var transform, saved,
 				i, input, idx;
 			
-			//todo: what happens if there is an input called 'type'?
+			//todo: what happens if there is an input called 'type' or 'effect'?
 			
 			saved = {
 				type: 'effect',
@@ -2833,9 +2914,18 @@ function Seriously(options) {
 			obj.auto = true;
 		}
 		
-		if (aliases.length) {
-			obj.aliases = {};
-			for (i = 0; i < aliases.length; i++) {
+		//save aliases
+		for (i in aliases) {
+			alias = aliases[i];
+			node = nodes.indexOf(alias.node);
+			if (node >= 0) {
+				if (!obj.aliases) {
+					obj.aliases = {};
+				}
+				obj.aliases[i] = {
+					node: node,
+					input: alias.input
+				}
 			}
 		}
 		
@@ -2978,6 +3068,18 @@ Seriously.prototype.benchmark = Seriously.benchmark = function (options, cb) {
 	}
 
 	return true;
+};
+
+Seriously.load = function (blob) {
+	var seriously;
+
+	seriously = new Seriously();
+	if (seriously.load(blob)) {
+		return seriously;
+	}
+
+	seriously.destroy();
+	return false;
 };
 
 Seriously.incompatible = function (pluginHook) {

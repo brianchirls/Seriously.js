@@ -598,9 +598,10 @@
 		target.source = effect;
 		output = seriously.save();
 		
-
 		console.log(output);
 		console.log(JSON.stringify(output));
+
+		ok(output.nodes[0].source === 2 && output.nodes[2].source === 1, 'Node connections saved');
 
 		input = document.createElement('input');
 		input.setAttribute('type', 'text');
@@ -626,6 +627,161 @@
 		Seriously.removePlugin('image');
 	});
 	
+	test('Load Nodes', function() {
+		var img, seriously,
+			source, effect, target,
+			input, canvas,
+			output, blob;
+
+		Seriously.plugin('simple', {
+			inputs: {
+				num: {
+					type: 'number', defaultValue: 1
+				}
+			}
+		});
+
+		Seriously.plugin('image', {
+			inputs: {
+				source: {
+					type: 'image'
+				},
+				num: {
+					type: 'number', defaultValue: 1
+				}
+			}
+		});
+		
+		seriously = Seriously.load({});
+		equal(seriously, false, 'Static load of empty object returns false');
+
+		seriously = Seriously.load();
+		equal(seriously, false, 'Static load of non-object returns false');
+
+		seriously = Seriously.load('this is not json');
+		equal(seriously, false, 'Static load of non-JSON string returns false');
+
+		seriously = Seriously.load({
+			nodes: []
+		});
+		ok(seriously instanceof Seriously, 'Static load of empty valid data returns Seriously object');
+		output = seriously.save();
+		equal(JSON.stringify(output), '{}', 'Static load of empty valid data returns empty Seriously object');
+		seriously.destroy();
+		
+		blob = {
+			nodes: [
+				{
+					type: 'source',
+					source: '#colorbars'
+				}
+			]
+		};
+		seriously = Seriously.load(blob);
+		output = seriously.save();
+		ok(JSON.stringify(output) === JSON.stringify(blob), 'Load single source node');
+		seriously.destroy();
+		
+		canvas = document.createElement('canvas');
+		canvas.id = 'mycanvas';
+		blob = {
+			nodes: [
+				{
+					type: 'target',
+					target: canvas
+				}
+			]
+		};
+		seriously = Seriously.load(blob);
+		output = seriously.save();
+		ok(JSON.stringify(output) === JSON.stringify({
+			nodes: [
+				{
+					type: 'target',
+					target: '#mycanvas'
+				}
+			]
+		}), 'Load single target node');
+		seriously.destroy();
+		
+		blob = {
+			nodes: [
+				{
+					type: 'source',
+					source: '#colorbars'
+				},
+				{
+					type: 'target',
+					target: canvas,
+					source: 0
+				}
+			]
+		};
+		seriously = Seriously.load(blob);
+		output = seriously.save();
+		console.log(output);
+		seriously.destroy();
+
+		blob = {
+			nodes: [
+				{
+					type: 'source',
+					source: '#colorbars'
+				},
+				{
+					type: 'effect',
+					effect: 'image',
+					num: 78,
+					source: 0
+				}
+			]
+		};
+		seriously = Seriously.load(blob);
+		output = seriously.save();
+		console.log(output);
+		seriously.destroy();
+
+		Seriously.removePlugin('simple');
+		Seriously.removePlugin('image');
+	});
+
+	test('Load/Save Aliases', function() {
+		var seriously,
+			effect,
+			output;
+
+		expect(3);
+
+		Seriously.plugin('simple', {
+			inputs: {
+				num: {
+					type: 'number', defaultValue: 1
+				}
+			}
+		});
+
+		seriously = Seriously();
+		effect = seriously.effect('simple');
+		effect.alias('num', 'number');
+		seriously.number = 42;
+		output = seriously.save();
+
+		ok(output.aliases && output.aliases.number &&
+			output.aliases.number.input === 'num' &&
+			output.aliases.number.node === 0, 'Alias definition saved');
+
+		ok(output.nodes && output.nodes.length === 1 &&
+			output.nodes[0].num === 42, 'Alias value saved');
+
+		seriously.destroy();
+
+		seriously = Seriously.load(output);
+		equal(seriously.number, 42, 'Alias value successfully loaded');
+
+		seriously.destroy();
+		Seriously.removePlugin('simple');
+	});
+
 	/*
 	 * load/save tests todo:
 	 * - load/save empty compositions
