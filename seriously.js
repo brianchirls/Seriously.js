@@ -2239,13 +2239,15 @@ function Seriously(options) {
 					context = window.WebGLDebugUtils.makeDebugContext(target.getContext('experimental-webgl', {
 						alpha: true,
 						premultipliedAlpha: false,
-						preserveDrawingBuffer: true
+						preserveDrawingBuffer: true,
+						stencil: true
 					}));
 				} else {
 					context = target.getContext('experimental-webgl', {
 						alpha: true,
 						premultipliedAlpha: false,
-						preserveDrawingBuffer: true
+						preserveDrawingBuffer: true,
+						stencil: true
 					});
 				}
 			} catch (expError) {
@@ -2256,7 +2258,8 @@ function Seriously(options) {
 					context = target.getContext('webgl', {
 						alpha: true,
 						premultipliedAlpha: false,
-						preserveDrawingBuffer: true
+						preserveDrawingBuffer: true,
+						stencil: true
 					});
 				} catch (error) {
 
