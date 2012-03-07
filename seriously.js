@@ -834,11 +834,12 @@ function Seriously(options) {
 		}
 	}
 
-	function draw(shader, model, uniforms, frameBuffer, node) {
+	function draw(shader, model, uniforms, frameBuffer, node, options) {
 		var numTextures = 0,
 			name, value, setter,
 			width, height,
-			nodeGl = (node && node.gl) || gl;
+			nodeGl = (node && node.gl) || gl,
+			opts = options || {};
 
 		if (!nodeGl) {
 			return;
@@ -872,13 +873,22 @@ function Seriously(options) {
 
 		nodeGl.bindBuffer(nodeGl.ELEMENT_ARRAY_BUFFER, model.index);
 
-		/* do this every time? */
-		gl.disable(gl.DEPTH_TEST);
-		gl.enable(gl.BLEND);
-		//gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-		gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA,
-							gl.SRC_ALPHA, gl.DST_ALPHA);
-		gl.blendEquation(gl.FUNC_ADD);
+		//default for depth is disable
+		if (opts.depth) {
+			gl.enable(gl.DEPTH_TEST);
+		} else {
+			gl.disable(gl.DEPTH_TEST);
+		}
+
+		//default for blend is enable
+		if (opts.blend === undefined || opts.blend) {
+			gl.enable(gl.BLEND);
+			gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA,
+								gl.SRC_ALPHA, gl.DST_ALPHA);
+			gl.blendEquation(gl.FUNC_ADD);
+		} else {
+			gl.disable(gl.BLEND);
+		}
 
 		/* set uniforms to current values */
 		for (name in uniforms) {
@@ -905,10 +915,11 @@ function Seriously(options) {
 			}
 		}
 
-		//if (this.originalFrameBuffer) {
+		//default for clear is true
+		if (opts.clear === undefined || opts.clear) {
 			nodeGl.clearColor(0.0, 0.0, 0.0, 0.0);
 			nodeGl.clear(nodeGl.COLOR_BUFFER_BIT | nodeGl.DEPTH_BUFFER_BIT);
-		//}
+		}
 
 		// draw!
 		nodeGl.drawElements(model.mode, model.length, nodeGl.UNSIGNED_SHORT, 0);
