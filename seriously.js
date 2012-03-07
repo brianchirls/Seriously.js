@@ -846,11 +846,11 @@ function Seriously(options) {
 		}
 
 		if (node) {
-			width = node.width || nodeGl.canvas.width;
-			height = node.height || nodeGl.canvas.height;
+			width = opts.width || node.width || nodeGl.canvas.width;
+			height = opts.height || node.height || nodeGl.canvas.height;
 		} else {
-			width = nodeGl.canvas.width;
-			height = nodeGl.canvas.height;
+			width = opts.width || nodeGl.canvas.width;
+			height = opts.height || nodeGl.canvas.height;
 		}
 
 		shader.useProgram();
