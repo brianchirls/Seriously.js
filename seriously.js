@@ -1553,8 +1553,8 @@ function Seriously(options) {
 
 			if (typeof effect.draw === 'function') {
 				effect.draw.call(this, this.shader, this.model, this.uniforms, frameBuffer,
-					function(shader, model, uniforms, frameBuffer, node) {
-						draw(shader, model, uniforms, frameBuffer, node || that);
+					function(shader, model, uniforms, frameBuffer, node, options) {
+						draw(shader, model, uniforms, frameBuffer, node || that, options);
 					});
 			} else if (frameBuffer) {
 				draw(this.shader, this.model, this.uniforms, frameBuffer, this);
