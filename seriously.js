@@ -734,46 +734,59 @@ function Seriously(options) {
 		auto = false,
 		isDestroyed = false;
 
-	function buildModel(thisGl) {
+	function makeGlModel(shape, gl) {
 		var vertex, index, texCoord;
 
-		if (!thisGl) {
+		if (!gl) {
 			return false;
 		}
 
-		vertex = thisGl.createBuffer();
-		thisGl.bindBuffer(thisGl.ARRAY_BUFFER, vertex);
-		thisGl.bufferData(thisGl.ARRAY_BUFFER, new Float32Array([
-			-1, -1, -1,
-			1, -1, -1,
-			1, 1, -1,
-			-1, 1, -1
-		]), thisGl.STATIC_DRAW);
+		vertex = gl.createBuffer();
+		gl.bindBuffer(gl.ARRAY_BUFFER, vertex);
+		gl.bufferData(gl.ARRAY_BUFFER, shape.vertices, gl.STATIC_DRAW);
 		vertex.size = 3;
 
-		index = thisGl.createBuffer();
-		thisGl.bindBuffer(thisGl.ELEMENT_ARRAY_BUFFER, index);
-		thisGl.bufferData(thisGl.ELEMENT_ARRAY_BUFFER, new Uint16Array([
-		  0, 1, 2,      0, 2, 3    // Front face
-		]), thisGl.STATIC_DRAW);
+		index = gl.createBuffer();
+		gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, index);
+		gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, shape.indices, gl.STATIC_DRAW);
 
-		texCoord = thisGl.createBuffer();
-		thisGl.bindBuffer(thisGl.ARRAY_BUFFER, texCoord);
-		thisGl.bufferData(thisGl.ARRAY_BUFFER, new Float32Array([
-					0,0,
-					1,0,
-					1,1,
-					0,1
-		]), thisGl.STATIC_DRAW);
+		texCoord = gl.createBuffer();
+		gl.bindBuffer(gl.ARRAY_BUFFER, texCoord);
+		gl.bufferData(gl.ARRAY_BUFFER, shape.coords, gl.STATIC_DRAW);
 		texCoord.size = 2;
 
 		return {
 			vertex: vertex,
 			index: index,
 			texCoord: texCoord,
-			length: 6,
-			mode: thisGl.TRIANGLES
+			length: shape.indices.length,
+			mode: shape.mode || gl.TRIANGLES
 		};
+	}
+
+	function buildRectangleModel(gl) {
+		var shape = {};
+
+		shape.vertices = new Float32Array([
+			-1, -1, -1,
+			1, -1, -1,
+			1, 1, -1,
+			-1, 1, -1
+		]);
+
+		shape.indices = new Uint16Array([
+			0, 1, 2,
+			0, 2, 3    // Front face
+		]);
+
+		shape.coords = new Float32Array([
+			0,0,
+			1,0,
+			1,1,
+			0,1
+		]);
+
+		return makeGlModel(shape, gl);
 	}
 
 	function attachContext(context) {
@@ -782,7 +795,7 @@ function Seriously(options) {
 		gl = context;
 		glCanvas = context.canvas;
 
-		rectangleModel = buildModel(gl);
+		rectangleModel = buildRectangleModel(gl);
 
 		baseShader = new ShaderProgram(gl, baseVertexShader, baseFragmentShader);
 
@@ -1161,7 +1174,9 @@ function Seriously(options) {
 			polygon,
 			vertices = [],
 			i, j, v,
-			vert, prev;
+			vert, prev,
+			triangles = [],
+			shape = {};
 
 		//detect whether it's multiple polygons or what
 		function makePolygonsArray(poly) {
@@ -1231,7 +1246,7 @@ function Seriously(options) {
 				}
 			}
 
-			if (intersections) {
+			if (intersections.length) {
 				newPolygons = [];
 
 				for (i = 0; i < intersections.length; i++) {
@@ -1298,13 +1313,135 @@ function Seriously(options) {
 				for (i = 0; i < newPolygons.length; i++) {
 					polygons.push(newPolygons[i]);
 				}
+			} else {
+				poly.simple = true;
 			}
+		}
+
+		function clockWise(poly) {
+			var p, q, n = poly.vertices.length,
+				pv, qv, sum = 0;
+			for (p = n - 1, q = 0; q < n; p = q, q++) {
+				pv = poly.vertices[p];
+				qv = poly.vertices[q];
+				//sum += (next.x - v.x) * (next.y + v.y);
+				//sum += (v.next.x + v.x) * (v.next.y - v.y);
+				sum += pv.x * qv.y - qv.x * pv.y;
+			}
+			return sum > 0;
+		}
+
+		function triangulate(poly) {
+			function pointInTriangle(a, b, c, p) {
+				var ax, ay, bx, by, cx, cy, apx, apy, bpx, bpy, cpx, cpy,
+					cXap, bXcp, aXbp;
+
+				ax = c.x - b.x; ay = c.y - b.y;
+				bx = a.x - c.x; by = a.y - c.y;
+				cx = b.x - a.x; cy = b.y - a.y;
+				apx = p.x - a.x; apy = p.y - a.y;
+				bpx = p.x - b.x; bpy = p.y - b.y;
+				cpx = p.x - c.x; cpy = p.y - c.y;
+
+				aXbp = ax * bpy - ay * bpx;
+				cXap = cx * apy - cy * apx;
+				bXcp = bx * cpy - by * cpx;
+
+				return aXbp >= 0 && bXcp >=0 && cXap >=0;
+			}
+
+			function snip(u, v, w, n, V) {
+				var p, a, b, c, point;
+				a = points[V[u]];
+				b = points[V[v]];
+				c = points[V[w]];
+				if (0 > (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x)) {
+					return false;
+				}
+				for (p = 0; p < n; p++) {
+					if (!(p === u || p === v || p === w)) {
+						point = points[V[p]];
+						if (pointInTriangle(a, b, c, point)) {
+							return false;
+						}
+					}
+				}
+				return true;
+			}
+
+			var v, points = poly.vertices,
+				n, V = [], indices = [],
+				nv, count, m, u, w;
+
+			//copy points
+			//for (v = 0; v < poly.vertices.length; v++) {
+			//	points.push(poly.vertices[v]);
+			//}
+			n = points.length;
+
+			if (poly.clockWise) {
+				for (v = 0; v < n; v++) {
+					V[v] = v;
+				}
+			} else {
+				for (v = 0; v < n; v++) {
+					V[v] = (n - 1) - v;
+				}
+			}
+
+			nv = n;
+			count = 2 * nv;
+			for (m = 0, v = nv - 1; nv > 2; ) {
+				if ((count--) <= 0) {
+					return indices;
+				}
+
+				u = v;
+				if (nv <= u) {
+					u = 0;
+				}
+
+				v = u + 1;
+				if (nv <= v) {
+					v = 0;
+				}
+
+				w = v + 1;
+				if (nv < w) {
+					w = 0;
+				}
+
+				if (snip(u, v, w, nv, V)) {
+					var a, b, c, s, t;
+					a = V[u];
+					b = V[v];
+					c = V[w];
+					if (poly.clockWise) {
+						indices.push(points[a]);
+						indices.push(points[b]);
+						indices.push(points[c]);
+					} else {
+						indices.push(points[c]);
+						indices.push(points[b]);
+						indices.push(points[a]);
+					}
+					m++;
+					for (s = v, t = v + 1; t < nv; s++, t++) {
+						V[s] = V[t];
+					}
+					nv--;
+					count = 2 * nv;
+				}
+			}
+
+			polygon.indices = indices;
 		}
 
 		polys = makePolygonsArray(poly);
 
 		for (i = 0; i < polys.length; i++) {
 			poly = polys[i];
+			prev = null;
 			polygon = {
 				vertices: [],
 				edges: []
@@ -1362,6 +1499,44 @@ function Seriously(options) {
 		for (i = polygons.length - 1; i >= 0; i--) {
 			polygon = polygons[i];
 			makeSimple(polygon);
+		}
+
+		for (i = 0; i < polygons.length; i++) {
+			polygon = polygons[i];
+			polygon.clockWise = clockWise(polygon);
+			triangulate(polygon);
+		}
+
+		//build shape
+		shape.vertices = [];
+		shape.coords = [];
+		for (i = 0; i < vertices.length; i++) {
+			v = vertices[i];
+			shape.vertices.push(v.x * 2 - 1);
+			shape.vertices.push(v.y * -2 + 1);
+			shape.vertices.push(-1);
+
+			shape.coords.push(v.x);
+			shape.coords.push(v.y * -1 + 1);
+		}
+		shape.vertices = new Float32Array(shape.vertices);
+		shape.coords = new Float32Array(shape.coords);
+
+		shape.indices = [];
+		for (i = 0; i < polygons.length; i++) {
+			polygon = polygons[i];
+			for (j = 0; j < polygon.indices.length; j++) {
+				v = polygon.indices[j];
+				shape.indices.push(v.id);
+				//shape.indices.push(v[1].id);
+				//shape.indices.push(v[2].id);
+			}
+		}
+		shape.indices = new Uint16Array(shape.indices);
+
+		this.shape = shape;
+		if (this.gl) {
+			makeGlModel(shape, this.gl);
 		}
 	}
 
@@ -1613,7 +1788,11 @@ function Seriously(options) {
 		if (!this.initialized) {
 			var that = this;
 
-			this.model = rectangleModel;
+			if (this.shape) {
+				this.model = makeGlModel(this.shape, this.gl);
+			} else {
+				this.model = rectangleModel;
+			}
 
 			if (typeof this.effect.initialize === 'function') {
 				this.effect.initialize.call(this, function () {
@@ -2528,7 +2707,7 @@ function Seriously(options) {
 					this.frameBuffer = new FrameBuffer(this.gl, width, height, false);
 				}
 				this.shader = new ShaderProgram(this.gl, baseVertexShader, baseFragmentShader);
-				this.model = buildModel.call(this, this.gl);
+				this.model = buildRectangleModel.call(this, this.gl);
 
 				this.texture = this.gl.createTexture();
 				this.gl.bindTexture(gl.TEXTURE_2D, this.texture);
