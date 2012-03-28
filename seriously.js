@@ -1151,6 +1151,121 @@ function Seriously(options) {
 		this.isDestroyed = true;
 	};
 
+	/*
+	matte function to be assigned as a method to EffectNode and TargetNode
+	*/
+
+	function matte(poly) {
+		var polys, poly,
+			polygons = [],
+			polygon,
+			vertices = [],
+			i, j, v,
+			vert, prev;
+
+		//detect whether it's multiple polygons or what
+		function makePolygonsArray(poly) {
+			if (!poly || !poly.length || !Array.isArray(poly)) {
+				return [];
+			}
+
+			if (!Array.isArray(poly[0])) {
+				return [poly];
+			}
+
+			if (Array.isArray(poly[0]) && !isNaN(poly[0][0])) {
+				return [poly];
+			}
+
+			return poly;
+		}
+
+		function linesIntersect(a1, a2, b1, b2) {
+			var ua_t, ub_t, u_b, ua, ub;
+			ua_t = (b2.x - b1.x) * (a1.y - b1.y) - (b2.y - b1.y) * (a1.x - b1.x);
+			ub_t = (a2.x - a1.x) * (a1.y - b1.y) - (a2.y - a1.y) * (a1.x - b1.x);
+			u_b = (b2.y - b1.y) * (a2.x - a1.x) - (b2.x - b1.x) * (a2.y - a1.y);
+			if (u_b) {
+				ua = ua_t / u_b;
+				ub = ub_t / u_b;
+				if (ua > 0 && ua <= 1 && ub > 0 && ub <= 1) {
+					return {
+						x: a1.x + ua * (a2.x - a1.x),
+						y: a1.y + ua * (a2.y - a1.y)
+					};
+				}
+			}
+			return false;
+		}
+
+		function makeSimple(poly) {
+			var i, j,
+				edge1, edge2,
+				intersect;
+			for (i = 0; i < poly.edges.length; i++) {
+				edge1 = poly.edges[i];
+				for (j = i + 1; j < poly.edges.length; j++) {
+					edge2 = poly.edges[j];
+					intersect = linesIntersect(edge1[0], edge1[1], edge2[0], edge2[1]);
+					console.log(i, j, intersect);
+				}
+			}
+		}
+
+		polys = makePolygonsArray(poly);
+
+		for (i = 0; i < polys.length; i++) {
+			poly = polys[i];
+			polygon = {
+				vertices: [],
+				edges: []
+			}
+			for (j = 0; j < poly.length; j++) {
+				v = poly[j];
+				if (typeof v ==='object' && !isNaN(v.x) && !isNaN(v.y)) {
+					vert = {
+						x: v.x,
+						y: v.y,
+						id: vertices.length
+					};
+				} else if (v.length >= 2 && !isNaN(v[0]) && !isNaN(v[1])) {
+					vert = {
+						x: v[0],
+						y: v[1],
+						id: vertices.length
+					};
+				}
+				if (vert) {
+					if (prev) {
+						prev.next = vert;
+						vert.prev = prev;
+						vert.next = polygon.vertices[0];
+						polygon.vertices[0].prev = vert;
+					} else {
+						polygon.head = vert;
+						vert.next = vert;
+						vert.prev = vert;
+					}
+					vertices.push(vert);
+					polygon.vertices.push(vert);
+					prev = vert;
+				}
+
+			}
+			if (polygon.vertices.length > 2) {
+				polygons.push(polygon);
+				//save edges
+				for (j = 0; j < polygon.vertices.length; j++) {
+					vert = polygon.vertices[j];
+					polygon.edges.push([
+						vert, vert.next
+					]);
+				}
+				makeSimple(polygon);
+			}
+		}
+	}
+
 	Effect = function (effectNode) {
 		var name, me = effectNode;
 
@@ -1327,6 +1442,10 @@ function Seriously(options) {
 		this.rotateZ = function(angle) {
 			me.rotateZ(angle);
 		};
+
+		this.matte = function(polygons) {
+			me.matte(polygons);
+		}
 
 		this.destroy = function() {
 			var i, nop = function() { };
@@ -1669,6 +1788,8 @@ function Seriously(options) {
 
 		return this;
 	};
+
+	EffectNode.prototype.matte = matte;
 
 	EffectNode.prototype.destroy = function () {
 		var i, item, hook = this.hook;
