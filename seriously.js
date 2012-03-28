@@ -241,7 +241,9 @@ function getElement(input, tags) {
 		element = document.querySelector(input);
 	} else if (!input) {
 		return false;
-	} else if (input.tagName) {
+	}
+
+	if (input.tagName) {
 		element = input;
 	}
 
