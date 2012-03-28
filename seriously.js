@@ -1156,7 +1156,7 @@ function Seriously(options) {
 	*/
 
 	function matte(poly) {
-		var polys, poly,
+		var polys,
 			polygons = [],
 			polygon,
 			vertices = [],
@@ -1199,15 +1199,104 @@ function Seriously(options) {
 		}
 
 		function makeSimple(poly) {
+			/*
+			this uses a slow, naive approach to detecting line intersections.
+			Use Bentley-Ottmann Algorithm
+			see: http://softsurfer.com/Archive/algorithm_0108/algorithm_0108.htm#Bentley-Ottmann Algorithm
+			see: https://github.com/tokumine/sweepline
+			*/
 			var i, j,
 				edge1, edge2,
-				intersect;
+				intersect,
+				intersections = [],
+				newPoly,
+				head, point,
+				newPolygons,
+				point1, point2;
+
+			if (poly.simple) {
+				return;
+			}
+
 			for (i = 0; i < poly.edges.length; i++) {
 				edge1 = poly.edges[i];
 				for (j = i + 1; j < poly.edges.length; j++) {
 					edge2 = poly.edges[j];
 					intersect = linesIntersect(edge1[0], edge1[1], edge2[0], edge2[1]);
-					console.log(i, j, intersect);
+					if (intersect) {
+						intersect.edge1 = edge1;
+						intersect.edge2 = edge2;
+						intersections.push(intersect);
+					}
+				}
+			}
+
+			if (intersections) {
+				newPolygons = [];
+
+				for (i = 0; i < intersections.length; i++) {
+					intersect = intersections[i];
+					edge1 = intersect.edge1;
+					edge2 = intersect.edge2;
+
+					//make new points
+					//todo: set ids for points
+					point1 = {
+						x: intersect.x,
+						y: intersect.y,
+						prev: edge1[0],
+						next: edge2[1],
+						id: vertices.length
+					};
+					poly.vertices.push(point1);
+					vertices.push(point1);
+
+					point2 = {
+						x: intersect.x,
+						y: intersect.y,
+						prev: edge2[0],
+						next: edge1[1],
+						id: vertices.length
+					};
+					poly.vertices.push(point2);
+					vertices.push(point1);
+
+					//modify old points
+					point1.prev.next = point1;
+					point1.next.prev = point1;
+					point2.prev.next = point2;
+					point2.next.prev = point2;
+
+					//don't bother modifying the old edges. we're just gonna throw them out
+				}
+
+				//make new polygons
+				do {
+					newPoly = {
+						edges: [],
+						vertices: [],
+						simple: true
+					};
+					newPolygons.push(newPoly);
+					point = poly.vertices[0];
+					head = point;
+					//while (point.next !== head && poly.vertices.length) {
+					do {
+						i = poly.vertices.indexOf(point);
+						poly.vertices.splice(i, 1);
+						newPoly.edges.push([point, point.next]);
+						newPoly.vertices.push(point);
+						point = point.next;
+					} while (point !== head);
+				} while (poly.vertices.length);
+
+				//remove original polygon from list
+				i = polygons.indexOf(poly);
+				polygons.splice(i, 1);
+
+				//add new polygons to list
+				for (i = 0; i < newPolygons.length; i++) {
+					polygons.push(newPolygons[i]);
 				}
 			}
 		}
@@ -1219,7 +1308,8 @@ function Seriously(options) {
 			polygon = {
 				vertices: [],
 				edges: []
-			}
+			};
+
 			for (j = 0; j < poly.length; j++) {
 				v = poly[j];
 				if (typeof v ==='object' && !isNaN(v.x) && !isNaN(v.y)) {
@@ -1250,10 +1340,15 @@ function Seriously(options) {
 					polygon.vertices.push(vert);
 					prev = vert;
 				}
-
 			}
+
 			if (polygon.vertices.length > 2) {
+				if (polygon.vertices.length === 3) {
+					polygon.simple = true;
+				}
+
 				polygons.push(polygon);
+
 				//save edges
 				for (j = 0; j < polygon.vertices.length; j++) {
 					vert = polygon.vertices[j];
@@ -1261,8 +1356,12 @@ function Seriously(options) {
 						vert, vert.next
 					]);
 				}
-				makeSimple(polygon);
 			}
+		}
+
+		for (i = polygons.length - 1; i >= 0; i--) {
+			polygon = polygons[i];
+			makeSimple(polygon);
 		}
 	}
 
@@ -1445,7 +1544,7 @@ function Seriously(options) {
 
 		this.matte = function(polygons) {
 			me.matte(polygons);
-		}
+		};
 
 		this.destroy = function() {
 			var i, nop = function() { };
@@ -1469,7 +1568,7 @@ function Seriously(options) {
 		
 		this.isDestroyed = function() {
 			return me.isDestroyed;
-		}
+		};
 	};
 
 	EffectNode = function (hook, options) {
