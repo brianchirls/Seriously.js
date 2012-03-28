@@ -547,11 +547,11 @@ function ShaderProgram(gl, vertexShaderSource, fragmentShaderSource) {
 				return function(value) {
 					gl.uniform1iv(loc, value);
 				};
-			} else {
-				return function(value) {
-					gl.uniform1i(loc, value);
-				};
 			}
+
+			return function(value) {
+				gl.uniform1i(loc, value);
+			};
 		}
 
 		if (info.type === gl.FLOAT) {
@@ -559,11 +559,11 @@ function ShaderProgram(gl, vertexShaderSource, fragmentShaderSource) {
 				return function(value) {
 					gl.uniform1fv(loc, value);
 				};
-			} else {
-				return function(value) {
-					gl.uniform1f(loc, value);
-				};
 			}
+
+			return function(value) {
+				gl.uniform1f(loc, value);
+			};
 		}
 
 		if (info.type === gl.FLOAT_VEC2) {
@@ -1352,7 +1352,7 @@ function Seriously(options) {
 		
 		this.isDestroyed = function() {
 			return me.isDestroyed;
-		}
+		};
 	};
 
 	EffectNode = function (hook, options) {
@@ -2651,13 +2651,13 @@ function Seriously(options) {
 		}
 		
 		if (!pluginHook) {
-			for (pluginHook in allEffectsByHook) {
-				if (allEffectsByHook[pluginHook].length) {
-					plugin = seriousEffects[pluginHook];
+			for (i in allEffectsByHook) {
+				if (allEffectsByHook[i].length) {
+					plugin = seriousEffects[i];
 					if (plugin && typeof plugin.compatible === 'function' &&
 						!plugin.compatible.call(this)) {
 
-						return 'plugin-' + pluginHook;
+						return 'plugin-' + i;
 					}
 				}
 			}
