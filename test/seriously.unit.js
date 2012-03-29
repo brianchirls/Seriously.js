@@ -577,7 +577,7 @@
 		
 		pass = document.getElementById('colorbars');
 		if (pass.width) {
-			checkImagePass.call(pass);
+			checkImagePass.call(pass, pass);
 		} else {
 			pass.addEventListener('load', function() {
 				checkImagePass(this);
