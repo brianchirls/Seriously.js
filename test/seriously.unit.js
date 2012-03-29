@@ -542,14 +542,14 @@
 		
 		expect(4);
 		
-		function checkImagePass() {
+		function checkImagePass(img) {
 			var canvas, ctx;
 
-			ok(Seriously.util.checkSource(this), 'Same-origin image checks true');
+			ok(Seriously.util.checkSource(img), 'Same-origin image checks true');
 
 			canvas = document.createElement('canvas');
 			ctx = canvas.getContext('2d');
-			ctx.drawImage(this, 0, 0);
+			ctx.drawImage(img, 0, 0);
 			ok(Seriously.util.checkSource(canvas), 'Same-origin canvas checks true');
 
 			tests--;
@@ -559,14 +559,14 @@
 
 		}
 		
-		function checkImageFail() {
+		function checkImageFail(img) {
 			var canvas, ctx;
 
-			ok(!Seriously.util.checkSource(this), 'Cross-origin image checks false');
+			ok(!Seriously.util.checkSource(img), 'Cross-origin image checks false');
 
 			canvas = document.createElement('canvas');
 			ctx = canvas.getContext('2d');
-			ctx.drawImage(this, 0, 0);
+			ctx.drawImage(img, 0, 0);
 			ok(!Seriously.util.checkSource(canvas), 'Cross-origin canvas checks false');
 
 			tests--;
@@ -577,14 +577,18 @@
 		
 		pass = document.getElementById('colorbars');
 		if (pass.width) {
-			checkImagePass.call(pass);
+			checkImagePass.call(pass, pass);
 		} else {
-			pass.addEventListener('load', checkImagePass, false);
+			pass.addEventListener('load', function() {
+				checkImagePass(this);
+			}, false);
 		}
 		
 		fail = document.createElement('img');
 		fail.src = 'http://www.mozilla.org/images/template/screen/logo_footer.png';
-		fail.addEventListener('load', checkImageFail, false);
+		fail.addEventListener('load', function() {
+			checkImageFail(this);
+		}, false);
 
 		
 	});

@@ -326,6 +326,22 @@ http://dbaron.org/log/20100309-faster-timeouts
 */
 function setTimeoutZero(fn) {
 	timeouts.push(fn);
+	/*
+	Workaround for postMessage bug in Firefox if the page is loaded from the file system
+	https://bugzilla.mozilla.org/show_bug.cgi?id=740576
+	Should run fine, but maybe a few milliseconds slower per frame.
+	*/
+	if (window.location.protocol === 'file:') {
+		setTimeout(function() {
+			console.log('using regular timeout');
+			if (timeouts.length > 0) {
+				var fn = timeouts.shift();
+				fn();
+			}
+		}, 0);
+		return;
+	}
+
 	window.postMessage('seriously-timeout-message', window.location);
 }
 
