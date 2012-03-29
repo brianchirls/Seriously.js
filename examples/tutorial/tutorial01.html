@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head><title>Seriously.js Tutorial</title></head>
+<body>
+	<!-- page content goes here -->
+	<img src="../images/colorbars.png" id="colorbars"/>
+	<canvas id="canvas" width="640" height="480"></canvas>
+	<div>
+		<input type="range" id="vignette-range" min="0" max="20" step="0.0001" value="1"/>
+	</div>
+
+	<script src="../../lib/html5slider.js"></script>
+	<script src="../../seriously.js"></script>
+	<script src="../../effects/seriously.vignette.js"></script>
+	<script src="../../effects/seriously.hue-saturation.js"></script>
+	<script src="../../effects/seriously.split.js"></script>
+	<script>
+	(function() {
+		//main code goes here
+
+		// declare our variables
+		var seriously, // the main object that holds the entire composition
+			colorbars, // a wrapper object for our source image
+			vignette, // a vignette effect
+			target; // a wrapper object for our target canvas
+
+		seriously = new Seriously();
+		colorbars = seriously.source('#colorbars');
+		target = seriously.target('#canvas');
+		vignette = seriously.effect('vignette');
+
+		vignette.amount = '#vignette-range';
+
+		// connect all our nodes in the right order
+		vignette.source = colorbars;
+		target.source = vignette;
+		seriously.go();
+
+	}());
+	</script>
+</body>
+</html>
