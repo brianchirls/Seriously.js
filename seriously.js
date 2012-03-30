@@ -2402,20 +2402,17 @@ function Seriously(options) {
 	};
 
 	TargetNode.prototype.setDirty = function () {
+		var that;
+
+		function render() {
+			that.render();
+		}
+
 		this.dirty = true;
 
 		if (this.auto) {
-			//todo: test this, make sure we don't double-render if receiving from two updated sources
-			//todo: or setTimeout for 0?
-			/*
-			requestAnimFrame(function() {
-				this.render();
-			});
-			*/
-			var that = this;
-			setTimeoutZero(function() {
-				that.render();
-			});
+			that = this;
+			setTimeoutZero(render);
 		}
 	};
 
