@@ -325,20 +325,24 @@ faster than setTimeout(fn, 0);
 http://dbaron.org/log/20100309-faster-timeouts
 */
 function setTimeoutZero(fn) {
-	timeouts.push(fn);
 	/*
 	Workaround for postMessage bug in Firefox if the page is loaded from the file system
 	https://bugzilla.mozilla.org/show_bug.cgi?id=740576
 	Should run fine, but maybe a few milliseconds slower per frame.
 	*/
+	function timeoutFunction() {
+		if (timeouts.length) {
+			(timeouts.shift())();
+		}
+	}
+
+	if (typeof fn !== 'function') {
+		throw 'setTimeoutZero argument is not a function';
+	}
+
+	timeouts.push(fn);
 	if (window.location.protocol === 'file:') {
-		setTimeout(function() {
-			console.log('using regular timeout');
-			if (timeouts.length > 0) {
-				var fn = timeouts.shift();
-				fn();
-			}
-		}, 0);
+		setTimeout(timeoutFunction, 0);
 		return;
 	}
 
