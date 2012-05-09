@@ -1019,7 +1019,7 @@ function Seriously(options) {
 		//todo: figure out formats and types
 		if (dest === undefined) {
 			dest = new Uint8Array(width * height * 4);
-		} else if ( !dest instanceof Uint8Array ) {
+		} else if ( !(dest instanceof Uint8Array) ) {
 			throw 'Incompatible array type';
 		}
 
@@ -1106,6 +1106,31 @@ function Seriously(options) {
 		mat[6] = a02*-sin + a12*cos;
 		mat[7] = a03*-sin + a13*cos;
 		this.setDirty();
+	};
+
+	Node.prototype.setTransform = function(array) {
+		var mat, i, changed = false;
+		if (array instanceof Float32Array || Array.isArray(array)) {
+			if (array.length === 16) {
+				this.transform = new Float32Array(array);
+				this.setDirty();
+				return;
+			}
+
+			mat = array;
+		} else {
+			mat = arguments;
+		}
+
+		if (mat.length !== 16) {
+			throw 'Transform must be array or Float32Array with 16 elements';
+		}
+		this.transform = new Float32Array(mat);
+		this.setDirty();
+	};
+
+	Node.prototype.getTransform = function() {
+		return new Float32Array(this.transform);
 	};
 
 	Node.prototype.destroy = function () {
@@ -1278,6 +1303,14 @@ function Seriously(options) {
 
 		this.__defineSetter__('height', function(value) {
 			me.setSize(undefined, value);
+		});
+
+		this.__defineGetter__('transform', function () {
+			return me.getTransform();
+		});
+
+		this.__defineSetter__('transform', function (transform) {
+			me.setTransform(transform);
 		});
 
 		this.__defineGetter__('id', function () {
@@ -2130,6 +2163,14 @@ function Seriously(options) {
 			}
 		});
 
+		this.__defineGetter__('transform', function () {
+			return me.getTransform();
+		});
+
+		this.__defineSetter__('transform', function (transform) {
+			me.setTransform(transform);
+		});
+
 		this.__defineGetter__('id', function () {
 			return me.id;
 		});
@@ -2683,6 +2724,13 @@ function Seriously(options) {
 				node = false;
 			}
 			if (node) {
+				if (data.transform) {
+					try {
+						node.transform = data.transform;
+					} catch (transformError) {
+						console.log('Unable to save node transform:\n' + JSON.stringify(node.transform));
+					}
+				}
 				loadedNodes.push(node);
 			}
 		}

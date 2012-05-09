@@ -3,6 +3,31 @@
 (function() {
 	"use strict";
 
+	function compareArrays(a, b) {
+		var i;
+		
+		if (!a && !b) {
+			return true;
+		}
+		
+		if (!a || !b) {
+			return false;
+		}
+
+		if (a.length !== b.length) {
+			return false;
+		}
+		
+		for (i = 0; i < a.length; i++) {
+			if (a[i] !== b[i]) {
+				return false;
+				
+			}
+		}
+		
+		return true;
+	}
+
 	module('Core');
 	test('Core', function() {
 		var p, props = 0,
@@ -317,23 +342,6 @@
 	test('Color', function() {
 		var e, s, val;
 
-		function compare(a, b) {
-			var i;
-
-			if (a.length !== b.length) {
-				return false;
-			}
-			
-			for (i = 0; i < a.length; i++) {
-				if (a[i] !== b[i]) {
-					return false;
-					
-				}
-			}
-			
-			return true;
-		}
-
 		expect(12);
 		
 		Seriously.plugin('testColorInput', {
@@ -350,54 +358,54 @@
 		
 		e.color = 'rgb(10, 20, 30)';
 		val = e.color;
-		ok( compare(val, [10/255, 20/255, 30/255, 1]), 'Set color by rgb');
+		ok( compareArrays(val, [10/255, 20/255, 30/255, 1]), 'Set color by rgb');
 		
 		e.color = 'rgba(30, 20, 10, 0.8)';
 		val = e.color;
-		ok( compare(val, [30/255, 20/255, 10/255, 0.8]), 'Set color by rgba');
+		ok( compareArrays(val, [30/255, 20/255, 10/255, 0.8]), 'Set color by rgba');
 		
 		//todo: test rgb percentages
 		//todo: test hsl/hsla
 		
 		e.color = '#123';
 		val = e.color;
-		ok( compare(val, [1/15, 2/15, 3/15, 1]), 'Set color by 3-character hex');
+		ok( compareArrays(val, [1/15, 2/15, 3/15, 1]), 'Set color by 3-character hex');
 		
 		e.color = '#1234';
 		val = e.color;
-		ok( compare(val, [0x1/15, 0x2/15, 0x3/15, 0x4/15]), 'Set color by 4-character hex');
+		ok( compareArrays(val, [0x1/15, 0x2/15, 0x3/15, 0x4/15]), 'Set color by 4-character hex');
 		
 		e.color = '#123456';
 		val = e.color;
-		ok( compare(val, [0x12/255, 0x34/255, 0x56/255, 1]), 'Set color by 6-character hex');
+		ok( compareArrays(val, [0x12/255, 0x34/255, 0x56/255, 1]), 'Set color by 6-character hex');
 		
 		e.color = '#654321AA';
 		val = e.color;
-		ok( compare(val, [0x65/255, 0x43/255, 0x21/255, 0xAA/255]), 'Set color by 8-character hex');
+		ok( compareArrays(val, [0x65/255, 0x43/255, 0x21/255, 0xAA/255]), 'Set color by 8-character hex');
 		
 		e.color = '#fffff';
 		val = e.color;
-		ok( compare(val, [0, 0, 0, 0]), 'Set color by bad hex is transparent black');
+		ok( compareArrays(val, [0, 0, 0, 0]), 'Set color by bad hex is transparent black');
 		
 		e.color = 'lightcyan';
 		val = e.color;
-		ok( compare(val, [224/255,1,1,1]), 'Set color by name');
+		ok( compareArrays(val, [224/255,1,1,1]), 'Set color by name');
 		
 		e.color = 'garbage';
 		val = e.color;
-		ok( compare(val, [0, 0, 0, 0]), 'Set color by unknown name is transparent black');
+		ok( compareArrays(val, [0, 0, 0, 0]), 'Set color by unknown name is transparent black');
 		
 		e.color = 0.3;
 		val = e.color;
-		ok( compare(val, [0.3, 0.3, 0.3, 1]), 'Set color by single number');
+		ok( compareArrays(val, [0.3, 0.3, 0.3, 1]), 'Set color by single number');
 
 		e.color = [0.1, 0.2, 0.3];
 		val = e.color;
-		ok( compare(val, [0.1, 0.2, 0.3, 1]), 'Set color by 3-array');
+		ok( compareArrays(val, [0.1, 0.2, 0.3, 1]), 'Set color by 3-array');
 
 		e.color = [0.2, 0.3, 0.4, 0.5];
 		val = e.color;
-		ok( compare(val, [0.2, 0.3, 0.4, 0.5]), 'Set color by 4-array');
+		ok( compareArrays(val, [0.2, 0.3, 0.4, 0.5]), 'Set color by 4-array');
 
 		//todo: set color by object
 
@@ -603,6 +611,11 @@
 
 		ok(output.nodes[0].source === 2 && output.nodes[2].source === 1, 'Node connections saved');
 
+		effect.scale(2, 3);
+		output = seriously.save();
+		
+		ok( compareArrays(output.nodes[2].transform, effect.transform), 'Saved transform');
+
 		input = document.createElement('input');
 		input.setAttribute('type', 'text');
 		input.value = 75;
@@ -739,6 +752,23 @@
 		seriously = Seriously.load(blob);
 		output = seriously.save();
 		console.log(output);
+		seriously.destroy();
+
+
+		blob = {
+			nodes: [
+				{
+					type: 'effect',
+					effect: 'simple',
+					transform: [
+						0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
+					]
+				}
+			]
+		};
+		seriously = Seriously.load(blob);
+		output = seriously.save();
+		ok(compareArrays(blob.nodes[0].transform, output.nodes[0].transform), 'Load effect node with transform');
 		seriously.destroy();
 
 		Seriously.removePlugin('simple');
