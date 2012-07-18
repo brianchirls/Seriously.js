@@ -989,6 +989,7 @@ function Seriously(options) {
 
 		this.dirty = true;
 		this.isDestroyed = false;
+		this.transformed = false;
 
 		this.seriously = seriously;
 
@@ -1059,12 +1060,165 @@ function Seriously(options) {
 	};
 
 	Node.prototype.reset = function () {
-		this.transform = new Float32Array([
-			1, 0, 0, 0,
-			0, 1, 0, 0,
-			0, 0, 1, 0,
-			0, 0, 0, 1
-		]);
+		this.transform = new Float32Array(defaultTransform);
+		this.uniforms.transform = this.transform;
+		this.transformed = false;
+		this.setDirty();
+	};
+
+	Node.prototype.setTransform = function(mat) {
+		var i, val, isDefault = true;
+
+		if (!mat ||
+			!Array.isArray(mat) && !(mat instanceof Float32Array) && !(mat instanceof Float64Array)) {
+			this.reset();
+			return;
+		}
+
+		if (mat.length < 16) {
+			throw 'transform matrix must be array or typed array of 16 numbers.';
+		}
+
+		for (i = 0; i < 16; i++) {
+			val = mat[i];
+			if (isNaN(val)) {
+				throw 'transform matrix must be array or typed array of 16 numbers.';
+			}
+			if (val !== defaultTransform[i]) {
+				isDefault = false;
+			}
+			this.transform[i] = val;
+		}
+
+		this.transformed = !isDefault;
+		this.setDirty();
+	};
+
+	Node.prototype.perspective = function(from, to) {
+		//math adapted from javax.media.jai.PerspectiveTransform
+		function getSquareToQuad(x0, y0, x1, y1, x2, y2, x3, y3) {
+			var dx1 = x1 - x2,
+				dy1 = y1 - y2,
+				dx2 = x3 - x2,
+				dy2 = y3 - y2,
+				dx3 = x0 - x1 + x2 - x3,
+				dy3 = y0 - y1 + y2 - y3,
+				det = dx1 * dy2 - dx2 * dy1,
+				a = (dx3 * dy2 - dx2 * dy3) / det,
+				b = (dx1 * dy3 - dx3 * dy1) / det;
+			return [
+				x1 - x0 + a * x1, y1 - y0 + a * y1, a,
+				x3 - x0 + b * x3, y3 - y0 + b * y3, b,
+				x0, y0, 1
+			];
+		}
+
+		function invert(a) {
+			var a0 = a[0],
+				a1 = a[1],
+				a2 = a[2],
+				a3 = a[3],
+				a4 = a[4],
+				a5 = a[5],
+				a6 = a[6],
+				a7 = a[7],
+				a8 = a[8],
+				det = a0 * a4 * a8 -
+					a0 * a5 * a7 -
+					a1 * a3 * a8 +
+					a1 * a5 * a6 +
+					a2 * a3 * a7 -
+					a2 * a4 * a6;
+
+			a[0] = (a4 * a8 - a5 * a7) / det;
+			a[1] = (a2 * a7 - a1 * a8) / det;
+			a[2] = (a1 * a5 - a2 * a4) / det;
+			a[3] = (a5 * a6 - a3 * a8) / det;
+			a[4] = (a0 * a8 - a2 * a6) / det;
+			a[5] = (a2 * a3 - a0 * a5) / det;
+			a[6] = (a3 * a7 - a4 * a6) / det;
+			a[7] = (a1 * a6 - a0 * a7) / det;
+			a[8] = (a0 * a4 - a1 * a3) / det;
+		}
+
+		var a, b,
+			a0, a1, a2, a3, a4, a5, a6, a7, a8,
+			b0, b1, b2, b3, b4, b5, b6, b7, b8,
+			mat = this.transform,
+			errMsg = "perspective parameters must be arrays or typed arrays of numbers with 8 elements";
+		if (!from ||
+			from.length !== 8 ||
+			!Array.isArray(from) && !(from instanceof Float32Array) && !(from instanceof Float64Array)) {
+
+			throw errMsg;
+		}
+
+		if (to &&
+			(to.length !== 8 ||
+			!Array.isArray(to) && !(to instanceof Float32Array) && !(to instanceof Float64Array))) {
+
+			throw errMsg;
+		}
+
+		if (!to) {
+			//todo: fix this!
+			to = from;
+			b0 = 1;
+			b1 = 0;
+			b2 = 0;
+			b3 = -1;
+			b4 = -1;
+			b5 = -2;
+			b6 = 0;
+			b7 = 0;
+			b8 = 1;
+		} else {
+			a = getSquareToQuad.apply(null, to);
+			invert(a);
+			a0 = a[0];
+			a1 = a[1];
+			a2 = a[2];
+			a3 = a[3];
+			a4 = a[4];
+			a5 = a[5];
+			a6 = a[6];
+			a7 = a[7];
+			a8 = a[8];
+		}
+
+		b = getSquareToQuad.apply(null, from);
+		b0 = b[0];
+		b1 = b[1];
+		b2 = b[2];
+		b3 = b[3];
+		b4 = b[4];
+		b5 = b[5];
+		b6 = b[6];
+		b7 = b[7];
+		b8 = b[8];
+
+		//multiply and convert to 4x4 matrix
+		mat[0] = a0 * b0 + a1 * b3 + a2 * b6;
+		mat[1] = a0 * b1 + a1 * b4 + a2 * b7;
+		mat[2] = a0 * b2 + a1 * b5 + a2 * b8;
+		mat[3] = 0;
+
+		mat[4] = a3 * b0 + a4 * b3 + a5 * b6;
+		mat[5] = a3 * b1 + a4 * b4 + a5 * b7;
+		mat[6] = a3 * b2 + a4 * b5 + a5 * b8;
+		mat[7] = 0;
+
+		mat[8] = a6 * b0 + a7 * b3 + a8 * b6;
+		mat[9] = a6 * b1 + a7 * b4 + a8 * b7;
+		mat[10] = a6 * b2 + a7 * b5 + a8 * b8;
+		mat[11] = 0;
+
+		mat[12] = 0;
+		mat[13] = 0;
+		mat[14] = 0;
+		mat[15] = 1;
+
+		this.transformed = true;
 		this.setDirty();
 	};
 
@@ -1076,12 +1230,18 @@ function Seriously(options) {
 		mat[13] = mat[1]*x + mat[5]*y + /* mat[9]*z + */ mat[13];
 		mat[14] = mat[2]*x + mat[6]*y + /* mat[10]*z + */ mat[14];
 		mat[15] = mat[3]*x + mat[7]*y + /* mat[11]*z + */ mat[15];
+		this.transformed = true;
 		this.setDirty();
 	};
 
 	//todo: only 2D for now, so z is always 1.  allow 3D later.
 	Node.prototype.scale = function(x, y) {
 		var mat = this.transform;
+
+		if (y === undefined) {
+			y = x;
+		}
+
 		mat[0] *= x;
 		mat[1] *= x;
 		mat[2] *= x;
@@ -1090,6 +1250,7 @@ function Seriously(options) {
 		mat[5] *= y;
 		mat[6] *= y;
 		mat[7] *= y;
+		this.transformed = true;
 		this.setDirty();
 	};
 
@@ -1112,6 +1273,7 @@ function Seriously(options) {
 		mat[9] = a01*sin + a21*cos;
 		mat[10] = a02*sin + a22*cos;
 		mat[11] = a03*sin + a23*cos;
+		this.transformed = true;
 		this.setDirty();
 	};
 
@@ -1134,6 +1296,7 @@ function Seriously(options) {
 		mat[5] = a01*-sin + a11*cos;
 		mat[6] = a02*-sin + a12*cos;
 		mat[7] = a03*-sin + a13*cos;
+		this.transformed = true;
 		this.setDirty();
 	};
 
@@ -1328,22 +1491,37 @@ function Seriously(options) {
 
 		this.reset = function() {
 			me.reset();
+			return this;
+		};
+
+		this.perspective = function(from, to) {
+			me.perspective(from, to);
+			return this;
+		};
+
+		this.setTransform = function(transform) {
+			me.setTransform(transform);
+			return this;
 		};
 
 		this.translate = function(x, y, z) {
 			me.translate(x, y, z);
+			return this;
 		};
 
 		this.scale = function(x, y) {
 			me.scale(x, y);
+			return this;
 		};
 
 		this.rotateY = function(angle) {
 			me.rotateZ(angle);
+			return this;
 		};
 
 		this.rotateZ = function(angle) {
 			me.rotateZ(angle);
+			return this;
 		};
 
 		this.destroy = function() {
@@ -1777,6 +1955,41 @@ function Seriously(options) {
 			me.render();
 		};
 		
+		this.reset = function() {
+			me.reset();
+			return this;
+		};
+
+		this.perspective = function(from, to) {
+			me.perspective(from, to);
+			return this;
+		};
+
+		this.setTransform = function(transform) {
+			me.setTransform(transform);
+			return this;
+		};
+
+		this.translate = function(x, y, z) {
+			me.translate(x, y, z);
+			return this;
+		};
+
+		this.scale = function(x, y) {
+			me.scale(x, y);
+			return this;
+		};
+
+		this.rotateY = function(angle) {
+			me.rotateZ(angle);
+			return this;
+		};
+
+		this.rotateZ = function(angle) {
+			me.rotateZ(angle);
+			return this;
+		};
+
 		this.destroy = function() {
 			var i, nop = function() { };
 
@@ -1914,7 +2127,7 @@ function Seriously(options) {
 			}
 			matchedType = true;
 
-			this.texture = source;
+			this.sourceTexture = source;
 			this.initialized = true;
 
 			//todo: if WebGLTexture source is from a different context render it and copy it over
@@ -1947,7 +2160,7 @@ function Seriously(options) {
 	extend(SourceNode, Node);
 
 	SourceNode.prototype.initialize = function() {
-		if (!gl || this.texture) {
+		if (!gl || this.sourceTexture) {
 			return;
 		}
 
@@ -1959,7 +2172,7 @@ function Seriously(options) {
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 		gl.bindTexture(gl.TEXTURE_2D, null);
 
-		this.texture = texture;
+		this.sourceTexture = texture;
 		this.initialized = true;
 		this.allowRefresh = true;
 		this.setDirty();
@@ -2001,7 +2214,7 @@ function Seriously(options) {
 		if (this.lastRenderFrame !== video.mozPresentedFrames ||
 			this.lastRenderTime !== video.currentTime) {
 
-			gl.bindTexture(gl.TEXTURE_2D, this.texture);
+			gl.bindTexture(gl.TEXTURE_2D, this.sourceTexture);
 			gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, this.flip);
 			try {
 				gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, video);
@@ -2011,6 +2224,20 @@ function Seriously(options) {
 					console.log('Unable to access cross-domain image');
 				}
 			}
+
+			if (this.transformed) {
+				if (!this.frameBuffer) {
+					this.initFrameBuffer();
+				}
+				this.texture = this.frameBuffer.texture;
+				this.uniforms.source = this.sourceTexture;
+				draw(baseShader, rectangleModel, this.uniforms, this.frameBuffer.frameBuffer, this);
+			} else {
+				this.texture = this.sourceTexture;
+			}
+
+			this.lastRenderTime = this.currentTime;
+
 			this.lastRenderTime = video.currentTime;
 			this.lastRenderFrame = video.mozPresentedFrames;
 
@@ -2039,7 +2266,7 @@ function Seriously(options) {
 		}
 
 		if (this.lastRenderTime === undefined || this.lastRenderTime !== this.currentTime) {
-			gl.bindTexture(gl.TEXTURE_2D, this.texture);
+			gl.bindTexture(gl.TEXTURE_2D, this.sourceTexture);
 			gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, this.flip);
 			try {
 				gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, media);
@@ -2048,6 +2275,17 @@ function Seriously(options) {
 					this.allowRefresh = false;
 					console.log('Unable to access cross-domain image');
 				}
+			}
+
+			if (this.transformed) {
+				if (!this.frameBuffer) {
+					this.initFrameBuffer();
+				}
+				this.texture = this.frameBuffer.texture;
+				this.uniforms.source = this.sourceTexture;
+				draw(baseShader, rectangleModel, this.uniforms, this.frameBuffer.frameBuffer, this);
+			} else {
+				this.texture = this.sourceTexture;
 			}
 
 			this.lastRenderTime = this.currentTime;
@@ -3201,14 +3439,14 @@ Seriously.prototype.effects = Seriously.effects = function () {
 };
 
 if (window.Float32Array) {
-	defaultTransform = new Float32Array([
+	defaultTransform = [
 		1, 0, 0, 0,
 		0, 1, 0, 0,
 		0, 0, 1, 0,
 		0, 0, 0, 1
-	]);
+	];
 	//todo: set scale
-	mat4.perspective(90, 1, 1, 100, defaultTransform);
+	mat4.perspective(90, 1, 1, 100, new Float32Array(defaultTransform));
 }
 
 //check for plugins loaded out of order
