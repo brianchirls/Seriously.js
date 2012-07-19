@@ -7,6 +7,7 @@
 	test('Core', function() {
 		var p, props = 0,
 			newGlobals = [],
+			skipIds = false,
 			s;
 		
 		expect(5);
@@ -14,16 +15,27 @@
 		ok(window.Seriously, 'Seriously exists');
 		
 		equal(typeof window.Seriously, 'function', 'Seriously is a function');
-		
+
+		// workaround: https://github.com/jquery/qunit/issues/212
+		p = document.createElement('div');
+		p.id = 'foobarbazbiddle83274';
+		document.body.appendChild(p);
+		if (window[p.id] === p) {
+			skipIds = true;
+		}
+		document.body.removeChild(p);
+
 		for (p in window) {
-			props++;
-			if (window.globalProperties.indexOf(p) < 0) {
-				console.log('new property: ' + p);
-				newGlobals.push(p);
+			if (!skipIds || document.getElementById(p) !== window[p] &&
+				document.getElementById('qunit-urlconfig-' + p) !== window[p]) {
+				if (window.globalProperties.indexOf(p) < 0) {
+					props++;
+					console.log('new property: ' + p, window[p]);
+					newGlobals.push(p);
+				}
 			}
 		}
 		
-		props -= window.globalProperties.length;
 		p = props + (props === 1 ? ' property' : ' properties') + ' added to global: [' +
 			newGlobals.join(', ') + ']';
 		equal(props, 1, p);
