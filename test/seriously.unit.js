@@ -37,25 +37,48 @@
 		s.destroy();
 	});
 
-	test('Incompatible', function() {
-		var s, e, msg;
+	test('Incompatible', function () {
+		var s, e, msg,
+			expected, gl, canvas;
 
 		expect(2);
 
 		Seriously.plugin('removeme', {
-			compatible: function(gl) {
+			compatible: function (gl) {
 				return false;
 			}
 		});
 
 		s = Seriously();
 
+		canvas = document.createElement('canvas');
+		if (!canvas) {
+			expected = 'canvas';
+		} else if (!window.WebGLRenderingContext) {
+			expected = 'webgl';
+		} else {
+			try {
+				gl = canvas.getContext('experimental-webgl');
+			} catch (expError) {
+				try {
+					gl = canvas.getContext('webgl');
+				} catch (webglError) {
+				}
+			}
+
+			if (!gl) {
+				expected = 'context';
+			} else {
+				expected = 'plugin-removeme';
+			}
+		}
+
 		msg = s.incompatible('removeme');
-		equal(msg, 'plugin-removeme', 'Incompatibity test on plugin');
+		equal(msg, expected, 'Incompatibity test on plugin');
 
 		e = s.effect('removeme');
 		msg = s.incompatible();
-		equal(msg, 'plugin-removeme', 'Incompatibity test on network with incompatible plugin');
+		equal(msg, expected, 'Incompatibity test on network with incompatible plugin');
 
 		//clean up
 		s.destroy();
