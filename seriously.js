@@ -1173,29 +1173,29 @@ function Seriously(options) {
 			b7 = 0;
 			b8 = 1;
 		} else {
-			a = getSquareToQuad.apply(null, to);
-			invert(a);
-			a0 = a[0];
-			a1 = a[1];
-			a2 = a[2];
-			a3 = a[3];
-			a4 = a[4];
-			a5 = a[5];
-			a6 = a[6];
-			a7 = a[7];
-			a8 = a[8];
+			b = getSquareToQuad.apply(null, from);
+			b0 = b[0];
+			b1 = b[1];
+			b2 = b[2];
+			b3 = b[3];
+			b4 = b[4];
+			b5 = b[5];
+			b6 = b[6];
+			b7 = b[7];
+			b8 = b[8];
 		}
 
-		b = getSquareToQuad.apply(null, from);
-		b0 = b[0];
-		b1 = b[1];
-		b2 = b[2];
-		b3 = b[3];
-		b4 = b[4];
-		b5 = b[5];
-		b6 = b[6];
-		b7 = b[7];
-		b8 = b[8];
+		a = getSquareToQuad.apply(null, to);
+		invert(a);
+		a0 = a[0];
+		a1 = a[1];
+		a2 = a[2];
+		a3 = a[3];
+		a4 = a[4];
+		a5 = a[5];
+		a6 = a[6];
+		a7 = a[7];
+		a8 = a[8];
 
 		//multiply and convert to 4x4 matrix
 		mat[0] = a0 * b0 + a1 * b3 + a2 * b6;
