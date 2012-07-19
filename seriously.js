@@ -2227,24 +2227,28 @@ function Seriously(options) {
 				}
 			}
 
-			if (this.transformed) {
-				if (!this.frameBuffer) {
-					this.initFrameBuffer();
-				}
-				this.texture = this.frameBuffer.texture;
-				this.uniforms.source = this.sourceTexture;
-				draw(baseShader, rectangleModel, this.uniforms, this.frameBuffer.frameBuffer, this);
-			} else {
-				this.texture = this.sourceTexture;
-			}
-
 			this.lastRenderTime = this.currentTime;
 
 			this.lastRenderTime = video.currentTime;
 			this.lastRenderFrame = video.mozPresentedFrames;
-
-			this.dirty = false;
+			this.dirty = true;
 		}
+
+		if (this.transformed) {
+			if (!this.frameBuffer) {
+				this.initFrameBuffer();
+			}
+			this.texture = this.frameBuffer.texture;
+			this.uniforms.source = this.sourceTexture;
+			if (this.dirty) {
+				draw(baseShader, rectangleModel, this.uniforms, this.frameBuffer.frameBuffer, this);
+			}
+		} else {
+			this.texture = this.sourceTexture;
+		}
+
+		this.dirty = false;
+
 	};
 
 	SourceNode.prototype.renderImageCanvas = function() {
@@ -2279,21 +2283,24 @@ function Seriously(options) {
 				}
 			}
 
-			if (this.transformed) {
-				if (!this.frameBuffer) {
-					this.initFrameBuffer();
-				}
-				this.texture = this.frameBuffer.texture;
-				this.uniforms.source = this.sourceTexture;
-				draw(baseShader, rectangleModel, this.uniforms, this.frameBuffer.frameBuffer, this);
-			} else {
-				this.texture = this.sourceTexture;
-			}
-
 			this.lastRenderTime = this.currentTime;
+			this.dirty = true;
 
-			this.dirty = false;
 		}
+
+		if (this.transformed) {
+			if (!this.frameBuffer) {
+				this.initFrameBuffer();
+			}
+			this.texture = this.frameBuffer.texture;
+			this.uniforms.source = this.sourceTexture;
+			if (this.dirty) {
+				draw(baseShader, rectangleModel, this.uniforms, this.frameBuffer.frameBuffer, this);
+			}
+		} else {
+			this.texture = this.sourceTexture;
+		}
+		this.dirty = false;
 	};
 
 	SourceNode.prototype.destroy = function() {
