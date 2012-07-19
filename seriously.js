@@ -1060,8 +1060,10 @@ function Seriously(options) {
 	};
 
 	Node.prototype.reset = function () {
-		this.transform = new Float32Array(defaultTransform);
-		this.uniforms.transform = this.transform;
+		var i;
+		for (i = 0; i < 16; i++) {
+			this.transform[i] = defaultTransform[i];
+		}
 		this.transformed = false;
 		this.setDirty();
 	};
@@ -1259,7 +1261,7 @@ function Seriously(options) {
 			sin = Math.sin(angle),
 			cos = Math.cos(angle),
 
-		// Cache the matrix values (makes for huge speed increases!)
+		// Cache the matrix values (faster!)
 			a00 = mat[0], a01 = mat[1], a02 = mat[2], a03 = mat[3],
 			a20 = mat[8], a21 = mat[9], a22 = mat[10], a23 = mat[11];
 
@@ -3439,12 +3441,12 @@ Seriously.prototype.effects = Seriously.effects = function () {
 };
 
 if (window.Float32Array) {
-	defaultTransform = [
+	defaultTransform = new Float32Array([
 		1, 0, 0, 0,
 		0, 1, 0, 0,
 		0, 0, 1, 0,
 		0, 0, 0, 1
-	];
+	]);
 	//todo: set scale
 	mat4.perspective(90, 1, 1, 100, new Float32Array(defaultTransform));
 }
