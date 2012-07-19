@@ -223,13 +223,24 @@ mat4 = {
 },
 
 requestAnimFrame = (function(){
+	var lastTime = 0;
 	return  window.requestAnimationFrame       ||
 			window.webkitRequestAnimationFrame ||
 			window.mozRequestAnimationFrame    ||
 			window.oRequestAnimationFrame      ||
 			window.msRequestAnimationFrame     ||
-			function(/* function */ callback, /* DOMElement */ element){
-				window.setTimeout(callback, 1000 / 60);
+			function (callback) {
+				var currTime, timeToCall, id;
+
+				function timeoutCallback() {
+					callback(currTime + timeToCall);
+				}
+
+				currTime = new Date().getTime();
+				timeToCall = Math.max(0, 16 - (currTime - lastTime));
+				id = window.setTimeout(timeoutCallback, timeToCall);
+				lastTime = currTime + timeToCall;
+				return id;
 			};
 }());
 
