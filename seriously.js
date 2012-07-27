@@ -1630,21 +1630,26 @@ function Seriously(options) {
 			if (input.type === 'image') {
 				//&& !(value instanceof Effect) && !(value instanceof Source)) {
 
-				value = findInputNode(value);
+				if (value) {
+					value = findInputNode(value);
 
-				if (value !== this.sources[name]) {
-					if (this.sources[name]) {
-						this.sources[name].removeTarget(this);
+					if (value !== this.sources[name]) {
+						if (this.sources[name]) {
+							this.sources[name].removeTarget(this);
+						}
+
+						if ( traceSources(value, this) ) {
+							throw 'Attempt to make cyclical connection.';
+						}
+
+						this.sources[name] = value;
+						value.setTarget(this);
 					}
-					this.sources[name] = value;
-					value.setTarget(this);
-				}
 
-				if ( traceSources(value, this) ) {
-					throw 'Attempt to make cyclical connection.';
+					value = value.pub;
+				} else {
+					value = false;
 				}
-
-				value = value.pub;
 
 				uniform = this.sources[name];
 			} else {
