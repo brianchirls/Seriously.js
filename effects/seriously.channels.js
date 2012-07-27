@@ -132,11 +132,6 @@ Seriously.plugin('channels', (function () {
 			shaders[sources.length] = shader;
 			return shader;
 		},
-		/*
-		draw: function (shader, model, uniforms, frameBuffer, parent) {
-			parent(shader, model, uniforms, frameBuffer);
-		},
-		*/
 		inPlace: true,
 		inputs: {
 			source: {
