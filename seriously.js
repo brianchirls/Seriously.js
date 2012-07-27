@@ -1279,17 +1279,33 @@ function Seriously(options) {
 		//todo: provide an alternate method
 		for (name in me.effect.inputs) {
 			if (this[name] === undefined) {
-				this.__defineSetter__(name, (function (inputName) {
-					return function (value) {
-						return setInput(inputName, value);
-					};
-				}(name)));
+				if (me.effect.inputs[name].type === 'image') {
+					this.__defineSetter__(name, (function (inputName) {
+						return function (value) {
+							var val = setInput(inputName, value);
+							return val && val.pub;
+						};
+					}(name)));
 
-				this.__defineGetter__(name, (function (inputName) {
-					return function () {
-						return me.inputs[inputName];
-					};
-				}(name)));
+					this.__defineGetter__(name, (function (inputName) {
+						return function () {
+							var val = me.inputs[inputName];
+							return val && val.pub;
+						};
+					}(name)));
+				} else {
+					this.__defineSetter__(name, (function (inputName) {
+						return function (value) {
+							return setInput(inputName, value);
+						};
+					}(name)));
+
+					this.__defineGetter__(name, (function (inputName) {
+						return function () {
+							return me.inputs[inputName];
+						};
+					}(name)));
+				}
 			} else {
 				//todo: this is temporary. get rid of it.
 				throw 'Cannot overwrite Seriously.' + name;
@@ -1645,8 +1661,6 @@ function Seriously(options) {
 						this.sources[name] = value;
 						value.setTarget(this);
 					}
-
-					value = value.pub;
 				} else {
 					value = false;
 				}
