@@ -3,13 +3,14 @@
 	<head>
 		<meta charset="UTF-8">
 		<title>Seriously.js</title>
-<!--		<script type="text/javascript" src="webgl-debug.js"></script> -->
+		<!--<script type="text/javascript" src="lib/webgl-debug.js"></script> -->
 		<script type="text/javascript" src="seriously.js"></script>
 		<script type="text/javascript" src="effects/seriously.bleach-bypass.js"></script>
 		<script type="text/javascript" src="effects/seriously.blend.js"></script>
 		<script type="text/javascript" src="effects/seriously.color.js"></script>
 		<script type="text/javascript" src="effects/seriously.dent.js"></script>
 		<script type="text/javascript" src="effects/seriously.edge.js"></script>
+		<script type="text/javascript" src="effects/seriously.emboss.js"></script>
 		<script type="text/javascript" src="effects/seriously.exposure.js"></script>
 		<script type="text/javascript" src="effects/seriously.lumakey.js"></script>
 		<script type="text/javascript" src="effects/seriously.fader.js"></script>
@@ -178,7 +179,7 @@
 								if (input.step && !isNaN(input.step) && input.step > 0) {
 									element.setAttribute('step', input.step);
 								} else {
-									element.setAttribute('step', 0.000001);
+									element.setAttribute('step', 0.01);
 								}
 								element.value = input.defaultValue;
 							} else if (input.type === 'color') {
