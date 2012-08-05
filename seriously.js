@@ -223,13 +223,24 @@ mat4 = {
 },
 
 requestAnimFrame = (function(){
+	var lastTime = 0;
 	return  window.requestAnimationFrame       ||
 			window.webkitRequestAnimationFrame ||
 			window.mozRequestAnimationFrame    ||
 			window.oRequestAnimationFrame      ||
 			window.msRequestAnimationFrame     ||
-			function(/* function */ callback, /* DOMElement */ element){
-				window.setTimeout(callback, 1000 / 60);
+			function (callback) {
+				var currTime, timeToCall, id;
+
+				function timeoutCallback() {
+					callback(currTime + timeToCall);
+				}
+
+				currTime = new Date().getTime();
+				timeToCall = Math.max(0, 16 - (currTime - lastTime));
+				id = window.setTimeout(timeoutCallback, timeToCall);
+				lastTime = currTime + timeToCall;
+				return id;
 			};
 }());
 
@@ -325,20 +336,24 @@ faster than setTimeout(fn, 0);
 http://dbaron.org/log/20100309-faster-timeouts
 */
 function setTimeoutZero(fn) {
-	timeouts.push(fn);
 	/*
 	Workaround for postMessage bug in Firefox if the page is loaded from the file system
 	https://bugzilla.mozilla.org/show_bug.cgi?id=740576
 	Should run fine, but maybe a few milliseconds slower per frame.
 	*/
+	function timeoutFunction() {
+		if (timeouts.length) {
+			(timeouts.shift())();
+		}
+	}
+
+	if (typeof fn !== 'function') {
+		throw 'setTimeoutZero argument is not a function';
+	}
+
+	timeouts.push(fn);
 	if (window.location.protocol === 'file:') {
-		setTimeout(function() {
-			console.log('using regular timeout');
-			if (timeouts.length > 0) {
-				var fn = timeouts.shift();
-				fn();
-			}
-		}, 0);
+		setTimeout(timeoutFunction, 0);
 		return;
 	}
 
@@ -1429,17 +1444,33 @@ function Seriously(options) {
 		//todo: provide an alternate method
 		for (name in me.effect.inputs) {
 			if (this[name] === undefined) {
-				this.__defineSetter__(name, (function (inputName) {
-					return function (value) {
-						return setInput(inputName, value);
-					};
-				}(name)));
+				if (me.effect.inputs[name].type === 'image') {
+					this.__defineSetter__(name, (function (inputName) {
+						return function (value) {
+							var val = setInput(inputName, value);
+							return val && val.pub;
+						};
+					}(name)));
 
-				this.__defineGetter__(name, (function (inputName) {
-					return function () {
-						return me.inputs[inputName];
-					};
-				}(name)));
+					this.__defineGetter__(name, (function (inputName) {
+						return function () {
+							var val = me.inputs[inputName];
+							return val && val.pub;
+						};
+					}(name)));
+				} else {
+					this.__defineSetter__(name, (function (inputName) {
+						return function (value) {
+							return setInput(inputName, value);
+						};
+					}(name)));
+
+					this.__defineGetter__(name, (function (inputName) {
+						return function () {
+							return me.inputs[inputName];
+						};
+					}(name)));
+				}
 			} else {
 				//todo: this is temporary. get rid of it.
 				throw 'Cannot overwrite Seriously.' + name;
@@ -1795,21 +1826,24 @@ function Seriously(options) {
 			if (input.type === 'image') {
 				//&& !(value instanceof Effect) && !(value instanceof Source)) {
 
-				value = findInputNode(value);
+				if (value) {
+					value = findInputNode(value);
 
-				if (value !== this.sources[name]) {
-					if (this.sources[name]) {
-						this.sources[name].removeTarget(this);
+					if (value !== this.sources[name]) {
+						if (this.sources[name]) {
+							this.sources[name].removeTarget(this);
+						}
+
+						if ( traceSources(value, this) ) {
+							throw 'Attempt to make cyclical connection.';
+						}
+
+						this.sources[name] = value;
+						value.setTarget(this);
 					}
-					this.sources[name] = value;
-					value.setTarget(this);
+				} else {
+					value = false;
 				}
-
-				if ( traceSources(value, this) ) {
-					throw 'Attempt to make cyclical connection.';
-				}
-
-				value = value.pub;
 
 				uniform = this.sources[name];
 			} else {
@@ -2377,6 +2411,9 @@ function Seriously(options) {
 				me.width = me.desiredWidth = value;
 				me.target.width = value;
 
+				me.setDirty();
+				return;
+
 				if (this.source && this.source.setSize) {
 					this.source.setSize(value);
 
@@ -2394,6 +2431,9 @@ function Seriously(options) {
 			if (!isNaN(value) && value >0 && me.height !== value) {
 				me.height = me.desiredHeight = value;
 				me.target.height = value;
+
+				me.setDirty();
+				return;
 
 				if (this.source && this.source.setSize) {
 					this.source.setSize(undefined, value);
@@ -2645,20 +2685,17 @@ function Seriously(options) {
 	};
 
 	TargetNode.prototype.setDirty = function () {
+		var that;
+
+		function render() {
+			that.render();
+		}
+
 		this.dirty = true;
 
 		if (this.auto) {
-			//todo: test this, make sure we don't double-render if receiving from two updated sources
-			//todo: or setTimeout for 0?
-			/*
-			requestAnimFrame(function() {
-				this.render();
-			});
-			*/
-			var that = this;
-			setTimeoutZero(function() {
-				that.render();
-			});
+			that = this;
+			setTimeoutZero(render);
 		}
 	};
 
