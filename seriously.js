@@ -2164,6 +2164,9 @@ function Seriously(options) {
 				me.width = me.desiredWidth = value;
 				me.target.width = value;
 
+				me.setDirty();
+				return;
+
 				if (this.source && this.source.setSize) {
 					this.source.setSize(value);
 
@@ -2181,6 +2184,9 @@ function Seriously(options) {
 			if (!isNaN(value) && value >0 && me.height !== value) {
 				me.height = me.desiredHeight = value;
 				me.target.height = value;
+
+				me.setDirty();
+				return;
 
 				if (this.source && this.source.setSize) {
 					this.source.setSize(undefined, value);
