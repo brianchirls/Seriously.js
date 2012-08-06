@@ -961,7 +961,7 @@ function Seriously(options) {
 		gl.enable(gl.DEPTH_TEST);
 	}
 
-	function findInputNode(source) {
+	function findInputNode(source, options) {
 		var node, i;
 		if (source instanceof SourceNode || source instanceof EffectNode) {
 			node = source;
@@ -982,7 +982,7 @@ function Seriously(options) {
 				}
 			}
 
-			node = new SourceNode(source);
+			node = new SourceNode(source, options);
 		}
 
 		return node;
@@ -1052,13 +1052,14 @@ function Seriously(options) {
 			this.initFrameBuffer();
 		}
 
+		//todo: should we render here?
+		this.render();
+
 		if (this instanceof SourceNode) {
 			//todo: move this to SourceNode.render so it only runs when it changes
 			this.uniforms.source = this.texture;
 			draw(baseShader, rectangleModel, this.uniforms, this.frameBuffer.frameBuffer, this);
 		}
-
-		//todo: should we render here?
 
 		//todo: figure out formats and types
 		if (dest === undefined) {
@@ -1403,7 +1404,7 @@ function Seriously(options) {
 	};
 
 	EffectNode = function (hook, options) {
-		Node.call(this);
+		Node.call(this, options);
 
 		this.effect = seriousEffects[hook];
 		this.sources = {};
@@ -1810,6 +1811,10 @@ function Seriously(options) {
 		this.render = function() {
 			me.render();
 		};
+
+		this.readPixels = function (x, y, width, height, dest) {
+			return me.readPixels(x, y, width, height, dest);
+		};
 		
 		this.destroy = function() {
 			var i, nop = function() { };
@@ -1840,13 +1845,15 @@ function Seriously(options) {
 	SourceNode = function (source, options) {
 		var opts = options || {},
 			flip = opts.flip === undefined ? true : opts.flip,
-			width = this.desiredWidth,
-			height = this.desiredHeight,
+			width, height,
 			deferTexture = false,
 			that = this,
 			matchedType = false;
 
-		Node.call(this);
+		Node.call(this, options);
+
+		width = this.desiredWidth;
+		height = this.desiredHeight;
 
 		if ( typeof source === 'string' && isNaN(source) ) {
 			source = getElement(source, ['canvas', 'img', 'video']);
@@ -1925,7 +1932,29 @@ function Seriously(options) {
 			}
 
 			matchedType = true;
-//todo: typed arrays, use opposite default for flip
+
+			//use opposite default for flip
+			if (opts.flip === undefined) {
+				flip = false;
+			}
+			source = new Uint8Array(source);
+			this.render = this.renderTypedArray;
+		} else if ( source instanceof Uint8Array ) {
+			if (!width || !height) {
+				throw 'Height and width must be provided with a Uint8Array';
+			}
+
+			if (width * height * 4 !== source.length) {
+				throw 'Typed array length must be height x width x 4.';
+			}
+
+			matchedType = true;
+
+			//use opposite default for flip
+			if (opts.flip === undefined) {
+				flip = false;
+			}
+			this.render = this.renderTypedArray;
 		} else if (source instanceof WebGLTexture) {
 			if (gl && !gl.isTexture(source)) {
 				throw 'Not a valid WebGL texture.';
@@ -2086,6 +2115,33 @@ function Seriously(options) {
 
 			this.lastRenderTime = this.currentTime;
 
+			this.dirty = false;
+		}
+	};
+
+	SourceNode.prototype.renderTypedArray = function() {
+		var media = this.source;
+
+		if (!gl || !media || !media.length) {
+			return;
+		}
+
+		if (!this.initialized) {
+			this.initialize();
+		}
+
+		this.currentTime = media.currentTime;
+
+		if (!this.allowRefresh) {
+			return;
+		}
+
+		if (this.lastRenderTime === undefined || this.lastRenderTime !== this.currentTime) {
+			gl.bindTexture(gl.TEXTURE_2D, this.texture);
+			gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, this.flip);
+			gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, this.width, this.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, media);
+
+			this.lastRenderTime = this.currentTime || 0;
 			this.dirty = false;
 		}
 	};
@@ -2259,7 +2315,7 @@ function Seriously(options) {
 			i, element, elements, context,
 			frameBuffer;
 
-		Node.call(this);
+		Node.call(this, options);
 
 //		mat4.perspective(90, 1, 1, 100, this.transform);
 
@@ -2588,7 +2644,7 @@ function Seriously(options) {
 	};
 
 	this.source = function (source, options) {
-		var sourceNode = findInputNode(source);
+		var sourceNode = findInputNode(source, options);
 		//var sourceNode = new SourceNode(source, options);
 		return sourceNode.pub;
 	};

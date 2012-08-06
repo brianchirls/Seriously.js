@@ -30,7 +30,9 @@
 				document.getElementById('qunit-urlconfig-' + p) !== window[p]) {
 				if (window.globalProperties.indexOf(p) < 0) {
 					props++;
-					console.log('new property: ' + p, window[p]);
+					if (p !== 'Seriously') {
+						console.log('new property: ' + p, window[p]);
+					}
 					newGlobals.push(p);
 				}
 			}
@@ -245,7 +247,107 @@
 	 * checkSource on cross-origin image, dirty canvas
 	*/
 	
-	test('Create two Source objects on identical sources', function() {
+	asyncTest('Source Types', function() {
+		function compare(a, b) {
+			var i;
+
+			if (a.length !== b.length) {
+				return false;
+			}
+			
+			for (i = 0; i < a.length; i++) {
+				if (a[i] !== b[i]) {
+					return false;
+					
+				}
+			}
+			
+			return true;
+		}
+
+		var seriously, source, target,
+			sourceCanvas, targetCanvas, img,
+			ctx,
+			pixels, imagedata,
+			comparison = [ //image is upside down
+				0, 0, 255, 255,
+				255, 255, 255, 255,
+				255, 0, 0, 255,
+				0, 255, 0, 255
+			];
+
+		expect(10);
+
+		targetCanvas = document.createElement('canvas');
+		targetCanvas.width = 2;
+		targetCanvas.height = 2;
+
+		sourceCanvas = document.createElement('canvas');
+		sourceCanvas.width = 2;
+		sourceCanvas.height = 2;
+
+		ctx = sourceCanvas.getContext && sourceCanvas.getContext('2d');
+		ctx.fillStyle = '#f00'; //red
+		ctx.fillRect(0, 0, 1, 1);
+		ctx.fillStyle = '#0f0'; //green
+		ctx.fillRect(1, 0, 1, 1);
+		ctx.fillStyle = '#00f'; //blue
+		ctx.fillRect(0, 1, 1, 1);
+		ctx.fillStyle = '#fff'; //white
+		ctx.fillRect(1, 1, 1, 1);
+		imagedata = ctx.getImageData(0, 0, 2, 2);
+
+		seriously = new Seriously();
+		target = seriously.target(targetCanvas);
+
+		img = document.createElement('img');
+		img.addEventListener('load', function () {
+			source = seriously.source(img);
+			ok(source, 'Created source from image');
+			pixels = source.readPixels(0, 0, 2, 2);
+			ok(pixels && compare(pixels, comparison), 'Image source rendered accurately.');
+			source.destroy();
+
+			seriously.destroy();
+			start();
+		});
+		img.src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFklEQVQIW2P8z8DwnxFIMAJpIGBgAAA8/Qb9DqS16QAAAABJRU5ErkJggg== ';
+
+		source = seriously.source(sourceCanvas);
+		ok(source, 'Created source from canvas');
+		pixels = source.readPixels(0, 0, 2, 2);
+		ok(pixels && compare(pixels, comparison), 'Canvas source rendered accurately.');
+		source.destroy();
+
+		source = seriously.source(imagedata);
+		ok(source, 'Created source from ImageData');
+		pixels = source.readPixels(0, 0, 2, 2);
+		ok(pixels && compare(pixels, comparison), 'ImageData source rendered accurately.');
+		source.destroy();
+
+		source = seriously.source(new Uint8Array(comparison), {
+			width: 2,
+			height: 2
+		});
+		ok(source, 'Created source from Typed Array');
+		pixels = source.readPixels(0, 0, 2, 2);
+		ok(pixels && compare(pixels, comparison), 'Typed Array source rendered accurately.');
+		source.destroy();
+
+		source = seriously.source(comparison, {
+			width: 2,
+			height: 2
+		});
+		ok(source, 'Created source from Array');
+		pixels = source.readPixels(0, 0, 2, 2);
+		ok(pixels && compare(pixels, comparison), 'Array source rendered accurately.');
+		source.destroy();
+
+		//todo: implement and test WebGLTexture source		
+		return;
+	});
+	
+	test('Create two Source objects on identical sources', function () {
 		var img, seriously, source1, source2;
 
 		seriously = Seriously();
@@ -258,7 +360,7 @@
 		seriously.destroy();
 	});
 
-	test('Create Source object implicitly', function() {
+	test('Create Source object implicitly', function () {
 		var seriously, source1, source2, effect;
 
 		Seriously.plugin('test', {
@@ -280,7 +382,7 @@
 		seriously.destroy();
 		Seriously.removePlugin('test');
 	});
-	
+
 	module('Target');
 	/*
 	 * create target
