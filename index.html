@@ -5,6 +5,7 @@
 		<title>Seriously.js</title>
 		<!--<script type="text/javascript" src="lib/webgl-debug.js"></script> -->
 		<script type="text/javascript" src="seriously.js"></script>
+		<script type="text/javascript" src="effects/seriously.ascii.js"></script>
 		<script type="text/javascript" src="effects/seriously.bleach-bypass.js"></script>
 		<script type="text/javascript" src="effects/seriously.blend.js"></script>
 		<script type="text/javascript" src="effects/seriously.color.js"></script>
@@ -19,6 +20,7 @@
 		<script type="text/javascript" src="effects/seriously.nightvision.js"></script>
 		<script type="text/javascript" src="effects/seriously.noise.js"></script>
 		<script type="text/javascript" src="effects/seriously.ripple.js"></script>
+		<script type="text/javascript" src="effects/seriously.scanlines.js"></script>
 		<script type="text/javascript" src="effects/seriously.sepia.js"></script>
 		<script type="text/javascript" src="effects/seriously.tone.js"></script>
 		<script type="text/javascript" src="effects/seriously.vignette.js"></script>
@@ -29,10 +31,18 @@
 			background-color: #aaa;
 		}
 		
+		img, video {
+			display: none;
+		}
+
 		</style>
 	</head>
 	<body>
-		<img id="img" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAANwAAAClCAYAAAA3d5OIAAAABmJLR0QA/wD/AP+gvaeTAAAAB3RJTUUH2gIPFxcpA4p/0AAAA2BJREFUeJzt2r9qVHkcxuHvmRyHhCASRcRStErnwnYWWdgljaX1doqCld5CRNhLELtd8AJs1sq5AmFTuMUqoiABXSZIxEgyzngDyWbI4vsrfJ72/HnPwHw4U0w3Go1m1cjz59drdfWfJtt/j8/XrdOPmmxXVfUvrtXk0r9Ntq/8caU2Hm402a6qGg9+qdPT/Sbb909cqyf7t5tsV1UNmi3Dd0hwECQ4CBIcBAkOggQHQYKDIMFBkOAgSHAQJDgIEhwECQ6CBAdBgoMgwUGQ4CBIcBAkOAgSHAQJDoIEB0GCgyDBQZDgIEhwECQ4CBIcBAkOggQHQYKDIMFBkOAgSHAQJDgIEhwECQ6CBAdBgoMgwUGQ4CBIcBAkOAgSHAQJDoIEB0GCgyDBQZDgIEhwECQ4CBIcBAkOggQHQYKDIMFBkOAgSHAQJDgIEhwECQ6CBAdBgoMgwUGQ4CBIcBAkOAgSHAQJDoIEB0GCgyDBQZDgIEhwECQ4CBIcBAkOggQHQYKDIMFBkOAgSHAQJDgIEhwECQ6CBAdBgoMgwUGQ4CBIcBAkOAgSHAQJDoIEB0GCgyDBQZDgIEhwECQ4CBIcBAkOggQHQYKDIMFBkOAgSHAQJDgIEhwECQ6C+rW1duPLyz/W4uK4yfbZ6akabTeZrqqqeycv17Phsybbf/2wVGujJtNVVbVy82IN3r9vsr2+PqzRjSbTVeUNB1GCgyDBQZDgIEhwECQ4CBIcBAkOggQHQYKDIMFBkOAgqO9PPm02PhuOa78/dejxy6sX6szK4cf/j+Xpcm1/Pv6/l7dejevNy3fHvv7DtGpx/9yxr/9P3bQ+94f/OXiws1MnNje/zfYcph8/1uzLlyPP67quBoP53gkLCwtznbe1tVWbDT97VxeuzpqtH+HPB3dq/eefWj/Gge7++luNfn/d+jEONBl8qrcrj1s/xqF2d3drNjv6a9f3fQ2Hw7nuubS0VF3XHXneZDKpvb29ue75LfhJCUGCgyDBQZDgIEhwECQ4CBIcBAkOggQHQYKDIMFBkOAgSHAQJDgIEhwECQ6CBAdBgoMgwUGQ4CBIcBAkOAgSHAQJDoIEB0GCgyDBQZDgIEhwECQ4CBIcBAkOggQHQYKDIMFBkOAgSHAQJDgIEhwECQ6CvgJd+V3gFFLyFgAAAABJRU5ErkJggg=="/>
+		<button id="colorbutton">Color Bars</button>
+		<button id="camera">Camera</button>
+		<img id="colorbars" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAANwAAAClCAYAAAA3d5OIAAAABmJLR0QA/wD/AP+gvaeTAAAAB3RJTUUH2gIPFxcpA4p/0AAAA2BJREFUeJzt2r9qVHkcxuHvmRyHhCASRcRStErnwnYWWdgljaX1doqCld5CRNhLELtd8AJs1sq5AmFTuMUqoiABXSZIxEgyzngDyWbI4vsrfJ72/HnPwHw4U0w3Go1m1cjz59drdfWfJtt/j8/XrdOPmmxXVfUvrtXk0r9Ntq/8caU2Hm402a6qGg9+qdPT/Sbb909cqyf7t5tsV1UNmi3Dd0hwECQ4CBIcBAkOggQHQYKDIMFBkOAgSHAQJDgIEhwECQ6CBAdBgoMgwUGQ4CBIcBAkOAgSHAQJDoIEB0GCgyDBQZDgIEhwECQ4CBIcBAkOggQHQYKDIMFBkOAgSHAQJDgIEhwECQ6CBAdBgoMgwUGQ4CBIcBAkOAgSHAQJDoIEB0GCgyDBQZDgIEhwECQ4CBIcBAkOggQHQYKDIMFBkOAgSHAQJDgIEhwECQ6CBAdBgoMgwUGQ4CBIcBAkOAgSHAQJDoIEB0GCgyDBQZDgIEhwECQ4CBIcBAkOggQHQYKDIMFBkOAgSHAQJDgIEhwECQ6CBAdBgoMgwUGQ4CBIcBAkOAgSHAQJDoIEB0GCgyDBQZDgIEhwECQ4CBIcBAkOggQHQYKDIMFBkOAgSHAQJDgIEhwECQ6C+rW1duPLyz/W4uK4yfbZ6akabTeZrqqqeycv17Phsybbf/2wVGujJtNVVbVy82IN3r9vsr2+PqzRjSbTVeUNB1GCgyDBQZDgIEhwECQ4CBIcBAkOggQHQYKDIMFBkOAgqO9PPm02PhuOa78/dejxy6sX6szK4cf/j+Xpcm1/Pv6/l7dejevNy3fHvv7DtGpx/9yxr/9P3bQ+94f/OXiws1MnNje/zfYcph8/1uzLlyPP67quBoP53gkLCwtznbe1tVWbDT97VxeuzpqtH+HPB3dq/eefWj/Gge7++luNfn/d+jEONBl8qrcrj1s/xqF2d3drNjv6a9f3fQ2Hw7nuubS0VF3XHXneZDKpvb29ue75LfhJCUGCgyDBQZDgIEhwECQ4CBIcBAkOggQHQYKDIMFBkOAgSHAQJDgIEhwECQ6CBAdBgoMgwUGQ4CBIcBAkOAgSHAQJDoIEB0GCgyDBQZDgIEhwECQ4CBIcBAkOggQHQYKDIMFBkOAgSHAQJDgIEhwECQ6CvgJd+V3gFFLyFgAAAABJRU5ErkJggg=="/>
+		<img id="img"/>
+		<video id="video"></video>
 		<select id="effects">
 			<option value="">None</option>
 		</select><br/>
@@ -47,10 +57,11 @@
 	
 	var e, i,
 		input,
+		gUM,
 		sources,
 		effect,
 		element,
-		source, target,
+		target,
 		effects = Seriously.effects(),
 		effectObjects = {};
 		
@@ -67,13 +78,24 @@
 						break;
 					}
 				}
-			}	
+			}
+		}
+
+		gUM = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
+
+		if (!gUM) {
+			document.body.removeChild(document.getElementById('camera'));
+			return;
 		}
 		
 		window.addEventListener('DOMContentLoaded', function() {
 			var s = Seriously(),
+				blend = s.effect('blend'),
+				original = s.effect('split'),
+				source = s.effect('split'),
 				options = document.getElementById('options'),
 				img = document.getElementById('img'),
+				video = document.getElementById('video'),
 				select = document.getElementById('effects'),
 				active;
 
@@ -84,11 +106,104 @@
 				element.appendChild(document.createTextNode(effect.title));
 				select.appendChild(element);
 			}
-						
-			source = s.source(img);
+
+			source.sourceA = '#colorbars';
+
+			original.sourceA = '#colorbars';
+			original.translate(-0.75, -0.75);
+			original.scale(0.2);
+
+			blend.top = original;
+			blend.bottom = source;
+
 			target = s.target('#canvas');
-			target.source = source;
+			target.source = blend;
+
 			s.go();
+
+			document.getElementById('colorbutton').addEventListener('click', function() {
+				video.pause();
+				original.sourceA = '#colorbars';
+				source.sourceA = '#colorbars';
+			});
+
+			target.original.addEventListener('dragover', function(event) {
+				event.preventDefault();
+				return false;
+			});
+
+			target.original.addEventListener('drop', function(event) {
+console.log('Drop!');
+				event.preventDefault();
+				var reader = new FileReader,
+					file = event.dataTransfer.files[0],
+					medium = file.type.split('/')[0];
+				console.log(file);
+				
+				reader.onload = function(event) {
+					function resize() {
+						console.log('resize!');
+						//output.width = element.width;
+						target.height = target.original.width * element.height / element.width;
+						if (element.play) {
+							element.currentTime = 0;
+							element.play();
+						}
+						target.render();
+					}
+console.log(event.target.result);
+					var element;
+					if (medium === 'image') {
+						element = img;
+						element.onload = resize;
+						element.src = event.target.result;
+					} else if (medium === 'video') {
+						element = video;
+						element.src = event.target.result;
+						if (element.videoWidth) {
+							resize();
+						} else {
+							element.addEventListener('loadedmetadata', resize);						}
+						//element.play();
+					} else {
+						return false;
+					}
+					
+					original.sourceA = element;
+					source.sourceA = element;
+				};
+
+				if (medium === 'image' || medium === 'video') {
+					reader.readAsDataURL(file);
+				}
+
+				return false;
+			}, true);
+
+			gUM && document.getElementById('camera').addEventListener('click', function () {
+				gUM.call(navigator, { video: true, audio: true}, function(stream) {
+					function resize() {
+						target.height = target.original.width * video.videoHeight / video.videoWidth;
+					}
+
+					if (window.webkitURL) {
+						video.src = window.webkitURL.createObjectURL(stream);
+					} else {
+						video.src = stream;
+					}
+					
+					video.play();
+					if (video.videoWidth) {
+						resize();
+					}
+					video.onloadedmetadata = video.onplay = resize;
+					original.sourceA = video;
+					source.sourceA = video;
+				}, function() {
+					console.log('getUserMedia failed');
+				});
+
+			});
 			
 			select.addEventListener('change', function() {
 				function arrayToHex(color) {
@@ -184,13 +299,12 @@
 								element.value = input.defaultValue;
 							} else if (input.type === 'color') {
 								element = document.createElement('input');
-/*
-								element.addEventListener('click', function(e) {
-									e = e || window.event;
-									colorPicker(e);
-									colorPicker.cP.style.zIndex = 1;
-								}, false);
-*/
+
+								//element.addEventListener('click', function(e) {
+								//	e = e || window.event;
+								//	colorPicker(e);
+								//	colorPicker.cP.style.zIndex = 1;
+								//}, false);
 								element.value = arrayToHex(input.defaultValue);
 							} else if (input.type === 'enum') {
 								element = document.createElement('select');
@@ -228,9 +342,9 @@
 				if (name) {
 					active = effectObjects[name];
 					active.form.style.display = 'block';
-					target.source = active.effect;
+					blend.bottom = active.effect;
 				} else {
-					target.source = source;
+					blend.bottom = source;
 				}
 
 			}, false);
