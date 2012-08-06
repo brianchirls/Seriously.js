@@ -1426,8 +1426,6 @@ function Seriously(options) {
 					}
 				}
 			}
-			
-			//todo: remove getters/setters
 		};
 		
 		this.isDestroyed = function() {

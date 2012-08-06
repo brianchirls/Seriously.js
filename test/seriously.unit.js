@@ -666,7 +666,7 @@
 		 * todo:
 		 * - save transforms
 		 * - save height/width
-		 * - save source array, typed array, element w/o id, ImageData
+		 * - save source array, typed array, ImageData
 		 * - save input types
 		 */
 
@@ -849,10 +849,7 @@
 
 	/*
 	 * load/save tests todo:
-	 * - load/save empty compositions
-	 * - load/save aliases
 	 * - save composition, load it back up and check that it's the same
-	 * - save destroyed nodes skipped
 	 */
 
 	module('Utilities');
