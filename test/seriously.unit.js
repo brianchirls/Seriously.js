@@ -32,6 +32,7 @@
 	test('Core', function() {
 		var p, props = 0,
 			newGlobals = [],
+			skipIds = false,
 			s;
 		
 		expect(5);
@@ -39,16 +40,27 @@
 		ok(window.Seriously, 'Seriously exists');
 		
 		equal(typeof window.Seriously, 'function', 'Seriously is a function');
-		
+
+		// workaround: https://github.com/jquery/qunit/issues/212
+		p = document.createElement('div');
+		p.id = 'foobarbazbiddle83274';
+		document.body.appendChild(p);
+		if (window[p.id] === p) {
+			skipIds = true;
+		}
+		document.body.removeChild(p);
+
 		for (p in window) {
-			props++;
-			if (window.globalProperties.indexOf(p) < 0) {
-				console.log('new property: ' + p);
-				newGlobals.push(p);
+			if (!skipIds || document.getElementById(p) !== window[p] &&
+				document.getElementById('qunit-urlconfig-' + p) !== window[p]) {
+				if (window.globalProperties.indexOf(p) < 0) {
+					props++;
+					console.log('new property: ' + p, window[p]);
+					newGlobals.push(p);
+				}
 			}
 		}
 		
-		props -= window.globalProperties.length;
 		p = props + (props === 1 ? ' property' : ' properties') + ' added to global: [' +
 			newGlobals.join(', ') + ']';
 		equal(props, 1, p);
@@ -62,25 +74,48 @@
 		s.destroy();
 	});
 
-	test('Incompatible', function() {
-		var s, e, msg;
+	test('Incompatible', function () {
+		var s, e, msg,
+			expected, gl, canvas;
 
 		expect(2);
 
 		Seriously.plugin('removeme', {
-			compatible: function(gl) {
+			compatible: function (gl) {
 				return false;
 			}
 		});
 
 		s = Seriously();
 
+		canvas = document.createElement('canvas');
+		if (!canvas) {
+			expected = 'canvas';
+		} else if (!window.WebGLRenderingContext) {
+			expected = 'webgl';
+		} else {
+			try {
+				gl = canvas.getContext('experimental-webgl');
+			} catch (expError) {
+				try {
+					gl = canvas.getContext('webgl');
+				} catch (webglError) {
+				}
+			}
+
+			if (!gl) {
+				expected = 'context';
+			} else {
+				expected = 'plugin-removeme';
+			}
+		}
+
 		msg = s.incompatible('removeme');
-		equal(msg, 'plugin-removeme', 'Incompatibity test on plugin');
+		equal(msg, expected, 'Incompatibity test on plugin');
 
 		e = s.effect('removeme');
 		msg = s.incompatible();
-		equal(msg, 'plugin-removeme', 'Incompatibity test on network with incompatible plugin');
+		equal(msg, expected, 'Incompatibity test on network with incompatible plugin');
 
 		//clean up
 		s.destroy();
@@ -845,14 +880,14 @@
 		
 		expect(4);
 		
-		function checkImagePass() {
+		function checkImagePass(img) {
 			var canvas, ctx;
 
-			ok(Seriously.util.checkSource(this), 'Same-origin image checks true');
+			ok(Seriously.util.checkSource(img), 'Same-origin image checks true');
 
 			canvas = document.createElement('canvas');
 			ctx = canvas.getContext('2d');
-			ctx.drawImage(this, 0, 0);
+			ctx.drawImage(img, 0, 0);
 			ok(Seriously.util.checkSource(canvas), 'Same-origin canvas checks true');
 
 			tests--;
@@ -862,14 +897,14 @@
 
 		}
 		
-		function checkImageFail() {
+		function checkImageFail(img) {
 			var canvas, ctx;
 
-			ok(!Seriously.util.checkSource(this), 'Cross-origin image checks false');
+			ok(!Seriously.util.checkSource(img), 'Cross-origin image checks false');
 
 			canvas = document.createElement('canvas');
 			ctx = canvas.getContext('2d');
-			ctx.drawImage(this, 0, 0);
+			ctx.drawImage(img, 0, 0);
 			ok(!Seriously.util.checkSource(canvas), 'Cross-origin canvas checks false');
 
 			tests--;
@@ -880,14 +915,18 @@
 		
 		pass = document.getElementById('colorbars');
 		if (pass.width) {
-			checkImagePass.call(pass);
+			checkImagePass.call(pass, pass);
 		} else {
-			pass.addEventListener('load', checkImagePass, false);
+			pass.addEventListener('load', function() {
+				checkImagePass(this);
+			}, false);
 		}
 		
 		fail = document.createElement('img');
 		fail.src = 'http://www.mozilla.org/images/template/screen/logo_footer.png';
-		fail.addEventListener('load', checkImageFail, false);
+		fail.addEventListener('load', function() {
+			checkImageFail(this);
+		}, false);
 
 		
 	});

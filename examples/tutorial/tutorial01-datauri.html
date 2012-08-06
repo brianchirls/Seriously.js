@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head><title>Seriously.js Tutorial</title></head>
+<body>
+	<!-- page content goes here -->
+	<!--
+	This example loads the colorbars image as dataURI instead of from an external file
+	so it works when loaded from the file system (file://).
+	-->
+	<img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAANwAAAClCAYAAAA3d5OIAAAABmJLR0QA/wD/AP+gvaeTAAAAB3RJTUUH2gIPFxcpA4p/0AAAA2BJREFUeJzt2r9qVHkcxuHvmRyHhCASRcRStErnwnYWWdgljaX1doqCld5CRNhLELtd8AJs1sq5AmFTuMUqoiABXSZIxEgyzngDyWbI4vsrfJ72/HnPwHw4U0w3Go1m1cjz59drdfWfJtt/j8/XrdOPmmxXVfUvrtXk0r9Ntq/8caU2Hm402a6qGg9+qdPT/Sbb909cqyf7t5tsV1UNmi3Dd0hwECQ4CBIcBAkOggQHQYKDIMFBkOAgSHAQJDgIEhwECQ6CBAdBgoMgwUGQ4CBIcBAkOAgSHAQJDoIEB0GCgyDBQZDgIEhwECQ4CBIcBAkOggQHQYKDIMFBkOAgSHAQJDgIEhwECQ6CBAdBgoMgwUGQ4CBIcBAkOAgSHAQJDoIEB0GCgyDBQZDgIEhwECQ4CBIcBAkOggQHQYKDIMFBkOAgSHAQJDgIEhwECQ6CBAdBgoMgwUGQ4CBIcBAkOAgSHAQJDoIEB0GCgyDBQZDgIEhwECQ4CBIcBAkOggQHQYKDIMFBkOAgSHAQJDgIEhwECQ6CBAdBgoMgwUGQ4CBIcBAkOAgSHAQJDoIEB0GCgyDBQZDgIEhwECQ4CBIcBAkOggQHQYKDIMFBkOAgSHAQJDgIEhwECQ6C+rW1duPLyz/W4uK4yfbZ6akabTeZrqqqeycv17Phsybbf/2wVGujJtNVVbVy82IN3r9vsr2+PqzRjSbTVeUNB1GCgyDBQZDgIEhwECQ4CBIcBAkOggQHQYKDIMFBkOAgqO9PPm02PhuOa78/dejxy6sX6szK4cf/j+Xpcm1/Pv6/l7dejevNy3fHvv7DtGpx/9yxr/9P3bQ+94f/OXiws1MnNje/zfYcph8/1uzLlyPP67quBoP53gkLCwtznbe1tVWbDT97VxeuzpqtH+HPB3dq/eefWj/Gge7++luNfn/d+jEONBl8qrcrj1s/xqF2d3drNjv6a9f3fQ2Hw7nuubS0VF3XHXneZDKpvb29ue75LfhJCUGCgyDBQZDgIEhwECQ4CBIcBAkOggQHQYKDIMFBkOAgSHAQJDgIEhwECQ6CBAdBgoMgwUGQ4CBIcBAkOAgSHAQJDoIEB0GCgyDBQZDgIEhwECQ4CBIcBAkOggQHQYKDIMFBkOAgSHAQJDgIEhwECQ6CvgJd+V3gFFLyFgAAAABJRU5ErkJggg==" id="colorbars"/>
+
+	<canvas id="canvas" width="640" height="480"></canvas>
+	<div>
+		<input type="range" id="vignette-range" min="0" max="20" step="0.0001" value="1"/>
+	</div>
+
+	<script src="../../lib/html5slider.js"></script>
+	<script src="../../seriously.js"></script>
+	<script src="../../effects/seriously.vignette.js"></script>
+	<script src="../../effects/seriously.hue-saturation.js"></script>
+	<script src="../../effects/seriously.split.js"></script>
+	<script>
+	(function() {
+		//main code goes here
+
+		// declare our variables
+		var seriously, // the main object that holds the entire composition
+			colorbars, // a wrapper object for our source image
+			vignette, // a vignette effect
+			target; // a wrapper object for our target canvas
+
+		seriously = new Seriously();
+		colorbars = seriously.source('#colorbars');
+		target = seriously.target('#canvas');
+		vignette = seriously.effect('vignette');
+
+		vignette.amount = '#vignette-range';
+
+		// connect all our nodes in the right order
+		vignette.source = colorbars;
+		target.source = vignette;
+		seriously.go();
+
+	}());
+	</script>
+</body>
+</html>

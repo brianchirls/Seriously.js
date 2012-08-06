@@ -223,13 +223,24 @@ mat4 = {
 },
 
 requestAnimFrame = (function(){
+	var lastTime = 0;
 	return  window.requestAnimationFrame       ||
 			window.webkitRequestAnimationFrame ||
 			window.mozRequestAnimationFrame    ||
 			window.oRequestAnimationFrame      ||
 			window.msRequestAnimationFrame     ||
-			function(/* function */ callback, /* DOMElement */ element){
-				window.setTimeout(callback, 1000 / 60);
+			function (callback) {
+				var currTime, timeToCall, id;
+
+				function timeoutCallback() {
+					callback(currTime + timeToCall);
+				}
+
+				currTime = new Date().getTime();
+				timeToCall = Math.max(0, 16 - (currTime - lastTime));
+				id = window.setTimeout(timeoutCallback, timeToCall);
+				lastTime = currTime + timeToCall;
+				return id;
 			};
 }());
 
@@ -241,7 +252,9 @@ function getElement(input, tags) {
 		element = document.querySelector(input);
 	} else if (!input) {
 		return false;
-	} else if (input.tagName) {
+	}
+
+	if (input.tagName) {
 		element = input;
 	}
 
@@ -323,7 +336,27 @@ faster than setTimeout(fn, 0);
 http://dbaron.org/log/20100309-faster-timeouts
 */
 function setTimeoutZero(fn) {
+	/*
+	Workaround for postMessage bug in Firefox if the page is loaded from the file system
+	https://bugzilla.mozilla.org/show_bug.cgi?id=740576
+	Should run fine, but maybe a few milliseconds slower per frame.
+	*/
+	function timeoutFunction() {
+		if (timeouts.length) {
+			(timeouts.shift())();
+		}
+	}
+
+	if (typeof fn !== 'function') {
+		throw 'setTimeoutZero argument is not a function';
+	}
+
 	timeouts.push(fn);
+	if (window.location.protocol === 'file:') {
+		setTimeout(timeoutFunction, 0);
+		return;
+	}
+
 	window.postMessage('seriously-timeout-message', window.location);
 }
 
@@ -545,11 +578,11 @@ function ShaderProgram(gl, vertexShaderSource, fragmentShaderSource) {
 				return function(value) {
 					gl.uniform1iv(loc, value);
 				};
-			} else {
-				return function(value) {
-					gl.uniform1i(loc, value);
-				};
 			}
+
+			return function(value) {
+				gl.uniform1i(loc, value);
+			};
 		}
 
 		if (info.type === gl.FLOAT) {
@@ -557,11 +590,11 @@ function ShaderProgram(gl, vertexShaderSource, fragmentShaderSource) {
 				return function(value) {
 					gl.uniform1fv(loc, value);
 				};
-			} else {
-				return function(value) {
-					gl.uniform1f(loc, value);
-				};
 			}
+
+			return function(value) {
+				gl.uniform1f(loc, value);
+			};
 		}
 
 		if (info.type === gl.FLOAT_VEC2) {
@@ -834,22 +867,23 @@ function Seriously(options) {
 		}
 	}
 
-	function draw(shader, model, uniforms, frameBuffer, node) {
+	function draw(shader, model, uniforms, frameBuffer, node, options) {
 		var numTextures = 0,
 			name, value, setter,
 			width, height,
-			nodeGl = (node && node.gl) || gl;
+			nodeGl = (node && node.gl) || gl,
+			opts = options || {};
 
 		if (!nodeGl) {
 			return;
 		}
 
 		if (node) {
-			width = node.width || nodeGl.canvas.width;
-			height = node.height || nodeGl.canvas.height;
+			width = opts.width || node.width || nodeGl.canvas.width;
+			height = opts.height || node.height || nodeGl.canvas.height;
 		} else {
-			width = nodeGl.canvas.width;
-			height = nodeGl.canvas.height;
+			width = opts.width || nodeGl.canvas.width;
+			height = opts.height || nodeGl.canvas.height;
 		}
 
 		shader.useProgram();
@@ -872,13 +906,22 @@ function Seriously(options) {
 
 		nodeGl.bindBuffer(nodeGl.ELEMENT_ARRAY_BUFFER, model.index);
 
-		/* do this every time? */
-		gl.disable(gl.DEPTH_TEST);
-		gl.enable(gl.BLEND);
-		//gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-		gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA,
-							gl.SRC_ALPHA, gl.DST_ALPHA);
-		gl.blendEquation(gl.FUNC_ADD);
+		//default for depth is disable
+		if (opts.depth) {
+			gl.enable(gl.DEPTH_TEST);
+		} else {
+			gl.disable(gl.DEPTH_TEST);
+		}
+
+		//default for blend is enable
+		if (opts.blend === undefined || opts.blend) {
+			gl.enable(gl.BLEND);
+			gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA,
+								gl.SRC_ALPHA, gl.DST_ALPHA);
+			gl.blendEquation(gl.FUNC_ADD);
+		} else {
+			gl.disable(gl.BLEND);
+		}
 
 		/* set uniforms to current values */
 		for (name in uniforms) {
@@ -905,10 +948,11 @@ function Seriously(options) {
 			}
 		}
 
-		//if (this.originalFrameBuffer) {
+		//default for clear is true
+		if (opts.clear === undefined || opts.clear) {
 			nodeGl.clearColor(0.0, 0.0, 0.0, 0.0);
 			nodeGl.clear(nodeGl.COLOR_BUFFER_BIT | nodeGl.DEPTH_BUFFER_BIT);
-		//}
+		}
 
 		// draw!
 		nodeGl.drawElements(model.mode, model.length, nodeGl.UNSIGNED_SHORT, 0);
@@ -1260,17 +1304,33 @@ function Seriously(options) {
 		//todo: provide an alternate method
 		for (name in me.effect.inputs) {
 			if (this[name] === undefined) {
-				this.__defineSetter__(name, (function (inputName) {
-					return function (value) {
-						return setInput(inputName, value);
-					};
-				}(name)));
+				if (me.effect.inputs[name].type === 'image') {
+					this.__defineSetter__(name, (function (inputName) {
+						return function (value) {
+							var val = setInput(inputName, value);
+							return val && val.pub;
+						};
+					}(name)));
 
-				this.__defineGetter__(name, (function (inputName) {
-					return function () {
-						return me.inputs[inputName];
-					};
-				}(name)));
+					this.__defineGetter__(name, (function (inputName) {
+						return function () {
+							var val = me.inputs[inputName];
+							return val && val.pub;
+						};
+					}(name)));
+				} else {
+					this.__defineSetter__(name, (function (inputName) {
+						return function (value) {
+							return setInput(inputName, value);
+						};
+					}(name)));
+
+					this.__defineGetter__(name, (function (inputName) {
+						return function () {
+							return me.inputs[inputName];
+						};
+					}(name)));
+				}
 			} else {
 				//todo: this is temporary. get rid of it.
 				throw 'Cannot overwrite Seriously.' + name;
@@ -1372,7 +1432,7 @@ function Seriously(options) {
 		
 		this.isDestroyed = function() {
 			return me.isDestroyed;
-		}
+		};
 	};
 
 	EffectNode = function (hook, options) {
@@ -1573,8 +1633,8 @@ function Seriously(options) {
 
 			if (typeof effect.draw === 'function') {
 				effect.draw.call(this, this.shader, this.model, this.uniforms, frameBuffer,
-					function(shader, model, uniforms, frameBuffer, node) {
-						draw(shader, model, uniforms, frameBuffer, node || that);
+					function(shader, model, uniforms, frameBuffer, node, options) {
+						draw(shader, model, uniforms, frameBuffer, node || that, options);
 					});
 			} else if (frameBuffer) {
 				draw(this.shader, this.model, this.uniforms, frameBuffer, this);
@@ -1617,21 +1677,24 @@ function Seriously(options) {
 			if (input.type === 'image') {
 				//&& !(value instanceof Effect) && !(value instanceof Source)) {
 
-				value = findInputNode(value);
+				if (value) {
+					value = findInputNode(value);
 
-				if (value !== this.sources[name]) {
-					if (this.sources[name]) {
-						this.sources[name].removeTarget(this);
+					if (value !== this.sources[name]) {
+						if (this.sources[name]) {
+							this.sources[name].removeTarget(this);
+						}
+
+						if ( traceSources(value, this) ) {
+							throw 'Attempt to make cyclical connection.';
+						}
+
+						this.sources[name] = value;
+						value.setTarget(this);
 					}
-					this.sources[name] = value;
-					value.setTarget(this);
+				} else {
+					value = false;
 				}
-
-				if ( traceSources(value, this) ) {
-					throw 'Attempt to make cyclical connection.';
-				}
-
-				value = value.pub;
 
 				uniform = this.sources[name];
 			} else {
@@ -2132,6 +2195,9 @@ function Seriously(options) {
 				me.width = me.desiredWidth = value;
 				me.target.width = value;
 
+				me.setDirty();
+				return;
+
 				if (this.source && this.source.setSize) {
 					this.source.setSize(value);
 
@@ -2149,6 +2215,9 @@ function Seriously(options) {
 			if (!isNaN(value) && value >0 && me.height !== value) {
 				me.height = me.desiredHeight = value;
 				me.target.height = value;
+
+				me.setDirty();
+				return;
 
 				if (this.source && this.source.setSize) {
 					this.source.setSize(undefined, value);
@@ -2278,13 +2347,15 @@ function Seriously(options) {
 					context = window.WebGLDebugUtils.makeDebugContext(target.getContext('experimental-webgl', {
 						alpha: true,
 						premultipliedAlpha: false,
-						preserveDrawingBuffer: true
+						preserveDrawingBuffer: true,
+						stencil: true
 					}));
 				} else {
 					context = target.getContext('experimental-webgl', {
 						alpha: true,
 						premultipliedAlpha: false,
-						preserveDrawingBuffer: true
+						preserveDrawingBuffer: true,
+						stencil: true
 					});
 				}
 			} catch (expError) {
@@ -2295,7 +2366,8 @@ function Seriously(options) {
 					context = target.getContext('webgl', {
 						alpha: true,
 						premultipliedAlpha: false,
-						preserveDrawingBuffer: true
+						preserveDrawingBuffer: true,
+						stencil: true
 					});
 				} catch (error) {
 
@@ -2405,20 +2477,17 @@ function Seriously(options) {
 	};
 
 	TargetNode.prototype.setDirty = function () {
+		var that;
+
+		function render() {
+			that.render();
+		}
+
 		this.dirty = true;
 
 		if (this.auto) {
-			//todo: test this, make sure we don't double-render if receiving from two updated sources
-			//todo: or setTimeout for 0?
-			/*
-			requestAnimFrame(function() {
-				this.render();
-			});
-			*/
-			var that = this;
-			setTimeoutZero(function() {
-				that.render();
-			});
+			that = this;
+			setTimeoutZero(render);
 		}
 	};
 
@@ -2674,13 +2743,13 @@ function Seriously(options) {
 		}
 		
 		if (!pluginHook) {
-			for (pluginHook in allEffectsByHook) {
-				if (allEffectsByHook[pluginHook].length) {
-					plugin = seriousEffects[pluginHook];
+			for (i in allEffectsByHook) {
+				if (allEffectsByHook[i].length) {
+					plugin = seriousEffects[i];
 					if (plugin && typeof plugin.compatible === 'function' &&
 						!plugin.compatible.call(this)) {
 
-						return 'plugin-' + pluginHook;
+						return 'plugin-' + i;
 					}
 				}
 			}
