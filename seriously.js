@@ -1737,7 +1737,7 @@ function Seriously(options) {
 		delete this.effect;
 		
 		//shader
-		if (this.shader && this.shader.destroy) {
+		if (this.shader && this.shader.destroy && this.shader !== baseShader) {
 			this.shader.destroy();
 		}
 		delete this.shader;
@@ -1812,8 +1812,8 @@ function Seriously(options) {
 		this.__defineSetter__('id', function () {
 		});
 
-		this.render = function() {
-			me.render();
+		this.render = function(callback) {
+			me.render(callback);
 		};
 
 		this.readPixels = function (x, y, width, height, dest) {
@@ -1985,7 +1985,7 @@ function Seriously(options) {
 			this.initialized = true;
 
 			//todo: if WebGLTexture source is from a different context render it and copy it over
-			this.render = function() { };
+			this.render = function(callback) { };
 		}
 
 		if (!matchedType) {
@@ -2050,7 +2050,7 @@ function Seriously(options) {
 		}
 	};
 
-	SourceNode.prototype.renderVideo = function() {
+	SourceNode.prototype.renderVideo = function(callback) {
 		var video = this.source;
 
 		if (!gl || !video || !video.videoHeight || !video.videoWidth || video.readyState < 2) {
@@ -2083,9 +2083,13 @@ function Seriously(options) {
 
 			this.dirty = false;
 		}
+
+		if (callback && typeof callback === 'function') {
+			callback();
+		}
 	};
 
-	SourceNode.prototype.renderImageCanvas = function() {
+	SourceNode.prototype.renderImageCanvas = function(callback) {
 		var media = this.source;
 
 		if (!gl || !media || !media.height || !media.width) {
@@ -2121,9 +2125,13 @@ function Seriously(options) {
 
 			this.dirty = false;
 		}
+
+		if (callback && typeof callback === 'function') {
+			callback();
+		}
 	};
 
-	SourceNode.prototype.renderTypedArray = function() {
+	SourceNode.prototype.renderTypedArray = function(callback) {
 		var media = this.source;
 
 		if (!gl || !media || !media.length) {
@@ -2140,7 +2148,7 @@ function Seriously(options) {
 			return;
 		}
 
-		if (this.lastRenderTime === undefined || this.lastRenderTime !== this.currentTime) {
+		if (this.lastRenderTime === undefined || this.lastRenderTime !== this.currentTime && this.currentTime !== undefined) {
 			gl.bindTexture(gl.TEXTURE_2D, this.texture);
 			gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, this.flip);
 			gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, this.width, this.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, media);
