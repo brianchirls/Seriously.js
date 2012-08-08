@@ -757,6 +757,7 @@ function Seriously(options) {
 		targets = [],
 		effects = [],
 		aliases = {},
+		callbacks = [],
 		glCanvas,
 		gl,
 		rectangleModel,
@@ -765,6 +766,7 @@ function Seriously(options) {
 		Node, SourceNode, EffectNode, TargetNode,
 		Effect, Source, Target,
 		auto = false,
+		callbacksRunning = false,
 		isDestroyed = false;
 
 	function buildModel(thisGl) {
@@ -986,6 +988,21 @@ function Seriously(options) {
 		}
 
 		return node;
+	}
+
+	function runCallbacks() {
+		function run() {
+			var i;
+			for (i = 0; i < callbacks.length; i++) {
+				callbacks[i].call(seriously);
+			}
+			callbacksRunning = false;
+		}
+
+		if (!callbacksRunning) {
+			setTimeoutZero(run);
+			callbacksRunning = true;
+		}
 	}
 
 	Node = function (options) {
@@ -1348,8 +1365,8 @@ function Seriously(options) {
 		this.__defineSetter__('id', function () {
 		});
 
-		this.render = function() {
-			me.render();
+		this.render = function(callback) {
+			me.render(callback);
 			return this;
 		};
 
@@ -1577,7 +1594,7 @@ function Seriously(options) {
 		}
 	};
 
-	EffectNode.prototype.render = function () {
+	EffectNode.prototype.render = function (callback) {
 		var i,
 			frameBuffer,
 			effect = this.effect,
@@ -1615,6 +1632,10 @@ function Seriously(options) {
 			}
 
 			this.dirty = false;
+		}
+
+		if (callback && typeof callback === 'function') {
+			callback();
 		}
 
 		return this;

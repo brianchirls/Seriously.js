@@ -388,6 +388,88 @@
 	 * create target
 	*/
 
+	module('Render');
+	asyncTest('Callbacks', function () {
+		var seriously,
+			source, target,
+			canvas,
+			effect,
+			timeout,
+			countdown,
+			changed = false;
+
+		function cleanUp() {
+			seriously.destroy();
+			Seriously.removePlugin('test');
+			start();
+		}
+
+		function success(msg, val) {
+			ok(val === undefined ? true : val, msg);
+			countdown--;
+			if (!countdown) {
+				clearTimeout(timeout);
+				cleanUp();
+			}
+		}
+
+		Seriously.plugin('test', {
+			/*
+			shader: function (inputs, shaderSource, utilities) {
+				return shaderSource;
+			},
+			*/
+			inputs: {
+				source: {
+					type: 'image'
+				},
+				num: {
+					type: 'number'
+				}
+			}
+		});
+
+		seriously = new Seriously();
+		source = seriously.source([0, 0, 0, 0], {
+			width: 1,
+			height: 1
+		});
+		effect = seriously.effect('test');
+		effect.source = source;
+		canvas = document.createElement('canvas');
+		target = seriously.target(canvas);
+		target.source = effect;
+
+		timeout = setTimeout(cleanUp, 100000);
+		countdown = 5;
+		expect(countdown);
+
+		//this should only run when 'go' is operating, after target is dirty
+		target.go(function() {
+			success('Target.go callback called successfully', changed);
+		});
+
+		source.render(function () {
+			success('Source callback called successfully');
+		});
+
+		effect.render(function () {
+			success('Effect callback called successfully');
+		});
+
+		target.render(function () {
+			success('Target callback called successfully');
+		});
+
+		seriously.go(function() {
+			success('seriously.go callback called successfully', changed);
+		});		
+
+		effect.num = 5;
+		changed = true;
+
+	});
+
 	module('Inputs');
 	/*
 	 * all different types
