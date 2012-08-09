@@ -2660,12 +2660,6 @@ function Seriously(options) {
 		Node.prototype.destroy.call(this);
 	};
 
-	if (benchmarkResults === undefined) {
-		this.benchmark({
-			timeLimit: 0
-		});
-	}
-
 	/*
 	Initialize Seriously object based on options
 	*/
