@@ -219,7 +219,71 @@ mat4 = {
 		var top = near*Math.tan(fovy*Math.PI / 360.0),
 			right = top*aspect;
 		return mat4.frustum(-right, right, -top, top, near, far, dest);
-	}
+	},
+	multiply: function (mat, mat2, dest) {
+		if (!dest) { dest = mat; }
+
+		// Cache the matrix values (makes for huge speed increases!)
+		var a00 = mat[ 0], a01 = mat[ 1], a02 = mat[ 2], a03 = mat[3],
+			a10 = mat[ 4], a11 = mat[ 5], a12 = mat[ 6], a13 = mat[7],
+			a20 = mat[ 8], a21 = mat[ 9], a22 = mat[10], a23 = mat[11],
+			a30 = mat[12], a31 = mat[13], a32 = mat[14], a33 = mat[15],
+
+		// Cache only the current line of the second matrix
+			b0 = mat2[0], b1 = mat2[1], b2 = mat2[2], b3 = mat2[3];
+		dest[0] = b0*a00 + b1*a10 + b2*a20 + b3*a30;
+		dest[1] = b0*a01 + b1*a11 + b2*a21 + b3*a31;
+		dest[2] = b0*a02 + b1*a12 + b2*a22 + b3*a32;
+		dest[3] = b0*a03 + b1*a13 + b2*a23 + b3*a33;
+
+		b0 = mat2[4];
+		b1 = mat2[5];
+		b2 = mat2[6];
+		b3 = mat2[7];
+		dest[4] = b0*a00 + b1*a10 + b2*a20 + b3*a30;
+		dest[5] = b0*a01 + b1*a11 + b2*a21 + b3*a31;
+		dest[6] = b0*a02 + b1*a12 + b2*a22 + b3*a32;
+		dest[7] = b0*a03 + b1*a13 + b2*a23 + b3*a33;
+
+		b0 = mat2[8];
+		b1 = mat2[9];
+		b2 = mat2[10];
+		b3 = mat2[11];
+		dest[8] = b0*a00 + b1*a10 + b2*a20 + b3*a30;
+		dest[9] = b0*a01 + b1*a11 + b2*a21 + b3*a31;
+		dest[10] = b0*a02 + b1*a12 + b2*a22 + b3*a32;
+		dest[11] = b0*a03 + b1*a13 + b2*a23 + b3*a33;
+
+		b0 = mat2[12];
+		b1 = mat2[13];
+		b2 = mat2[14];
+		b3 = mat2[15];
+		dest[12] = b0*a00 + b1*a10 + b2*a20 + b3*a30;
+		dest[13] = b0*a01 + b1*a11 + b2*a21 + b3*a31;
+		dest[14] = b0*a02 + b1*a12 + b2*a22 + b3*a32;
+		dest[15] = b0*a03 + b1*a13 + b2*a23 + b3*a33;
+
+		return dest;
+	},
+	identity: function (dest) {
+		dest[0] = 1;
+		dest[1] = 0;
+		dest[2] = 0;
+		dest[3] = 0;
+		dest[4] = 0;
+		dest[5] = 1;
+		dest[6] = 0;
+		dest[7] = 0;
+		dest[8] = 0;
+		dest[9] = 0;
+		dest[10] = 1;
+		dest[11] = 0;
+		dest[12] = 0;
+		dest[13] = 0;
+		dest[14] = 0;
+		dest[15] = 1;
+		return dest;
+    }
 },
 
 requestAnimFrame = (function(){
@@ -777,10 +841,10 @@ function Seriously(options) {
 		vertex = thisGl.createBuffer();
 		thisGl.bindBuffer(thisGl.ARRAY_BUFFER, vertex);
 		thisGl.bufferData(thisGl.ARRAY_BUFFER, new Float32Array([
-			-1, -1, -1,
-			1, -1, -1,
-			1, 1, -1,
-			-1, 1, -1
+			-1, -1, 0,
+			1, -1, 0,
+			1, 1, 0,
+			-1, 1, 0
 		]), thisGl.STATIC_DRAW);
 		vertex.size = 3;
 
@@ -989,18 +1053,38 @@ function Seriously(options) {
 	}
 
 	Node = function (options) {
-		this.transform = new Float32Array(defaultTransform);
+		var width, height, depth;
+		this.transform = new Float32Array(16);
 
 		if (options) {
 			this.desiredWidth = parseInt(options.width, 10);
 			this.desiredHeight = parseInt(options.height, 10);
+			this.fov = parseInt(options.fov);
+		}
+		if (isNaN(this.fov)) {
+			this.fov = 0;
+		}
+
+		width = this.width = this.desiredWidth || 1;
+		height = this.height = this.desiredHeight || 1;
+		//depth = Math.sin(Math.PI / 4) / Math.sin(this.fov * Math.PI / 360); // 1 / sin(angle/2)
+		if (this.fov) {
+			depth = 1 / Math.tan(this.fov * Math.PI / 360.0);
+		} else {
+			depth = 1;
 		}
 
 		this.gl = gl;
 
+		this.reset();
+
 		this.uniforms = {
-			transform: this.transform
+			transform: this.transform,
+			srsSize: [width, height, depth],
+			projection: new Float32Array(16)
 		};
+
+		this.perspective(this.fov);
 
 		this.dirty = true;
 		this.isDestroyed = false;
@@ -1083,6 +1167,19 @@ function Seriously(options) {
 		this.setDirty();
 	};
 
+	Node.prototype.setSize = function (width, height) {
+		if (!width || !height) {
+			return;
+		}
+		this.width = width;
+		this.height = height;
+
+		this.perspective(this.fov);
+		this.uniforms.srsSize[0] = width;
+		this.uniforms.srsSize[1] = height;
+	};
+
+
 	Node.prototype.setTransform = function(mat) {
 		var i, val, isDefault = true;
 
@@ -1111,7 +1208,7 @@ function Seriously(options) {
 		this.setDirty();
 	};
 
-	Node.prototype.perspective = function(from, to) {
+	Node.prototype.distort = function(from, to) {
 		//math adapted from javax.media.jai.PerspectiveTransform
 		function getSquareToQuad(x0, y0, x1, y1, x2, y2, x3, y3) {
 			var dx1 = x1 - x2,
@@ -1235,30 +1332,65 @@ function Seriously(options) {
 		mat[14] = 0;
 		mat[15] = 1;
 
+		this.perspective(0);
 		this.transformed = true;
 		this.setDirty();
 	};
 
+	Node.prototype.perspective = function(fov) {
+		fov = parseFloat(fov);
+		if (isNaN(fov)) {
+			this.fov = 0;
+		} else {
+			this.fov = fov;
+		}
+
+		if (this.fov) {
+			mat4.perspective(this.fov, this.width / this.height, 1, 100, this.uniforms.projection);
+			this.uniforms.srsSize[2] = 1 / Math.tan(this.fov * Math.PI / 360.0);
+		} else {
+			mat4.identity(this.uniforms.projection);
+			this.uniforms.projection[0] = this.height / this.width;
+			this.uniforms.projection[10] = 2/200;
+			this.uniforms.srsSize[2] = 1;
+		}
+
+		this.setDirty();
+	}
+
 	//matrix code inspired by glMatrix
-	//todo: only 2D for now, so z is always 0.  allow 3D later.
-	Node.prototype.translate = function(x, y) {
+	Node.prototype.translate = function(x, y, z) {
 		var mat = this.transform;
-		mat[12] = mat[0]*x + mat[4]*y + /* mat[8]*z + */ mat[12];
-		mat[13] = mat[1]*x + mat[5]*y + /* mat[9]*z + */ mat[13];
-		mat[14] = mat[2]*x + mat[6]*y + /* mat[10]*z + */ mat[14];
-		mat[15] = mat[3]*x + mat[7]*y + /* mat[11]*z + */ mat[15];
+
+		if (isNaN(x)) {
+			x = 0;
+		}
+
+		if (isNaN(y)) {
+			y = 0;
+		}
+		y *= this.width / this.height;
+
+		if (isNaN(z)) {
+			z = 0;
+		}
+
+		mat[12] = mat[0]*x + mat[4]*y + mat[8]*z + mat[12];
+		mat[13] = mat[1]*x + mat[5]*y + mat[9]*z + mat[13];
+		mat[14] = mat[2]*x + mat[6]*y + mat[10]*z + mat[14];
+		mat[15] = mat[3]*x + mat[7]*y + mat[11]*z + mat[15];
+
 		this.transformed = true;
 		this.setDirty();
 	};
 
 	//todo: only 2D for now, so z is always 1.  allow 3D later.
 	Node.prototype.scale = function(x, y) {
-		var mat = this.transform;
-
 		if (y === undefined) {
 			y = x;
 		}
 
+		var mat = this.transform;
 		mat[0] *= x;
 		mat[1] *= x;
 		mat[2] *= x;
@@ -1267,6 +1399,30 @@ function Seriously(options) {
 		mat[5] *= y;
 		mat[6] *= y;
 		mat[7] *= y;
+
+		this.transformed = true;
+		this.setDirty();
+	};
+
+	Node.prototype.rotateX = function(angle) {
+		var mat = this.transform,
+			sin = Math.sin(angle),
+			cos = Math.cos(angle),
+
+		// Cache the matrix values (faster!)
+			a10 = mat[4], a11 = mat[5], a12 = mat[6], a13 = mat[7],
+			a20 = mat[8], a21 = mat[9], a22 = mat[10], a23 = mat[11];
+
+		// Perform axis-specific matrix multiplication
+		mat[4] = a10*cos + a20*-sin;
+		mat[5] = a11*cos + a21*-sin;
+		mat[6] = a12*cos + a22*-sin;
+		mat[7] = a13*cos + a23*-sin;
+
+		mat[8] = a10*sin + a20*cos;
+		mat[9] = a11*sin + a21*cos;
+		mat[10] = a12*sin + a22*cos;
+		mat[11] = a13*sin + a23*cos;
 		this.transformed = true;
 		this.setDirty();
 	};
@@ -1527,8 +1683,8 @@ function Seriously(options) {
 			return this;
 		};
 
-		this.perspective = function(from, to) {
-			me.perspective(from, to);
+		this.distort = function(from, to) {
+			me.distort(from, to);
 			return this;
 		};
 
@@ -1536,6 +1692,11 @@ function Seriously(options) {
 			me.setTransform(transform);
 			return this;
 		};
+
+		this.perspective = function(fov) {
+			me.perspective(fov);
+			return this;
+		}
 
 		this.translate = function(x, y, z) {
 			me.translate(x, y, z);
@@ -1547,8 +1708,13 @@ function Seriously(options) {
 			return this;
 		};
 
+		this.rotateX = function(angle) {
+			me.rotateX(angle);
+			return this;
+		};
+
 		this.rotateY = function(angle) {
-			me.rotateZ(angle);
+			me.rotateY(angle);
 			return this;
 		};
 
@@ -1583,7 +1749,7 @@ function Seriously(options) {
 	};
 
 	EffectNode = function (hook, options) {
-		Node.call(this);
+		Node.call(this, options);
 
 		this.effect = seriousEffects[hook];
 		this.sources = {};
@@ -1692,6 +1858,9 @@ function Seriously(options) {
 			}
 		}
 
+		//this.uniforms.srsSize[0] = this.width;
+		//this.uniforms.srsSize[1] = this.height;
+		Node.prototype.setSize.call(this, this.width, this.height);
 	};
 
 	EffectNode.prototype.setTarget = function (target) {
@@ -1996,8 +2165,8 @@ function Seriously(options) {
 			return this;
 		};
 
-		this.perspective = function(from, to) {
-			me.perspective(from, to);
+		this.distort = function(from, to) {
+			me.distort(from, to);
 			return this;
 		};
 
@@ -2005,6 +2174,11 @@ function Seriously(options) {
 			me.setTransform(transform);
 			return this;
 		};
+
+		this.perspective = function(fov) {
+			me.perspective(fov);
+			return this;
+		}
 
 		this.translate = function(x, y, z) {
 			me.translate(x, y, z);
@@ -2016,8 +2190,13 @@ function Seriously(options) {
 			return this;
 		};
 
+		this.rotateX = function(angle) {
+			me.rotateX(angle);
+			return this;
+		};
+
 		this.rotateY = function(angle) {
-			me.rotateZ(angle);
+			me.rotateY(angle);
 			return this;
 		};
 
@@ -2061,7 +2240,7 @@ function Seriously(options) {
 			that = this,
 			matchedType = false;
 
-		Node.call(this);
+		Node.call(this, opts);
 
 		if ( typeof source === 'string' && isNaN(source) ) {
 			source = getElement(source, ['canvas', 'img', 'video']);
@@ -2073,6 +2252,7 @@ function Seriously(options) {
 				this.desiredHeight = height = source.height;
 
 				this.render = this.renderImageCanvas;
+				this.setSize(width, height);
 			} else if (source.tagName === 'IMG') {
 				width = source.naturalWidth;
 				height = source.naturalHeight;
@@ -2083,13 +2263,11 @@ function Seriously(options) {
 					source.addEventListener('load', function() {
 						that.desiredWidth = source.naturalWidth;
 						that.desiredHeight = source.naturalHeight;
-						that.currentTime = source.src;
-
-						that.width = that.desiredWidth;
-						that.height = that.desiredHeight;
-
+						that.setSize(source.naturalWidth, source.naturalHeight);
 						that.initialize();
 					}, true);
+				} else {
+					that.setSize(source.naturalWidth, source.naturalHeight);
 				}
 
 				this.render = this.renderImageCanvas;
@@ -2103,12 +2281,13 @@ function Seriously(options) {
 					source.addEventListener('loadedmetadata', function() {
 						that.desiredWidth = source.videoWidth;
 						that.desiredHeight = source.videoHeight;
-
-						that.width = that.desiredWidth;
-						that.height = that.desiredHeight;
-
+						that.setSize(source.videoWidth, source.videoHeight);
 						that.initialize();
 					}, true);
+				} else {
+					that.desiredWidth = source.videoWidth;
+					that.desiredHeight = source.videoHeight;
+					that.setSize(source.videoWidth, source.videoHeight);
 				}
 
 				this.render = this.renderVideo;
@@ -2127,6 +2306,7 @@ function Seriously(options) {
 
 			this.desiredWidth = width = source.width;
 			this.desiredHeight = height = source.height;
+			this.setSize(width, height);
 			matchedType = true;
 
 			this.render = this.renderImageCanvas;
@@ -2140,7 +2320,7 @@ function Seriously(options) {
 			}
 
 			matchedType = true;
-//todo: typed arrays, use opposite default for flip
+			//todo: typed arrays, use opposite default for flip
 		} else if (source instanceof WebGLTexture) {
 			if (gl && !gl.isTexture(source)) {
 				throw 'Not a valid WebGL texture.';
@@ -2157,6 +2337,10 @@ function Seriously(options) {
 				//todo: guess based on dimensions of target canvas
 				//throw 'Must specify width and height when using a WebGL texture as a source';
 			}
+
+			this.desiredWidth = width;
+			this.desiredHeight = height;
+			this.setSize(width, height);
 
 			if (opts.flip === undefined) {
 				flip = false;
@@ -2182,6 +2366,7 @@ function Seriously(options) {
 		this.flip = flip;
 		this.width = width;
 		this.height = height;
+
 		this.targets = [];
 		this.pub = new Source(this);
 
@@ -2268,7 +2453,7 @@ function Seriously(options) {
 			this.dirty = true;
 		}
 
-		if (this.transformed) {
+		if (this.transformed || this.fov) {
 			if (!this.frameBuffer) {
 				this.initFrameBuffer();
 			}
@@ -2322,7 +2507,7 @@ function Seriously(options) {
 
 		}
 
-		if (this.transformed) {
+		if (this.transformed || this.fov) {
 			if (!this.frameBuffer) {
 				this.initFrameBuffer();
 			}
@@ -2506,7 +2691,7 @@ function Seriously(options) {
 			i, element, elements, context,
 			frameBuffer;
 
-		Node.call(this);
+		Node.call(this, opts);
 
 //		mat4.perspective(90, 1, 1, 100, this.transform);
 
@@ -2638,6 +2823,7 @@ function Seriously(options) {
 		this.flip = flip;
 		this.width = width;
 		this.height = height;
+		this.setSize(width, height);
 		if (opts.auto !== undefined) {
 			this.auto = opts.auto;
 		} else {
@@ -2972,17 +3158,22 @@ function Seriously(options) {
 		'precision mediump float;\n' +
 		'#endif \n' +
 		'\n' +
-		'attribute vec3 position;\n' +
+		'attribute vec4 position;\n' +
 		'attribute vec2 texCoord;\n' +
 		'\n' +
+		'uniform vec3 srsSize;\n' +
+		'uniform mat4 projection;\n' +
 		'uniform mat4 transform;\n' +
 		'\n' +
 		'varying vec2 vTexCoord;\n' +
 		'varying vec4 vPosition;\n' +
 		'\n' +
 		'void main(void) {\n' +
-		'	gl_Position = transform * vec4(position, 1.0);\n' +
-//		'	gl_Position = vec4(position, 1.0);\n' +
+		'	vec4 pos = position * vec4(srsSize.x / srsSize.y, 1.0, 1.0, 1.0);\n' +
+		'	gl_Position = transform * pos;\n' +
+		'	gl_Position.z -= srsSize.z;\n' +
+		'	gl_Position = projection * gl_Position;\n' +
+		'	gl_Position.z = 0.0;\n' + //prevent near clipping
 		'	vTexCoord = vec2(texCoord.s, texCoord.t);\n' +
 		'}\n';
 
@@ -3492,7 +3683,7 @@ if (window.Float32Array) {
 		0, 0, 0, 1
 	]);
 	//todo: set scale
-	mat4.perspective(90, 1, 1, 100, new Float32Array(defaultTransform));
+//	mat4.perspective(90, 1, 1, 100, new Float32Array(defaultTransform));
 }
 
 //check for plugins loaded out of order
