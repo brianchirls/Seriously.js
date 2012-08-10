@@ -821,6 +821,7 @@ function Seriously(options) {
 		targets = [],
 		effects = [],
 		aliases = {},
+		callbacks = [],
 		glCanvas,
 		gl,
 		rectangleModel,
@@ -829,6 +830,7 @@ function Seriously(options) {
 		Node, SourceNode, EffectNode, TargetNode,
 		Effect, Source, Target,
 		auto = false,
+		callbacksRunning = false,
 		isDestroyed = false;
 
 	function buildModel(thisGl) {
@@ -1025,7 +1027,7 @@ function Seriously(options) {
 		gl.enable(gl.DEPTH_TEST);
 	}
 
-	function findInputNode(source) {
+	function findInputNode(source, options) {
 		var node, i;
 		if (source instanceof SourceNode || source instanceof EffectNode) {
 			node = source;
@@ -1046,10 +1048,25 @@ function Seriously(options) {
 				}
 			}
 
-			node = new SourceNode(source);
+			node = new SourceNode(source, options);
 		}
 
 		return node;
+	}
+
+	function runCallbacks() {
+		function run() {
+			var i;
+			for (i = 0; i < callbacks.length; i++) {
+				callbacks[i].call(seriously);
+			}
+			callbacksRunning = false;
+		}
+
+		if (!callbacksRunning) {
+			setTimeoutZero(run);
+			callbacksRunning = true;
+		}
 	}
 
 	Node = function (options) {
@@ -1137,13 +1154,14 @@ function Seriously(options) {
 			this.initFrameBuffer();
 		}
 
+		//todo: should we render here?
+		this.render();
+
 		if (this instanceof SourceNode) {
 			//todo: move this to SourceNode.render so it only runs when it changes
 			this.uniforms.source = this.texture;
 			draw(baseShader, rectangleModel, this.uniforms, this.frameBuffer.frameBuffer, this);
 		}
-
-		//todo: should we render here?
 
 		//todo: figure out formats and types
 		if (dest === undefined) {
@@ -1668,8 +1686,8 @@ function Seriously(options) {
 		this.__defineSetter__('id', function () {
 		});
 
-		this.render = function() {
-			me.render();
+		this.render = function(callback) {
+			me.render(callback);
 			return this;
 		};
 
@@ -1903,16 +1921,20 @@ function Seriously(options) {
 
 	EffectNode.prototype.buildShader = function () {
 		var shader, effect = this.effect;
-		if (effect.shader && this.shaderDirty) {
-			shader = effect.shader.call(this, this.inputs, {
-				vertex: baseVertexShader,
-				fragment: baseFragmentShader
-			}, Seriously.util);
+		if (this.shaderDirty) {
+			if (effect.shader) {
+				shader = effect.shader.call(this, this.inputs, {
+					vertex: baseVertexShader,
+					fragment: baseFragmentShader
+				}, Seriously.util);
 
-			if (shader instanceof ShaderProgram) {
-				this.shader = shader;
-			} else if (shader && shader.vertex && shader.fragment) {
-				this.shader = new ShaderProgram(gl, shader.vertex, shader.fragment);
+				if (shader instanceof ShaderProgram) {
+					this.shader = shader;
+				} else if (shader && shader.vertex && shader.fragment) {
+					this.shader = new ShaderProgram(gl, shader.vertex, shader.fragment);
+				} else {
+					this.shader = baseShader;
+				}
 			} else {
 				this.shader = baseShader;
 			}
@@ -1921,7 +1943,7 @@ function Seriously(options) {
 		}
 	};
 
-	EffectNode.prototype.render = function () {
+	EffectNode.prototype.render = function (callback) {
 		var i,
 			frameBuffer,
 			effect = this.effect,
@@ -1959,6 +1981,10 @@ function Seriously(options) {
 			}
 
 			this.dirty = false;
+		}
+
+		if (callback && typeof callback === 'function') {
+			callback();
 		}
 
 		return this;
@@ -2081,7 +2107,7 @@ function Seriously(options) {
 		delete this.effect;
 		
 		//shader
-		if (this.shader && this.shader.destroy) {
+		if (this.shader && this.shader.destroy && this.shader !== baseShader) {
 			this.shader.destroy();
 		}
 		delete this.shader;
@@ -2156,8 +2182,12 @@ function Seriously(options) {
 		this.__defineSetter__('id', function () {
 		});
 
-		this.render = function() {
-			me.render();
+		this.render = function(callback) {
+			me.render(callback);
+		};
+
+		this.readPixels = function (x, y, width, height, dest) {
+			return me.readPixels(x, y, width, height, dest);
 		};
 		
 		this.reset = function() {
@@ -2234,13 +2264,14 @@ function Seriously(options) {
 	SourceNode = function (source, options) {
 		var opts = options || {},
 			flip = opts.flip === undefined ? true : opts.flip,
-			width = this.desiredWidth,
-			height = this.desiredHeight,
+			width, height,
 			deferTexture = false,
 			that = this,
 			matchedType = false;
 
 		Node.call(this, opts);
+		width = this.width;
+		height = this.height;
 
 		if ( typeof source === 'string' && isNaN(source) ) {
 			source = getElement(source, ['canvas', 'img', 'video']);
@@ -2319,8 +2350,38 @@ function Seriously(options) {
 				throw 'Array length must be height x width x 4.';
 			}
 
+			this.desiredWidth = width;
+			this.desiredHeight = height;
+			this.setSize(width, height);
+
 			matchedType = true;
-			//todo: typed arrays, use opposite default for flip
+
+			//use opposite default for flip
+			if (opts.flip === undefined) {
+				flip = false;
+			}
+			source = new Uint8Array(source);
+			this.render = this.renderTypedArray;
+		} else if ( source instanceof Uint8Array ) {
+			if (!width || !height) {
+				throw 'Height and width must be provided with a Uint8Array';
+			}
+
+			if (width * height * 4 !== source.length) {
+				throw 'Typed array length must be height x width x 4.';
+			}
+
+			this.desiredWidth = width;
+			this.desiredHeight = height;
+			this.setSize(width, height);
+
+			matchedType = true;
+
+			//use opposite default for flip
+			if (opts.flip === undefined) {
+				flip = false;
+			}
+			this.render = this.renderTypedArray;
 		} else if (source instanceof WebGLTexture) {
 			if (gl && !gl.isTexture(source)) {
 				throw 'Not a valid WebGL texture.';
@@ -2351,7 +2412,7 @@ function Seriously(options) {
 			this.initialized = true;
 
 			//todo: if WebGLTexture source is from a different context render it and copy it over
-			this.render = function() { };
+			this.render = function(callback) { };
 		}
 
 		if (!matchedType) {
@@ -2417,7 +2478,7 @@ function Seriously(options) {
 		}
 	};
 
-	SourceNode.prototype.renderVideo = function() {
+	SourceNode.prototype.renderVideo = function(callback) {
 		var video = this.source;
 
 		if (!gl || !video || !video.videoHeight || !video.videoWidth || video.readyState < 2) {
@@ -2467,10 +2528,12 @@ function Seriously(options) {
 		}
 
 		this.dirty = false;
-
+		if (callback && typeof callback === 'function') {
+			callback();
+		}
 	};
 
-	SourceNode.prototype.renderImageCanvas = function() {
+	SourceNode.prototype.renderImageCanvas = function(callback) {
 		var media = this.source;
 
 		if (!gl || !media || !media.height || !media.width) {
@@ -2504,7 +2567,6 @@ function Seriously(options) {
 
 			this.lastRenderTime = this.currentTime;
 			this.dirty = true;
-
 		}
 
 		if (this.transformed || this.fov) {
@@ -2520,6 +2582,55 @@ function Seriously(options) {
 			this.texture = this.sourceTexture;
 		}
 		this.dirty = false;
+
+		if (callback && typeof callback === 'function') {
+			callback();
+		}
+	};
+
+	SourceNode.prototype.renderTypedArray = function(callback) {
+		var media = this.source;
+
+		if (!gl || !media || !media.length) {
+			return;
+		}
+
+		if (!this.initialized) {
+			this.initialize();
+		}
+
+		this.currentTime = media.currentTime || 0;
+
+		if (!this.allowRefresh) {
+			return;
+		}
+
+		if (this.lastRenderTime === undefined || this.lastRenderTime !== this.currentTime && this.currentTime !== undefined) {
+			gl.bindTexture(gl.TEXTURE_2D, this.sourceTexture);
+			gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, this.flip);
+			gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, this.width, this.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, media);
+
+			this.lastRenderTime = this.currentTime || 0;
+			this.dirty = true;
+		}
+
+		if (this.transformed || this.fov) {
+			if (!this.frameBuffer) {
+				this.initFrameBuffer();
+			}
+			this.texture = this.frameBuffer.texture;
+			this.uniforms.source = this.sourceTexture;
+			if (this.dirty) {
+				draw(baseShader, rectangleModel, this.uniforms, this.frameBuffer.frameBuffer, this);
+			}
+		} else {
+			this.texture = this.sourceTexture;
+		}
+		this.dirty = false;
+
+		if (callback && typeof callback === 'function') {
+			callback();
+		}
 	};
 
 	SourceNode.prototype.destroy = function() {
@@ -2640,8 +2751,8 @@ function Seriously(options) {
 		this.__defineSetter__('id', function () {
 		});
 
-		this.render = function() {
-			me.render();
+		this.render = function(callback) {
+			me.render(callback);
 		};
 
 		this.go = function(options) {
@@ -2692,8 +2803,6 @@ function Seriously(options) {
 			frameBuffer;
 
 		Node.call(this, opts);
-
-//		mat4.perspective(90, 1, 1, 100, this.transform);
 
 		this.renderToTexture = opts.renderToTexture;
 
@@ -2823,7 +2932,10 @@ function Seriously(options) {
 		this.flip = flip;
 		this.width = width;
 		this.height = height;
+		this.callbacks = [];
+
 		this.setSize(width, height);
+
 		if (opts.auto !== undefined) {
 			this.auto = opts.auto;
 		} else {
@@ -2873,8 +2985,15 @@ function Seriously(options) {
 	TargetNode.prototype.setDirty = function () {
 		var that;
 
+		function runCallbacks() {
+			var i;
+			for (i = 0; i < that.callbacks.length; i++) {
+				that.callbacks[i]();
+			}
+		}
+
 		function render() {
-			that.render();
+			that.render(runCallbacks);
 		}
 
 		this.dirty = true;
@@ -2888,11 +3007,9 @@ function Seriously(options) {
 	TargetNode.prototype.go = function (options) {
 		if (options) {
 			if (typeof options === 'function') {
-				this.callback = options;
+				this.callbacks.push(options);
 			} else if (options.callback && typeof options.callback === 'function') {
-				this.callback = options.callback;
-			} else {
-				this.callback = false;
+				this.callbacks.push(options.callback);
 			}
 		}
 
@@ -2902,9 +3019,11 @@ function Seriously(options) {
 
 	TargetNode.prototype.stop = function () {
 		this.auto = false;
+		this.callbacks.splice(0);
 	};
 
-	TargetNode.prototype.renderWebGL = function() {
+	TargetNode.prototype.renderWebGL = function(callback) {
+		var i;
 		if (this.dirty) {
 			if (!this.source) {
 				return;
@@ -2917,13 +3036,15 @@ function Seriously(options) {
 
 			this.dirty = false;
 
-			if (this.callback) {
-				this.callback();
-			}
+			runCallbacks();
+		}
+
+		if (callback && typeof callback === 'function') {
+			callback();
 		}
 	};
 
-	TargetNode.prototype.renderSecondaryWebGL = function() {
+	TargetNode.prototype.renderSecondaryWebGL = function(callback) {
 		if (this.dirty && this.source) {
 			this.source.render();
 
@@ -2943,17 +3064,21 @@ function Seriously(options) {
 
 			this.dirty = false;
 
-			if (this.callback) {
-				this.callback();
-			}
+			runCallbacks();
+		}
+
+		if (callback && typeof callback === 'function') {
+			callback();
 		}
 	};
 
-	TargetNode.prototype.render2D = function() {
+	TargetNode.prototype.render2D = function(callback) {
 		//todo: make this actually do something
 
-		if (this.callback) {
-			this.callback();
+		runCallbacks();
+
+		if (callback && typeof callback === 'function') {
+			callback();
 		}
 	};
 
@@ -2971,11 +3096,12 @@ function Seriously(options) {
 			this.source.removeTarget(this);
 		}
 		delete this.source;
-
 		delete this.target;
 		delete this.pub;
 		delete this.uniforms;
 		delete this.pixels;
+		delete this.auto;
+		this.callbacks.splice(0);
 		
 		//remove self from master list of targets
 		i = targets.indexOf(this);
@@ -2985,12 +3111,6 @@ function Seriously(options) {
 		
 		Node.prototype.destroy.call(this);
 	};
-
-	if (benchmarkResults === undefined) {
-		this.benchmark({
-			timeLimit: 0
-		});
-	}
 
 	/*
 	Initialize Seriously object based on options
@@ -3021,7 +3141,7 @@ function Seriously(options) {
 	};
 
 	this.source = function (source, options) {
-		var sourceNode = findInputNode(source);
+		var sourceNode = findInputNode(source, options);
 		//var sourceNode = new SourceNode(source, options);
 		return sourceNode.pub;
 	};
@@ -3051,6 +3171,18 @@ function Seriously(options) {
 
 	this.go = function(options) {
 		var i;
+
+		if (options) {
+			if (typeof options === 'function') {
+				callbacks.push(options);
+				options = {};
+			} else if (options.callback && typeof options.callback === 'function') {
+				callbacks.push(options.callback);
+				options = extend({}, options);
+				delete options.callback;
+			}
+		}
+
 		auto = true;
 		for (i = 0; i < targets.length; i++) {
 			targets[i].go(options);
@@ -3059,6 +3191,7 @@ function Seriously(options) {
 
 	this.stop = function(options) {
 		var i;
+		callbacks.splice(0);
 		for (i = 0; i < targets.length; i++) {
 			targets[i].stop(options);
 		}
@@ -3117,6 +3250,7 @@ function Seriously(options) {
 		targets = null;
 		effects = null;
 		nodes = null;
+		callbacks.splice(0);
 		
 		isDestroyed = true;
 	};
