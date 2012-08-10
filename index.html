@@ -23,6 +23,7 @@
 		<script type="text/javascript" src="effects/seriously.ripple.js"></script>
 		<script type="text/javascript" src="effects/seriously.sepia.js"></script>
 		<script type="text/javascript" src="effects/seriously.tone.js"></script>
+		<script type="text/javascript" src="effects/seriously.vectorscope.js"></script>
 		<script type="text/javascript" src="effects/seriously.vignette.js"></script>
 		<script type="text/javascript" src="effects/seriously.split.js"></script>
 		<style>
@@ -80,11 +81,13 @@
 				active;
 
 			for (e in effects) {
-				effect = effects[e];
-				element = document.createElement('option');
-				element.value = e;
-				element.appendChild(document.createTextNode(effect.title));
-				select.appendChild(element);
+				if (!Seriously.incompatible(e)) {
+					effect = effects[e];
+					element = document.createElement('option');
+					element.value = e;
+					element.appendChild(document.createTextNode(effect.title));
+					select.appendChild(element);
+				}
 			}
 						
 			source = s.source(img);
