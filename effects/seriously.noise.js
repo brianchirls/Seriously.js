@@ -23,23 +23,16 @@ Seriously.plugin('noise', function() {
 				'\n' +
 				'uniform vec3 srsSize;\n' +
 				'uniform float amount;\n' +
-				'uniform float timer;\n';
+				'uniform float timer;\n' +
 
-			if (inputs.mode === 'random') {
-				frag += utilities.shader.makeNoise;
-			} else {
-				frag += utilities.shader.noiseHelpers + utilities.shader.snoise3d + utilities.shader.random;
-			}
+				utilities.shader.noiseHelpers +
+				utilities.shader.snoise3d +
+				utilities.shader.random +
 
-			frag += 'void main(void) {\n' +
-				'	vec4 pixel = texture2D(source, vTexCoord);\n';
-
-			if (inputs.mode === 'random') {
-				frag += '	float noise = makeNoise(vTexCoord.x * 50.0, vTexCoord.y * 17.0, timer * 200.0) * 0.5;\n';
-			} else {
-				frag += '	float r = random(vec2(timer * vTexCoord.xy));\n' +
-						'	float noise = snoise(vec3(vTexCoord * (1024.4 + r * 512.0), timer)) * 0.5;';
-			}
+				'void main(void) {\n' +
+				'	vec4 pixel = texture2D(source, vTexCoord);\n'+
+				'	float r = random(vec2(timer * vTexCoord.xy));\n' +
+				'	float noise = snoise(vec3(vTexCoord * (1024.4 + r * 512.0), timer)) * 0.5;';
 
 			if (inputs.overlay) {
 				frag += '	vec3 overlay = BlendOverlay(pixel.rgb, vec3(noise));\n' +
@@ -58,16 +51,6 @@ Seriously.plugin('noise', function() {
 				type: 'image',
 				uniform: 'source',
 				shaderDirty: false
-			},
-			mode: {
-					type: 'enum',
-					shaderDirty: true,
-					defaultValue: 'simplex',
-					options: [
-						['simplex', 'Simplex'],
-						//['perlin', 'Perlin'],
-						['random', 'Pseudo-random']
-					]
 			},
 			overlay: {
 				type: 'boolean',
