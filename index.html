@@ -109,8 +109,10 @@
 			}
 
 			source.sourceA = '#colorbars';
+			source.split = 0;
 
 			original.sourceA = '#colorbars';
+			original.split = 0;
 			original.translate(-0.75, -0.75);
 			original.scale(0.2);
 
@@ -328,9 +330,11 @@ console.log(event.target.result);
 							} else {
 							}
 							
-							element.id = 'input-' + name + '-' + i;
-							cell.appendChild(element);
-							obj.effect[i] = element;
+							if (element) {
+								element.id = 'input-' + name + '-' + i;
+								cell.appendChild(element);
+								obj.effect[i] = element;
+							}
 						}
 					}
 	
