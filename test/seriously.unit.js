@@ -269,6 +269,7 @@
 			sourceCanvas, targetCanvas, img,
 			ctx,
 			pixels, imagedata,
+			asyncDone = false, syncDone = false,
 			comparison = [ //image is upside down
 				0, 0, 255, 255,
 				255, 255, 255, 255,
@@ -308,8 +309,11 @@
 			ok(pixels && compare(pixels, comparison), 'Image source rendered accurately.');
 			source.destroy();
 
-			seriously.destroy();
-			start();
+			asyncDone = true;
+			if (syncDone) {
+				seriously.destroy();
+				start();
+			}
 		});
 		img.src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFklEQVQIW2P8z8DwnxFIMAJpIGBgAAA8/Qb9DqS16QAAAABJRU5ErkJggg== ';
 
@@ -344,6 +348,12 @@
 		source.destroy();
 
 		//todo: implement and test WebGLTexture source		
+
+		syncDone = true;
+		if (asyncDone) {
+			seriously.destroy();
+			start();
+		}
 		return;
 	});
 	
