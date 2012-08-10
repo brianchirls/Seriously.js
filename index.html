@@ -217,11 +217,13 @@
 								element.setAttribute('type', 'checkbox');
 								element.checked = input.defaultValue;
 							} else {
+								element = false;
 							}
-							
-							element.id = 'input-' + name + '-' + i;
-							cell.appendChild(element);
-							obj.effect[i] = element;
+							if (element) {
+								element.id = 'input-' + name + '-' + i;
+								cell.appendChild(element);
+								obj.effect[i] = element;
+							}
 						}
 					}
 	
