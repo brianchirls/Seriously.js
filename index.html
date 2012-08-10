@@ -5,6 +5,7 @@
 		<title>Seriously.js</title>
 		<!--<script type="text/javascript" src="lib/webgl-debug.js"></script> -->
 		<script type="text/javascript" src="seriously.js"></script>
+		<script type="text/javascript" src="effects/seriously.hex.js"></script>
 		<script type="text/javascript" src="effects/seriously.ascii.js"></script>
 		<script type="text/javascript" src="effects/seriously.bleach-bypass.js"></script>
 		<script type="text/javascript" src="effects/seriously.blend.js"></script>
@@ -116,7 +117,7 @@
 
 			original.sourceA = '#colorbars';
 			original.split = 0;
-			original.translate(-0.75, -0.75);
+			original.translate(-1.3, -0.75);
 			original.scale(0.2);
 
 			blend.top = original;
@@ -331,6 +332,7 @@ console.log(event.target.result);
 								element.setAttribute('type', 'checkbox');
 								element.checked = input.defaultValue;
 							} else {
+								element = false;
 							}
 							
 							if (element) {
