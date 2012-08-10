@@ -38,6 +38,16 @@
 			display: none;
 		}
 
+		#transforms input[type=range] {
+			width: 360px;
+		}
+
+		@media screen and (min-width: 740px) {
+			#transforms input[type=range] {
+				width: 720px;
+			}
+		}
+
 		</style>
 	</head>
 	<body>
@@ -51,6 +61,13 @@
 		</select><br/>
 		<div id="options"></div>
 		<canvas id="canvas" width="960" height="540"></canvas>
+		<table id="transforms">
+			<tr><td><label for="rotate-x">Rotate X</label></td><td><input type="range" id="rotate-x" min="0" max="360" step="1" value="0"/></td></tr>
+			<tr><td><label for="rotate-y">Rotate Y</label></td><td><input type="range" id="rotate-y" min="0" max="360" step="1" value="0"/></td></tr>
+			<tr><td><label for="rotate-z">Rotate Z</label></td><td><input type="range" id="rotate-z" min="0" max="360" step="1" value="0"/></td></tr>
+			<tr><td><label for="translate-z">Translate Z</label></td><td><input type="range" id="translate-z" min="0" max="90" step="1" value="0"/></td></tr>
+			<tr><td><label for="perspective">Perspective</label></td><td><input type="range" id="perspective" min="0" max="90" step="1" value="0"/></td></tr>
+		</table>
 	</body>
 	<script type="text/javascript" src="lib/html5slider.js"></script>
 	<script type="text/javascript" src="lib/colorPicker/colorPicker.js"></script>
@@ -100,7 +117,16 @@
 				img = document.getElementById('img'),
 				video = document.getElementById('video'),
 				select = document.getElementById('effects'),
-				active;
+				active,
+				translateZ, rotateX, rotateY, rotateZ, perspective;
+
+			function updateTransforms() {
+				blend.reset();
+				blend.translate(0, 0, -translateZ.value);
+				blend.rotateX(rotateX.value * Math.PI / 180);
+				blend.rotateY(rotateY.value * Math.PI / 180);
+				blend.rotateZ(rotateZ.value * Math.PI / 180);
+			}
 
 			for (e in effects) {
 				if (!Seriously.incompatible(e)) {
@@ -127,6 +153,19 @@
 			target.source = blend;
 
 			s.go();
+
+			translateZ = document.getElementById('translate-z');
+			translateZ.addEventListener('change', updateTransforms);
+			rotateX = document.getElementById('rotate-x');
+			rotateX.addEventListener('change', updateTransforms);
+			rotateY = document.getElementById('rotate-y');
+			rotateY.addEventListener('change', updateTransforms);
+			rotateZ = document.getElementById('rotate-z');
+			rotateZ.addEventListener('change', updateTransforms);
+			perspective = document.getElementById('perspective');
+			perspective.addEventListener('change', function () {
+				blend.perspective(this.value);
+			});
 
 			document.getElementById('colorbutton').addEventListener('click', function() {
 				video.pause();
