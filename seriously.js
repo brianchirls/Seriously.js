@@ -1261,8 +1261,13 @@ function Seriously(options) {
 							return function() {
 								var oldValue, newValue;
 
-								oldValue = element.value;
-								newValue = me.setInput(name, element.value);
+								if (input.type === 'checkbox') {
+									//special case for check box
+									oldValue = input.checked;
+								} else {
+									oldValue = element.value;
+								}
+								newValue = me.setInput(name, oldValue);
 
 								//special case for color type
 								if (effectInput.type === 'color') {
@@ -1277,6 +1282,10 @@ function Seriously(options) {
 							};
 						}(inputName, input))
 					};
+
+					if (input.type === 'checkbox') {
+						value = input.checked;
+					}
 
 					me.inputElements[inputName] = lookup;
 					input.addEventListener('change', lookup.listener, true);
