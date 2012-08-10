@@ -1072,6 +1072,7 @@ function Seriously(options) {
 	Node = function (options) {
 		var width, height, depth;
 		this.transform = new Float32Array(16);
+		this.projection = new Float32Array(16);
 
 		if (options) {
 			this.desiredWidth = parseInt(options.width, 10);
@@ -1098,7 +1099,7 @@ function Seriously(options) {
 		this.uniforms = {
 			transform: this.transform,
 			srsSize: [width, height, depth],
-			projection: new Float32Array(16)
+			projection: this.projection
 		};
 
 		this.perspective(this.fov);
@@ -1364,12 +1365,12 @@ function Seriously(options) {
 		}
 
 		if (this.fov) {
-			mat4.perspective(this.fov, this.width / this.height, 1, 100, this.uniforms.projection);
+			mat4.perspective(this.fov, this.width / this.height, 1, 100, this.projection);
 			this.uniforms.srsSize[2] = 1 / Math.tan(this.fov * Math.PI / 360.0);
 		} else {
-			mat4.identity(this.uniforms.projection);
-			this.uniforms.projection[0] = this.height / this.width;
-			this.uniforms.projection[10] = 2/200;
+			mat4.identity(this.projection);
+			this.projection[0] = this.height / this.width;
+			this.projection[10] = 2/200;
 			this.uniforms.srsSize[2] = 1;
 		}
 
