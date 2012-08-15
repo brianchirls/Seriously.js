@@ -858,8 +858,8 @@ function Seriously(options) {
 
 				media = node.source;
 				if (node.lastRenderTime === undefined ||
-					node.lastRenderFrame !== media.mozPresentedFrames ||
-					node.lastRenderTime !== media.currentTime) {
+					node.dirty ||
+					media.currentTime !== undefined && node.lastRenderTime !== media.currentTime) {
 					node.dirty = false;
 					node.setDirty();
 				}
@@ -1034,10 +1034,12 @@ function Seriously(options) {
 		//loop through all targets calling setDirty (depth-first)
 		var i;
 
-		if (!this.dirty && this.targets) {
+		if (!this.dirty) {
 			this.dirty = true;
-			for (i = 0; i < this.targets.length; i++) {
-				this.targets[i].setDirty();
+			if (this.targets) {
+				for (i = 0; i < this.targets.length; i++) {
+					this.targets[i].setDirty();
+				}
 			}
 		}
 	};
@@ -1846,6 +1848,10 @@ function Seriously(options) {
 			me.render(callback);
 		};
 
+		this.update = function() {
+			me.setDirty();
+		};
+
 		this.readPixels = function (x, y, width, height, dest) {
 			return me.readPixels(x, y, width, height, dest);
 		};
@@ -2095,7 +2101,8 @@ function Seriously(options) {
 			return;
 		}
 
-		if (this.lastRenderFrame !== video.mozPresentedFrames ||
+		if (this.dirty ||
+			this.lastRenderFrame !== video.mozPresentedFrames ||
 			this.lastRenderTime !== video.currentTime) {
 
 			gl.bindTexture(gl.TEXTURE_2D, this.texture);
@@ -2130,16 +2137,11 @@ function Seriously(options) {
 			this.initialize();
 		}
 
-		if (media.currentTime === undefined) {
-			media.currentTime = 0;
-		}
-		this.currentTime = media.currentTime;
-
 		if (!this.allowRefresh) {
 			return;
 		}
 
-		if (this.lastRenderTime === undefined || this.lastRenderTime !== this.currentTime) {
+		if (this.dirty) {
 			gl.bindTexture(gl.TEXTURE_2D, this.texture);
 			gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, this.flip);
 			try {
@@ -2151,7 +2153,7 @@ function Seriously(options) {
 				}
 			}
 
-			this.lastRenderTime = this.currentTime;
+			this.lastRenderTime = Date.now() / 1000;
 
 			this.dirty = false;
 		}
@@ -2172,18 +2174,16 @@ function Seriously(options) {
 			this.initialize();
 		}
 
-		this.currentTime = media.currentTime;
-
 		if (!this.allowRefresh) {
 			return;
 		}
 
-		if (this.lastRenderTime === undefined || this.lastRenderTime !== this.currentTime && this.currentTime !== undefined) {
+		if (this.dirty) {
 			gl.bindTexture(gl.TEXTURE_2D, this.texture);
 			gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, this.flip);
 			gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, this.width, this.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, media);
 
-			this.lastRenderTime = this.currentTime || 0;
+			this.lastRenderTime = Date.now() / 1000;
 			this.dirty = false;
 		}
 		if (callback && typeof callback === 'function') {
