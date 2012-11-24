@@ -107,7 +107,9 @@ Seriously.plugin('ascii', (function () {
 				scaledWidth = Math.ceil(width / 8);
 				scaledHeight = Math.ceil(height / 8);
 
-				uniforms.projection = identity;
+				//todo: calculate projection based on width/height
+				//mat4.perspective(this.fov, this.width / this.height, 1, 100, this.projection);
+				//uniforms.projection = identity;
 				uniforms.transform = identity;
 
 				unif.srsSize = uniforms.srsSize;
