@@ -213,6 +213,12 @@ Seriously.plugin('tvglitch', (function () {
 				gl.drawArrays(gl.POINTS, 0, particleCount);
 */
 		},
+		destroy: function (argument) {
+			delete this.particleBuffer;
+			if (this.particleFrameBuffer) {
+				this.particleFrameBuffer.destroy();
+			}
+		},
 		inPlace: false,
 		inputs: {
 			source: {
