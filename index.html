@@ -264,7 +264,7 @@ console.log(event.target.result);
 			}, true);
 
 			gUM && document.getElementById('camera').addEventListener('click', function () {
-				gUM.call(navigator, { video: true, audio: true}, function(stream) {
+				gUM.call(navigator, { video: true }, function(stream) {
 					function resize() {
 						target.height = target.original.width * video.videoHeight / video.videoWidth;
 					}
