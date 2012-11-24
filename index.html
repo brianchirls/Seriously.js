@@ -84,9 +84,43 @@
 		effect,
 		element,
 		target,
+		timeNodes = [],
 		effects = Seriously.effects(),
-		effectObjects = {};
-		
+		effectObjects = {},
+		requestAnimFrame = (function(){
+			var lastTime = 0;
+			return  window.requestAnimationFrame       ||
+					window.webkitRequestAnimationFrame ||
+					window.mozRequestAnimationFrame    ||
+					window.oRequestAnimationFrame      ||
+					window.msRequestAnimationFrame     ||
+					function (callback) {
+						var currTime, timeToCall, id;
+
+						function timeoutCallback() {
+							callback(currTime + timeToCall);
+						}
+
+						currTime = new Date().getTime();
+						timeToCall = Math.max(0, 16 - (currTime - lastTime));
+						id = window.setTimeout(timeoutCallback, timeToCall);
+						lastTime = currTime + timeToCall;
+						return id;
+					};
+		}());
+
+		function updateTime() {
+			var i;
+			for (i = 0; i < timeNodes.length; i++) {
+				if ('time' in timeNodes[i]) {
+					timeNodes[i].time = Date.now();
+				} else if ('timer' in timeNodes[i]) {
+					timeNodes[i].timer = Date.now();
+				}
+			}
+			requestAnimFrame(updateTime);
+		}
+
 		//for now, only effects that process a single image
 		for (e in effects) {
 			effect = effects[e];
@@ -155,6 +189,7 @@
 			target.source = blend;
 
 			s.go();
+			updateTime();
 
 			translateZ = document.getElementById('translate-z');
 			translateZ.addEventListener('change', updateTransforms);
@@ -322,7 +357,11 @@ console.log(event.target.result);
 							cell = document.createElement('td');
 							row.appendChild(cell);
 
-							if (input.type === 'number') {
+							if ((i === 'time' || i == 'timer') && input.type === 'number') {
+								if (timeNodes.indexOf(obj.effect) < 0) {
+									timeNodes.push(obj.effect);
+								}
+							} else if (input.type === 'number') {
 								element = document.createElement('input');
 								if (input.min !== -Infinity && input.min !== undefined &&
 									input.max !== Infinity && input.max !== undefined) {
