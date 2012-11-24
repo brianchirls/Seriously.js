@@ -96,7 +96,7 @@ Seriously.plugin('tvglitch', (function () {
 				'uniform float bars;\n' +
 				'\n' +
 				//todo: need much better pseudo-random number generator
-				(Seriously.util.shader.snoise2d || ('float snoise(vec2 v){\n' +
+				(Seriously.util.shader.noiseHelpers + Seriously.util.shader.snoise2d || ('float snoise(vec2 v){\n' +
 					'    return fract(sin(dot(v ,vec2(12.9898,78.233))) * 43758.5453);\n' +
 					'}\n')) +
 				'\n' +
