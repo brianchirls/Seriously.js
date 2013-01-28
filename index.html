@@ -15,14 +15,18 @@
 		<script type="text/javascript" src="effects/seriously.exposure.js"></script>
 		<script type="text/javascript" src="effects/seriously.lumakey.js"></script>
 		<script type="text/javascript" src="effects/seriously.fader.js"></script>
+		<script type="text/javascript" src="effects/seriously.filmscratch.js"></script>
 		<script type="text/javascript" src="effects/seriously.hue-saturation.js"></script>
+		<script type="text/javascript" src="effects/seriously.hex.js"></script>
 		<script type="text/javascript" src="effects/seriously.invert.js"></script>
 		<script type="text/javascript" src="effects/seriously.nightvision.js"></script>
 		<script type="text/javascript" src="effects/seriously.noise.js"></script>
 		<script type="text/javascript" src="effects/seriously.ripple.js"></script>
 		<script type="text/javascript" src="effects/seriously.sepia.js"></script>
 		<script type="text/javascript" src="effects/seriously.tone.js"></script>
+		<script type="text/javascript" src="effects/seriously.vectorscope.js"></script>
 		<script type="text/javascript" src="effects/seriously.vignette.js"></script>
+		<script type="text/javascript" src="effects/seriously.tvglitch.js"></script>
 		<script type="text/javascript" src="effects/seriously.split.js"></script>
 		<style>
 		
@@ -78,12 +82,25 @@
 				select = document.getElementById('effects'),
 				active;
 
+			function updateTimers() {
+				if (active && active.effect.timer !== undefined) {
+					active.effect.timer = Date.now();
+				}
+				if (active && active.effect.time !== undefined) {
+					active.effect.time = Date.now();
+				}
+				setTimeout(updateTimers, 30);
+			}
+			updateTimers();
+
 			for (e in effects) {
-				effect = effects[e];
-				element = document.createElement('option');
-				element.value = e;
-				element.appendChild(document.createTextNode(effect.title));
-				select.appendChild(element);
+				if (!Seriously.incompatible(e)) {
+					effect = effects[e];
+					element = document.createElement('option');
+					element.value = e;
+					element.appendChild(document.createTextNode(effect.title));
+					select.appendChild(element);
+				}
 			}
 						
 			source = s.source(img);
@@ -212,11 +229,13 @@
 								element.setAttribute('type', 'checkbox');
 								element.checked = input.defaultValue;
 							} else {
+								element = false;
 							}
-							
-							element.id = 'input-' + name + '-' + i;
-							cell.appendChild(element);
-							obj.effect[i] = element;
+							if (element) {
+								element.id = 'input-' + name + '-' + i;
+								cell.appendChild(element);
+								obj.effect[i] = element;
+							}
 						}
 					}
 	

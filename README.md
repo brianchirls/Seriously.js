@@ -22,14 +22,18 @@ Full documentation is in progress at the [wiki](https://github.com/brianchirls/S
 - Read pixel array from any node
 
 ### Included Effects
+- Ascii Text
 - Bleach Bypass
 - Blend
+- Channel Mapping
 - Chroma Key
 - Color generator
 - [Color Cube](http://www.youtube.com/watch?v=rfQ8rKGTVlg&t=24m30s)
 - Edge Detect
+- Emboss
 - Exposure Adjust
 - Fader
+- Hex Tiles
 - Hue/Saturation Adjust
 - Invert
 - Luma Key
@@ -39,6 +43,7 @@ Full documentation is in progress at the [wiki](https://github.com/brianchirls/S
 - Sepia tone
 - Split
 - Tone Adjust
+- TV Glitch
 - Vignette
 
 ### Requirements
@@ -75,7 +80,7 @@ So for now, it is best to host your own video files.
 - API documentation and plugin developer guidelines
 - More examples and tutorials
 - 3D transforms (perspective) on any node
-- Accept input from typed arrays and WebGL Textures
+- Accept input from WebGL Textures
 - Benchmarking utility to determine client capabilities
 - Automatic resolution tuning to maintain minimum frame rate
 - Handle lost WebGL context
@@ -85,8 +90,6 @@ So for now, it is best to host your own video files.
 	- Perlin Noise
 	- Clouds
 	- Gaussian Blur
-	- TV Glitch
-	- Channel Mapping
 	- Curves
 
 ## License
