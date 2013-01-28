@@ -1239,7 +1239,7 @@ function Seriously(options) {
 						input = getElement(input, ['select']);
 					}
 
-				} else if (effectInput.type === 'number') {
+				} else if (effectInput.type === 'number' || effectInput.type === 'boolean') {
 					input = getElement(input, ['input', 'select']);
 				} else if (effectInput.type === 'image') {
 					input = getElement(input, ['canvas', 'img', 'video']);
