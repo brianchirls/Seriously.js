@@ -240,6 +240,37 @@
 	 * create effect
 	*/
 
+	test('Effect Polygon Matte', function() {
+	var seriously, effect;
+
+		//todo: expects
+
+		Seriously.plugin('removeme', {});
+		seriously = Seriously();
+		effect = seriously.effect('removeme');
+
+		ok(typeof effect.matte === 'function', 'matte method exists');
+
+		effect.matte([
+			[0, 0],
+			[1, 0],
+			[0, 1],
+			[1, 1]
+		]);
+
+		effect.matte([
+			[
+				[0, 0],
+				[1, 0],
+				[0, 1],
+				[1, 1]
+			]
+		]);
+
+		seriously.destroy();
+		Seriously.removePlugin('removeme');
+	});
+
 	module('Source');
 	/*
 	 * create source: all different types
@@ -276,7 +307,7 @@
 				0, 255, 0, 255
 			];
 
-		expect(10);
+		expect(11);
 
 		targetCanvas = document.createElement('canvas');
 		targetCanvas.width = 2;
@@ -317,7 +348,16 @@
 		ok(source, 'Created source from canvas');
 		pixels = source.readPixels(0, 0, 2, 2);
 		ok(pixels && compare(pixels, comparison), 'Canvas source rendered accurately.');
-		source.destroy();
+
+		ctx.fillRect(0, 0, 2, 2);
+		source.update();
+		pixels = source.readPixels(0, 0, 2, 2);
+		ok(pixels && compare(pixels, [ //image is upside down
+			255, 255, 255, 255,
+			255, 255, 255, 255,
+			255, 255, 255, 255,
+			255, 255, 255, 255
+		]), 'Canvas source updated and rendered accurately.');
 
 		source = seriously.source(imagedata);
 		ok(source, 'Created source from ImageData');

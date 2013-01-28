@@ -441,7 +441,7 @@ function FrameBuffer(gl, width, height, useFloat) {
 		status;
 
 	//todo: check float webgl extension
-useFloat = false;
+	useFloat = useFloat && !!gl.getExtension("OES_texture_float");
 	if (useFloat) {
 		this.type = gl.FLOAT;
 	} else {
@@ -769,46 +769,59 @@ function Seriously(options) {
 		callbacksRunning = false,
 		isDestroyed = false;
 
-	function buildModel(thisGl) {
+	function makeGlModel(shape, gl) {
 		var vertex, index, texCoord;
 
-		if (!thisGl) {
+		if (!gl) {
 			return false;
 		}
 
-		vertex = thisGl.createBuffer();
-		thisGl.bindBuffer(thisGl.ARRAY_BUFFER, vertex);
-		thisGl.bufferData(thisGl.ARRAY_BUFFER, new Float32Array([
-			-1, -1, -1,
-			1, -1, -1,
-			1, 1, -1,
-			-1, 1, -1
-		]), thisGl.STATIC_DRAW);
+		vertex = gl.createBuffer();
+		gl.bindBuffer(gl.ARRAY_BUFFER, vertex);
+		gl.bufferData(gl.ARRAY_BUFFER, shape.vertices, gl.STATIC_DRAW);
 		vertex.size = 3;
 
-		index = thisGl.createBuffer();
-		thisGl.bindBuffer(thisGl.ELEMENT_ARRAY_BUFFER, index);
-		thisGl.bufferData(thisGl.ELEMENT_ARRAY_BUFFER, new Uint16Array([
-		  0, 1, 2,      0, 2, 3    // Front face
-		]), thisGl.STATIC_DRAW);
+		index = gl.createBuffer();
+		gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, index);
+		gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, shape.indices, gl.STATIC_DRAW);
 
-		texCoord = thisGl.createBuffer();
-		thisGl.bindBuffer(thisGl.ARRAY_BUFFER, texCoord);
-		thisGl.bufferData(thisGl.ARRAY_BUFFER, new Float32Array([
-					0,0,
-					1,0,
-					1,1,
-					0,1
-		]), thisGl.STATIC_DRAW);
+		texCoord = gl.createBuffer();
+		gl.bindBuffer(gl.ARRAY_BUFFER, texCoord);
+		gl.bufferData(gl.ARRAY_BUFFER, shape.coords, gl.STATIC_DRAW);
 		texCoord.size = 2;
 
 		return {
 			vertex: vertex,
 			index: index,
 			texCoord: texCoord,
-			length: 6,
-			mode: thisGl.TRIANGLES
+			length: shape.indices.length,
+			mode: shape.mode || gl.TRIANGLES
 		};
+	}
+
+	function buildRectangleModel(gl) {
+		var shape = {};
+
+		shape.vertices = new Float32Array([
+			-1, -1, -1,
+			1, -1, -1,
+			1, 1, -1,
+			-1, 1, -1
+		]);
+
+		shape.indices = new Uint16Array([
+			0, 1, 2,
+			0, 2, 3    // Front face
+		]);
+
+		shape.coords = new Float32Array([
+			0,0,
+			1,0,
+			1,1,
+			0,1
+		]);
+
+		return makeGlModel(shape, gl);
 	}
 
 	function attachContext(context) {
@@ -817,7 +830,7 @@ function Seriously(options) {
 		gl = context;
 		glCanvas = context.canvas;
 
-		rectangleModel = buildModel(gl);
+		rectangleModel = buildRectangleModel(gl);
 
 		baseShader = new ShaderProgram(gl, baseVertexShader, baseFragmentShader);
 
@@ -858,8 +871,8 @@ function Seriously(options) {
 
 				media = node.source;
 				if (node.lastRenderTime === undefined ||
-					node.lastRenderFrame !== media.mozPresentedFrames ||
-					node.lastRenderTime !== media.currentTime) {
+					node.dirty ||
+					media.currentTime !== undefined && node.lastRenderTime !== media.currentTime) {
 					node.dirty = false;
 					node.setDirty();
 				}
@@ -1034,10 +1047,12 @@ function Seriously(options) {
 		//loop through all targets calling setDirty (depth-first)
 		var i;
 
-		if (!this.dirty && this.targets) {
+		if (!this.dirty) {
 			this.dirty = true;
-			for (i = 0; i < this.targets.length; i++) {
-				this.targets[i].setDirty();
+			if (this.targets) {
+				for (i = 0; i < this.targets.length; i++) {
+					this.targets[i].setDirty();
+				}
 			}
 		}
 	};
@@ -1202,6 +1217,382 @@ function Seriously(options) {
 		this.isDestroyed = true;
 	};
 
+	/*
+	matte function to be assigned as a method to EffectNode and TargetNode
+	*/
+
+	function matte(poly) {
+		var polys,
+			polygons = [],
+			polygon,
+			vertices = [],
+			i, j, v,
+			vert, prev,
+			triangles = [],
+			shape = {};
+
+		//detect whether it's multiple polygons or what
+		function makePolygonsArray(poly) {
+			if (!poly || !poly.length || !Array.isArray(poly)) {
+				return [];
+			}
+
+			if (!Array.isArray(poly[0])) {
+				return [poly];
+			}
+
+			if (Array.isArray(poly[0]) && !isNaN(poly[0][0])) {
+				return [poly];
+			}
+
+			return poly;
+		}
+
+		function linesIntersect(a1, a2, b1, b2) {
+			var ua_t, ub_t, u_b, ua, ub;
+			ua_t = (b2.x - b1.x) * (a1.y - b1.y) - (b2.y - b1.y) * (a1.x - b1.x);
+			ub_t = (a2.x - a1.x) * (a1.y - b1.y) - (a2.y - a1.y) * (a1.x - b1.x);
+			u_b = (b2.y - b1.y) * (a2.x - a1.x) - (b2.x - b1.x) * (a2.y - a1.y);
+			if (u_b) {
+				ua = ua_t / u_b;
+				ub = ub_t / u_b;
+				if (ua > 0 && ua <= 1 && ub > 0 && ub <= 1) {
+					return {
+						x: a1.x + ua * (a2.x - a1.x),
+						y: a1.y + ua * (a2.y - a1.y)
+					};
+				}
+			}
+			return false;
+		}
+
+		function makeSimple(poly) {
+			/*
+			this uses a slow, naive approach to detecting line intersections.
+			Use Bentley-Ottmann Algorithm
+			see: http://softsurfer.com/Archive/algorithm_0108/algorithm_0108.htm#Bentley-Ottmann Algorithm
+			see: https://github.com/tokumine/sweepline
+			*/
+			var i, j,
+				edge1, edge2,
+				intersect,
+				intersections = [],
+				newPoly,
+				head, point,
+				newPolygons,
+				point1, point2;
+
+			if (poly.simple) {
+				return;
+			}
+
+			for (i = 0; i < poly.edges.length; i++) {
+				edge1 = poly.edges[i];
+				for (j = i + 1; j < poly.edges.length; j++) {
+					edge2 = poly.edges[j];
+					intersect = linesIntersect(edge1[0], edge1[1], edge2[0], edge2[1]);
+					if (intersect) {
+						intersect.edge1 = edge1;
+						intersect.edge2 = edge2;
+						intersections.push(intersect);
+					}
+				}
+			}
+
+			if (intersections.length) {
+				newPolygons = [];
+
+				for (i = 0; i < intersections.length; i++) {
+					intersect = intersections[i];
+					edge1 = intersect.edge1;
+					edge2 = intersect.edge2;
+
+					//make new points
+					//todo: set ids for points
+					point1 = {
+						x: intersect.x,
+						y: intersect.y,
+						prev: edge1[0],
+						next: edge2[1],
+						id: vertices.length
+					};
+					poly.vertices.push(point1);
+					vertices.push(point1);
+
+					point2 = {
+						x: intersect.x,
+						y: intersect.y,
+						prev: edge2[0],
+						next: edge1[1],
+						id: vertices.length
+					};
+					poly.vertices.push(point2);
+					vertices.push(point1);
+
+					//modify old points
+					point1.prev.next = point1;
+					point1.next.prev = point1;
+					point2.prev.next = point2;
+					point2.next.prev = point2;
+
+					//don't bother modifying the old edges. we're just gonna throw them out
+				}
+
+				//make new polygons
+				do {
+					newPoly = {
+						edges: [],
+						vertices: [],
+						simple: true
+					};
+					newPolygons.push(newPoly);
+					point = poly.vertices[0];
+					head = point;
+					//while (point.next !== head && poly.vertices.length) {
+					do {
+						i = poly.vertices.indexOf(point);
+						poly.vertices.splice(i, 1);
+						newPoly.edges.push([point, point.next]);
+						newPoly.vertices.push(point);
+						point = point.next;
+					} while (point !== head);
+				} while (poly.vertices.length);
+
+				//remove original polygon from list
+				i = polygons.indexOf(poly);
+				polygons.splice(i, 1);
+
+				//add new polygons to list
+				for (i = 0; i < newPolygons.length; i++) {
+					polygons.push(newPolygons[i]);
+				}
+			} else {
+				poly.simple = true;
+			}
+		}
+
+		function clockWise(poly) {
+			var p, q, n = poly.vertices.length,
+				pv, qv, sum = 0;
+			for (p = n - 1, q = 0; q < n; p = q, q++) {
+				pv = poly.vertices[p];
+				qv = poly.vertices[q];
+				//sum += (next.x - v.x) * (next.y + v.y);
+				//sum += (v.next.x + v.x) * (v.next.y - v.y);
+				sum += pv.x * qv.y - qv.x * pv.y;
+			}
+			return sum > 0;
+		}
+
+		function triangulate(poly) {
+			function pointInTriangle(a, b, c, p) {
+				var ax, ay, bx, by, cx, cy, apx, apy, bpx, bpy, cpx, cpy,
+					cXap, bXcp, aXbp;
+
+				ax = c.x - b.x; ay = c.y - b.y;
+				bx = a.x - c.x; by = a.y - c.y;
+				cx = b.x - a.x; cy = b.y - a.y;
+				apx = p.x - a.x; apy = p.y - a.y;
+				bpx = p.x - b.x; bpy = p.y - b.y;
+				cpx = p.x - c.x; cpy = p.y - c.y;
+
+				aXbp = ax * bpy - ay * bpx;
+				cXap = cx * apy - cy * apx;
+				bXcp = bx * cpy - by * cpx;
+
+				return aXbp >= 0 && bXcp >=0 && cXap >=0;
+			}
+
+			function snip(u, v, w, n, V) {
+				var p, a, b, c, point;
+				a = points[V[u]];
+				b = points[V[v]];
+				c = points[V[w]];
+				if (0 > (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x)) {
+					return false;
+				}
+				for (p = 0; p < n; p++) {
+					if (!(p === u || p === v || p === w)) {
+						point = points[V[p]];
+						if (pointInTriangle(a, b, c, point)) {
+							return false;
+						}
+					}
+				}
+				return true;
+			}
+
+			var v, points = poly.vertices,
+				n, V = [], indices = [],
+				nv, count, m, u, w;
+
+			//copy points
+			//for (v = 0; v < poly.vertices.length; v++) {
+			//	points.push(poly.vertices[v]);
+			//}
+			n = points.length;
+
+			if (poly.clockWise) {
+				for (v = 0; v < n; v++) {
+					V[v] = v;
+				}
+			} else {
+				for (v = 0; v < n; v++) {
+					V[v] = (n - 1) - v;
+				}
+			}
+
+			nv = n;
+			count = 2 * nv;
+			for (m = 0, v = nv - 1; nv > 2; ) {
+				if ((count--) <= 0) {
+					return indices;
+				}
+
+				u = v;
+				if (nv <= u) {
+					u = 0;
+				}
+
+				v = u + 1;
+				if (nv <= v) {
+					v = 0;
+				}
+
+				w = v + 1;
+				if (nv < w) {
+					w = 0;
+				}
+
+				if (snip(u, v, w, nv, V)) {
+					var a, b, c, s, t;
+					a = V[u];
+					b = V[v];
+					c = V[w];
+					if (poly.clockWise) {
+						indices.push(points[a]);
+						indices.push(points[b]);
+						indices.push(points[c]);
+					} else {
+						indices.push(points[c]);
+						indices.push(points[b]);
+						indices.push(points[a]);
+					}
+					m++;
+					for (s = v, t = v + 1; t < nv; s++, t++) {
+						V[s] = V[t];
+					}
+					nv--;
+					count = 2 * nv;
+				}
+			}
+
+			polygon.indices = indices;
+		}
+
+		polys = makePolygonsArray(poly);
+
+		for (i = 0; i < polys.length; i++) {
+			poly = polys[i];
+			prev = null;
+			polygon = {
+				vertices: [],
+				edges: []
+			};
+
+			for (j = 0; j < poly.length; j++) {
+				v = poly[j];
+				if (typeof v ==='object' && !isNaN(v.x) && !isNaN(v.y)) {
+					vert = {
+						x: v.x,
+						y: v.y,
+						id: vertices.length
+					};
+				} else if (v.length >= 2 && !isNaN(v[0]) && !isNaN(v[1])) {
+					vert = {
+						x: v[0],
+						y: v[1],
+						id: vertices.length
+					};
+				}
+				if (vert) {
+					if (prev) {
+						prev.next = vert;
+						vert.prev = prev;
+						vert.next = polygon.vertices[0];
+						polygon.vertices[0].prev = vert;
+					} else {
+						polygon.head = vert;
+						vert.next = vert;
+						vert.prev = vert;
+					}
+					vertices.push(vert);
+					polygon.vertices.push(vert);
+					prev = vert;
+				}
+			}
+
+			if (polygon.vertices.length > 2) {
+				if (polygon.vertices.length === 3) {
+					polygon.simple = true;
+				}
+
+				polygons.push(polygon);
+
+				//save edges
+				for (j = 0; j < polygon.vertices.length; j++) {
+					vert = polygon.vertices[j];
+					polygon.edges.push([
+						vert, vert.next
+					]);
+				}
+			}
+		}
+
+		for (i = polygons.length - 1; i >= 0; i--) {
+			polygon = polygons[i];
+			makeSimple(polygon);
+		}
+
+		for (i = 0; i < polygons.length; i++) {
+			polygon = polygons[i];
+			polygon.clockWise = clockWise(polygon);
+			triangulate(polygon);
+		}
+
+		//build shape
+		shape.vertices = [];
+		shape.coords = [];
+		for (i = 0; i < vertices.length; i++) {
+			v = vertices[i];
+			shape.vertices.push(v.x * 2 - 1);
+			shape.vertices.push(v.y * -2 + 1);
+			shape.vertices.push(-1);
+
+			shape.coords.push(v.x);
+			shape.coords.push(v.y * -1 + 1);
+		}
+		shape.vertices = new Float32Array(shape.vertices);
+		shape.coords = new Float32Array(shape.coords);
+
+		shape.indices = [];
+		for (i = 0; i < polygons.length; i++) {
+			polygon = polygons[i];
+			for (j = 0; j < polygon.indices.length; j++) {
+				v = polygon.indices[j];
+				shape.indices.push(v.id);
+				//shape.indices.push(v[1].id);
+				//shape.indices.push(v[2].id);
+			}
+		}
+		shape.indices = new Uint16Array(shape.indices);
+
+		this.shape = shape;
+		if (this.gl) {
+			makeGlModel(shape, this.gl);
+		}
+	}
+
 	Effect = function (effectNode) {
 		var name, me = effectNode;
 
@@ -1237,7 +1628,7 @@ function Seriously(options) {
 						input = getElement(input, ['select']);
 					}
 
-				} else if (effectInput.type === 'number') {
+				} else if (effectInput.type === 'number' || effectInput.type === 'boolean') {
 					input = getElement(input, ['input', 'select']);
 				} else if (effectInput.type === 'image') {
 					input = getElement(input, ['canvas', 'img', 'video']);
@@ -1261,8 +1652,13 @@ function Seriously(options) {
 							return function() {
 								var oldValue, newValue;
 
-								oldValue = element.value;
-								newValue = me.setInput(name, element.value);
+								if (input.type === 'checkbox') {
+									//special case for check box
+									oldValue = input.checked;
+								} else {
+									oldValue = element.value;
+								}
+								newValue = me.setInput(name, oldValue);
 
 								//special case for color type
 								if (effectInput.type === 'color') {
@@ -1277,6 +1673,10 @@ function Seriously(options) {
 							};
 						}(inputName, input))
 					};
+
+					if (input.type === 'checkbox') {
+						value = input.checked;
+					}
 
 					me.inputElements[inputName] = lookup;
 					input.addEventListener('change', lookup.listener, true);
@@ -1395,6 +1795,10 @@ function Seriously(options) {
 			me.rotateZ(angle);
 		};
 
+		this.matte = function(polygons) {
+			me.matte(polygons);
+		};
+
 		this.destroy = function() {
 			var i, nop = function() { };
 
@@ -1462,7 +1866,11 @@ function Seriously(options) {
 		if (!this.initialized) {
 			var that = this;
 
-			this.model = rectangleModel;
+			if (this.shape) {
+				this.model = makeGlModel(this.shape, this.gl);
+			} else {
+				this.model = rectangleModel;
+			}
 
 			if (typeof this.effect.initialize === 'function') {
 				this.effect.initialize.call(this, function () {
@@ -1748,6 +2156,8 @@ function Seriously(options) {
 		return this;
 	};
 
+	EffectNode.prototype.matte = matte;
+
 	EffectNode.prototype.destroy = function () {
 		var i, item, hook = this.hook;
 		
@@ -1835,6 +2245,10 @@ function Seriously(options) {
 
 		this.render = function(callback) {
 			me.render(callback);
+		};
+
+		this.update = function() {
+			me.setDirty();
 		};
 
 		this.readPixels = function (x, y, width, height, dest) {
@@ -2086,7 +2500,8 @@ function Seriously(options) {
 			return;
 		}
 
-		if (this.lastRenderFrame !== video.mozPresentedFrames ||
+		if (this.dirty ||
+			this.lastRenderFrame !== video.mozPresentedFrames ||
 			this.lastRenderTime !== video.currentTime) {
 
 			gl.bindTexture(gl.TEXTURE_2D, this.texture);
@@ -2121,16 +2536,11 @@ function Seriously(options) {
 			this.initialize();
 		}
 
-		if (media.currentTime === undefined) {
-			media.currentTime = 0;
-		}
-		this.currentTime = media.currentTime;
-
 		if (!this.allowRefresh) {
 			return;
 		}
 
-		if (this.lastRenderTime === undefined || this.lastRenderTime !== this.currentTime) {
+		if (this.dirty) {
 			gl.bindTexture(gl.TEXTURE_2D, this.texture);
 			gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, this.flip);
 			try {
@@ -2142,7 +2552,7 @@ function Seriously(options) {
 				}
 			}
 
-			this.lastRenderTime = this.currentTime;
+			this.lastRenderTime = Date.now() / 1000;
 
 			this.dirty = false;
 		}
@@ -2163,18 +2573,16 @@ function Seriously(options) {
 			this.initialize();
 		}
 
-		this.currentTime = media.currentTime;
-
 		if (!this.allowRefresh) {
 			return;
 		}
 
-		if (this.lastRenderTime === undefined || this.lastRenderTime !== this.currentTime && this.currentTime !== undefined) {
+		if (this.dirty) {
 			gl.bindTexture(gl.TEXTURE_2D, this.texture);
 			gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, this.flip);
 			gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, this.width, this.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, media);
 
-			this.lastRenderTime = this.currentTime || 0;
+			this.lastRenderTime = Date.now() / 1000;
 			this.dirty = false;
 		}
 		if (callback && typeof callback === 'function') {
@@ -2458,7 +2866,7 @@ function Seriously(options) {
 					this.frameBuffer = new FrameBuffer(this.gl, width, height, false);
 				}
 				this.shader = new ShaderProgram(this.gl, baseVertexShader, baseFragmentShader);
-				this.model = buildModel.call(this, this.gl);
+				this.model = buildRectangleModel.call(this, this.gl);
 
 				this.texture = this.gl.createTexture();
 				this.gl.bindTexture(gl.TEXTURE_2D, this.texture);
@@ -3397,9 +3805,250 @@ Seriously.util = {
 					'	x = mod(x, 13.0) * mod(x, 127.0);\n' +
 					'	float dx = mod(x, 0.01);\n' +
 					'	return clamp(0.1 + dx * 100.0, 0.0,1.0);\n' +
-					'}\n'
+					'}\n',
+		random: '#ifndef RANDOM\n' +
+			'#define RANDOM\n' +
+			'float random(vec2 n) {\n' +
+			'	return 0.5 + 0.5 * fract(sin(dot(n.xy, vec2(12.9898, 78.233)))* 43758.5453);\n' +
+			'}\n' +
+			'#endif\n'
 	}
 };
+
+/*
+ * simplex noise shaders
+ * https://github.com/ashima/webgl-noise
+ * Copyright (C) 2011 by Ashima Arts (Simplex noise)
+ * Copyright (C) 2011 by Stefan Gustavson (Classic noise)
+ */
+
+Seriously.util.shader.noiseHelpers = '#ifndef NOISE_HELPERS\n' +
+	'#define NOISE_HELPERS\n' +
+	'vec2 mod289(vec2 x) {\n' +
+	'	return x - floor(x * (1.0 / 289.0)) * 289.0;\n' +
+	'}\n' +
+	'vec3 mod289(vec3 x) {\n' +
+	'	return x - floor(x * (1.0 / 289.0)) * 289.0;\n' +
+	'}\n' +
+	'vec4 mod289(vec4 x) {\n' +
+	'	return x - floor(x * (1.0 / 289.0)) * 289.0;\n' +
+	'}\n' +
+	'vec3 permute(vec3 x) {\n' +
+	'	return mod289(((x*34.0)+1.0)*x);\n' +
+	'}\n' +
+	'vec4 permute(vec4 x) {\n' +
+	'	return mod289(((x*34.0)+1.0)*x);\n' +
+	'}\n' +
+	'vec4 taylorInvSqrt(vec4 r) {\n' +
+	'	return 1.79284291400159 - 0.85373472095314 * r;\n' +
+	'}\n' +
+	'float taylorInvSqrt(float r) {\n' +
+	'	return 1.79284291400159 - 0.85373472095314 * r;\n' +
+	'}\n' +
+	'#endif\n';
+
+Seriously.util.shader.snoise2d = '#ifndef NOISE2D\n' +
+	'#define NOISE2D\n' +
+	'float snoise(vec2 v) {\n' +
+	'	const vec4 C = vec4(0.211324865405187, // (3.0-sqrt(3.0))/6.0\n' +
+	'		0.366025403784439, // 0.5*(sqrt(3.0)-1.0)\n' +
+	'	   -0.577350269189626, // -1.0 + 2.0 * C.x\n' +
+	'		0.024390243902439); // 1.0 / 41.0\n' +
+	'	vec2 i = floor(v + dot(v, C.yy) );\n' +
+	'	vec2 x0 = v - i + dot(i, C.xx);\n' +
+	'	vec2 i1;\n' +
+	'	//i1.x = step( x0.y, x0.x ); // x0.x > x0.y ? 1.0 : 0.0\n' +
+	'	//i1.y = 1.0 - i1.x;\n' +
+	'	i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);\n' +
+	'	// x0 = x0 - 0.0 + 0.0 * C.xx ;\n' +
+	'	// x1 = x0 - i1 + 1.0 * C.xx ;\n' +
+	'	// x2 = x0 - 1.0 + 2.0 * C.xx ;\n' +
+	'	vec4 x12 = x0.xyxy + C.xxzz;\n' +
+	'	x12.xy -= i1;\n' +
+	'	i = mod289(i); // Avoid truncation effects in permutation\n' +
+	'	vec3 p = permute( permute( i.y + vec3(0.0, i1.y, 1.0 )) + i.x + vec3(0.0, i1.x, 1.0 ));\n' +
+	'	vec3 m = max(0.5 - vec3(dot(x0,x0), dot(x12.xy,x12.xy), dot(x12.zw,x12.zw)), 0.0);\n' +
+	'	m = m*m ;\n' +
+	'	m = m*m ;\n' +
+	'	vec3 x = 2.0 * fract(p * C.www) - 1.0;\n' +
+	'	vec3 h = abs(x) - 0.5;\n' +
+	'	vec3 ox = floor(x + 0.5);\n' +
+	'	vec3 a0 = x - ox;\n' +
+	'	m *= 1.79284291400159 - 0.85373472095314 * ( a0*a0 + h*h );\n' +
+	'	vec3 g;\n' +
+	'	g.x = a0.x * x0.x + h.x * x0.y;\n' +
+	'	g.yz = a0.yz * x12.xz + h.yz * x12.yw;\n' +
+	'	return 130.0 * dot(m, g);\n' +
+	'}\n' +
+	'#endif\n';
+
+Seriously.util.shader.snoise3d = '#ifndef NOISE3D\n' +
+	'#define NOISE3D\n' +
+	'float snoise(vec3 v) {\n' +
+	'	const vec2 C = vec2(1.0/6.0, 1.0/3.0) ;\n' +
+	'	const vec4 D = vec4(0.0, 0.5, 1.0, 2.0);\n' +
+
+	// First corner
+	'	vec3 i = floor(v + dot(v, C.yyy) );\n' +
+	'	vec3 x0 = v - i + dot(i, C.xxx) ;\n' +
+
+	// Other corners
+	'	vec3 g = step(x0.yzx, x0.xyz);\n' +
+	'	vec3 l = 1.0 - g;\n' +
+	'	vec3 i1 = min( g.xyz, l.zxy );\n' +
+	'	vec3 i2 = max( g.xyz, l.zxy );\n' +
+
+	'	// x0 = x0 - 0.0 + 0.0 * C.xxx;\n' +
+	'	// x1 = x0 - i1 + 1.0 * C.xxx;\n' +
+	'	// x2 = x0 - i2 + 2.0 * C.xxx;\n' +
+	'	// x3 = x0 - 1.0 + 3.0 * C.xxx;\n' +
+	'	vec3 x1 = x0 - i1 + C.xxx;\n' +
+	'	vec3 x2 = x0 - i2 + C.yyy; // 2.0*C.x = 1/3 = C.y\n' +
+	'	vec3 x3 = x0 - D.yyy; // -1.0+3.0*C.x = -0.5 = -D.y\n' +
+
+	// Permutations
+	'	i = mod289(i);\n' +
+	'	vec4 p = permute( permute( permute(\n' +
+	'						 i.z + vec4(0.0, i1.z, i2.z, 1.0 ))\n' +
+	'					 	+ i.y + vec4(0.0, i1.y, i2.y, 1.0 ))\n' +
+	'					 	+ i.x + vec4(0.0, i1.x, i2.x, 1.0 ));\n' +
+
+	// Gradients: 7x7 points over a square, mapped onto an octahedron.
+	// The ring size 17*17 = 289 is close to a multiple of 49 (49*6 = 294)
+	'	float n_ = 0.142857142857; // 1.0/7.0\n' +
+	'	vec3 ns = n_ * D.wyz - D.xzx;\n' +
+
+	'	vec4 j = p - 49.0 * floor(p * ns.z * ns.z); // mod(p,7*7)\n' +
+
+	'	vec4 x_ = floor(j * ns.z);\n' +
+	'	vec4 y_ = floor(j - 7.0 * x_ ); // mod(j,N)\n' +
+
+	'	vec4 x = x_ *ns.x + ns.yyyy;\n' +
+	'	vec4 y = y_ *ns.x + ns.yyyy;\n' +
+	'	vec4 h = 1.0 - abs(x) - abs(y);\n' +
+
+	'	vec4 b0 = vec4( x.xy, y.xy );\n' +
+	'	vec4 b1 = vec4( x.zw, y.zw );\n' +
+
+	'	//vec4 s0 = vec4(lessThan(b0,0.0))*2.0 - 1.0;\n' +
+	'	//vec4 s1 = vec4(lessThan(b1,0.0))*2.0 - 1.0;\n' +
+	'	vec4 s0 = floor(b0)*2.0 + 1.0;\n' +
+	'	vec4 s1 = floor(b1)*2.0 + 1.0;\n' +
+	'	vec4 sh = -step(h, vec4(0.0));\n' +
+
+	'	vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy ;\n' +
+	'	vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww ;\n' +
+
+	'	vec3 p0 = vec3(a0.xy,h.x);\n' +
+	'	vec3 p1 = vec3(a0.zw,h.y);\n' +
+	'	vec3 p2 = vec3(a1.xy,h.z);\n' +
+	'	vec3 p3 = vec3(a1.zw,h.w);\n' +
+
+	//Normalise gradients
+	'	vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2, p2), dot(p3,p3)));\n' +
+	'	p0 *= norm.x;\n' +
+	'	p1 *= norm.y;\n' +
+	'	p2 *= norm.z;\n' +
+	'	p3 *= norm.w;\n' +
+
+	// Mix final noise value
+	'	vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);\n' +
+	'	m = m * m;\n' +
+	'	return 42.0 * dot( m*m, vec4( dot(p0,x0), dot(p1,x1),\n' +
+	'							                  dot(p2,x2), dot(p3,x3) ) );\n' +
+	'}\n' +
+	'#endif\n';
+
+Seriously.util.shader.snoise4d = '#ifndef NOISE4D\n' +
+	'#define NOISE4D\n' +
+	'vec4 grad4(float j, vec4 ip)\n' +
+	'	{\n' +
+	'	const vec4 ones = vec4(1.0, 1.0, 1.0, -1.0);\n' +
+	'	vec4 p,s;\n' +
+	'\n' +
+	'	p.xyz = floor( fract (vec3(j) * ip.xyz) * 7.0) * ip.z - 1.0;\n' +
+	'	p.w = 1.5 - dot(abs(p.xyz), ones.xyz);\n' +
+	'	s = vec4(lessThan(p, vec4(0.0)));\n' +
+	'	p.xyz = p.xyz + (s.xyz*2.0 - 1.0) * s.www;\n' +
+	'\n' +
+	'	return p;\n' +
+	'	}\n' +
+	'\n' +
+	// (sqrt(5) - 1)/4 = F4, used once below\n
+	'#define F4 0.309016994374947451\n' +
+	'\n' +
+	'float snoise(vec4 v)\n' +
+	'	{\n' +
+	'	const vec4 C = vec4(0.138196601125011, // (5 - sqrt(5))/20 G4\n' +
+	'						0.276393202250021, // 2 * G4\n' +
+	'						0.414589803375032, // 3 * G4\n' +
+	'						-0.447213595499958); // -1 + 4 * G4\n' +
+	'\n' +
+	// First corner
+	'	vec4 i = floor(v + dot(v, vec4(F4)) );\n' +
+	'	vec4 x0 = v - i + dot(i, C.xxxx);\n' +
+	'\n' +
+	// Other corners
+	'\n' +
+	// Rank sorting originally contributed by Bill Licea-Kane, AMD (formerly ATI)
+	'	vec4 i0;\n' +
+	'	vec3 isX = step( x0.yzw, x0.xxx );\n' +
+	'	vec3 isYZ = step( x0.zww, x0.yyz );\n' +
+	// i0.x = dot( isX, vec3( 1.0 ) );
+	'	i0.x = isX.x + isX.y + isX.z;\n' +
+	'	i0.yzw = 1.0 - isX;\n' +
+	// i0.y += dot( isYZ.xy, vec2( 1.0 ) );
+	'	i0.y += isYZ.x + isYZ.y;\n' +
+	'	i0.zw += 1.0 - isYZ.xy;\n' +
+	'	i0.z += isYZ.z;\n' +
+	'	i0.w += 1.0 - isYZ.z;\n' +
+	'\n' +
+		// i0 now contains the unique values 0,1,2,3 in each channel
+	'	vec4 i3 = clamp( i0, 0.0, 1.0 );\n' +
+	'	vec4 i2 = clamp( i0-1.0, 0.0, 1.0 );\n' +
+	'	vec4 i1 = clamp( i0-2.0, 0.0, 1.0 );\n' +
+	'\n' +
+	'	vec4 x1 = x0 - i1 + C.xxxx;\n' +
+	'	vec4 x2 = x0 - i2 + C.yyyy;\n' +
+	'	vec4 x3 = x0 - i3 + C.zzzz;\n' +
+	'	vec4 x4 = x0 + C.wwww;\n' +
+	'\n' +
+	// Permutations
+	'	i = mod289(i);\n' +
+	'	float j0 = permute( permute( permute( permute(i.w) + i.z) + i.y) + i.x);\n' +
+	'	vec4 j1 = permute( permute( permute( permute (\n' +
+	'						 i.w + vec4(i1.w, i2.w, i3.w, 1.0 ))\n' +
+	'					 + i.z + vec4(i1.z, i2.z, i3.z, 1.0 ))\n' +
+	'					 + i.y + vec4(i1.y, i2.y, i3.y, 1.0 ))\n' +
+	'					 + i.x + vec4(i1.x, i2.x, i3.x, 1.0 ));\n' +
+	'\n' +
+	// Gradients: 7x7x6 points over a cube, mapped onto a 4-cross polytope
+	// 7*7*6 = 294, which is close to the ring size 17*17 = 289.
+	'	vec4 ip = vec4(1.0/294.0, 1.0/49.0, 1.0/7.0, 0.0) ;\n' +
+	'\n' +
+	'	vec4 p0 = grad4(j0, ip);\n' +
+	'	vec4 p1 = grad4(j1.x, ip);\n' +
+	'	vec4 p2 = grad4(j1.y, ip);\n' +
+	'	vec4 p3 = grad4(j1.z, ip);\n' +
+	'	vec4 p4 = grad4(j1.w, ip);\n' +
+	'\n' +
+	// Normalise gradients
+	'	vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2, p2), dot(p3,p3)));\n' +
+	'	p0 *= norm.x;\n' +
+	'	p1 *= norm.y;\n' +
+	'	p2 *= norm.z;\n' +
+	'	p3 *= norm.w;\n' +
+	'	p4 *= taylorInvSqrt(dot(p4,p4));\n' +
+	'\n' +
+	// Mix contributions from the five corners
+	'	vec3 m0 = max(0.6 - vec3(dot(x0,x0), dot(x1,x1), dot(x2,x2)), 0.0);\n' +
+	'	vec2 m1 = max(0.6 - vec2(dot(x3,x3), dot(x4,x4) ), 0.0);\n' +
+	'	m0 = m0 * m0;\n' +
+	'	m1 = m1 * m1;\n' +
+	'	return 49.0 * ( dot(m0*m0, vec3( dot( p0, x0 ), dot( p1, x1 ), dot( p2, x2 )))\n' +
+	'							 + dot(m1*m1, vec2( dot( p3, x3 ), dot( p4, x4 ) ) ) ) ;\n' +
+	'}\n' +
+	'#endif\n';
 
 window.Seriously = Seriously;
 
