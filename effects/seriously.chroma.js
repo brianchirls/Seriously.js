@@ -63,6 +63,7 @@ Seriously.plugin('chroma', {
 			'uniform float balance;\n' +
 			'uniform float clipBlack;\n' +
 			'uniform float clipWhite;\n' +
+			'uniform bool mask;\n' +
 			'\n' +
 			'varying float screenSat;\n' +
 			'varying vec3 screenPrimary;\n' +
@@ -108,8 +109,11 @@ Seriously.plugin('chroma', {
 //				'		pixel = vec4(vec3(alpha), 1.0);\n' +
 			'	}\n' +
 			
-			'	gl_FragColor = pixel;\n' +
-//				'	gl_FragColor = vec4(vec3(pixelSat), 1.0);\n' +
+			'	if (mask) {\n' +
+			'		gl_FragColor = vec4(vec3(pixel.a), 1.0);\n' +
+			'	} else {\n' +
+			'		gl_FragColor = pixel;\n' +
+			'	}\n' +
 			'}\n';
 		return shaderSource;
 	},
@@ -117,7 +121,7 @@ Seriously.plugin('chroma', {
 	inputs: {
 		source: {
 			type: 'image',
-			uniform: 'source',
+			uniform: 'source'
 		},
 		screen: {
 			type: 'color',
@@ -150,6 +154,11 @@ Seriously.plugin('chroma', {
 			defaultValue: 1,
 			min: 0,
 			max: 1
+		},
+		mask: {
+			type: 'boolean',
+			defaultValue: false,
+			uniform: 'mask'
 		}
 
 	},

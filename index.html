@@ -164,6 +164,17 @@
 				blend.rotateZ(rotateZ.value * Math.PI / 180);
 			}
 
+			function updateTimers() {
+				if (active && active.effect.timer !== undefined) {
+					active.effect.timer = Date.now();
+				}
+				if (active && active.effect.time !== undefined) {
+					active.effect.time = Date.now();
+				}
+				setTimeout(updateTimers, 30);
+			}
+			updateTimers();
+
 			for (e in effects) {
 				if (!Seriously.incompatible(e)) {
 					effect = effects[e];

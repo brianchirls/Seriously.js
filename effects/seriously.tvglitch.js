@@ -96,9 +96,8 @@ Seriously.plugin('tvglitch', (function () {
 				'uniform float bars;\n' +
 				'\n' +
 				//todo: need much better pseudo-random number generator
-				(Seriously.util.shader.noiseHelpers + Seriously.util.shader.snoise2d || ('float snoise(vec2 v){\n' +
-					'    return fract(sin(dot(v ,vec2(12.9898,78.233))) * 43758.5453);\n' +
-					'}\n')) +
+				Seriously.util.shader.noiseHelpers +
+				Seriously.util.shader.snoise2d +
 				'\n' +
 				'void main(void) {\n' +
 				'	vec2 texCoord = vTexCoord;\n' +
@@ -213,6 +212,12 @@ Seriously.plugin('tvglitch', (function () {
 				this.particleShader.set_height(this.height);
 				gl.drawArrays(gl.POINTS, 0, particleCount);
 */
+		},
+		destroy: function (argument) {
+			delete this.particleBuffer;
+			if (this.particleFrameBuffer) {
+				this.particleFrameBuffer.destroy();
+			}
 		},
 		inPlace: false,
 		inputs: {
