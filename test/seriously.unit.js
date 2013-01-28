@@ -240,6 +240,37 @@
 	 * create effect
 	*/
 
+	test('Effect Polygon Matte', function() {
+	var seriously, effect;
+
+		//todo: expects
+
+		Seriously.plugin('removeme', {});
+		seriously = Seriously();
+		effect = seriously.effect('removeme');
+
+		ok(typeof effect.matte === 'function', 'matte method exists');
+
+		effect.matte([
+			[0, 0],
+			[1, 0],
+			[0, 1],
+			[1, 1]
+		]);
+
+		effect.matte([
+			[
+				[0, 0],
+				[1, 0],
+				[0, 1],
+				[1, 1]
+			]
+		]);
+
+		seriously.destroy();
+		Seriously.removePlugin('removeme');
+	});
+
 	module('Source');
 	/*
 	 * create source: all different types
