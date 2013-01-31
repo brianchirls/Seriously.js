@@ -3260,6 +3260,7 @@ function Seriously(options) {
 		'	gl_Position = transform * vec4(position, 1.0);\n' +
 //		'	gl_Position = vec4(position, 1.0);\n' +
 		'	vTexCoord = vec2(texCoord.s, texCoord.t);\n' +
+		'	vPosition = gl_Position;\n' +
 		'}\n';
 
 	baseFragmentShader = '#ifdef GL_ES\n\n' +
