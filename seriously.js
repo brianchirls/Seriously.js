@@ -440,8 +440,7 @@ function FrameBuffer(gl, width, height, useFloat) {
 		tex,
 		status;
 
-	//todo: check float webgl extension
-	useFloat = useFloat && !!gl.getExtension("OES_texture_float");
+	useFloat = false && useFloat && !!gl.getExtension("OES_texture_float"); //useFloat is not ready!
 	if (useFloat) {
 		this.type = gl.FLOAT;
 	} else {
