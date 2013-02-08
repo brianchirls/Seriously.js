@@ -2513,6 +2513,8 @@ function Seriously(options) {
 					console.log('Unable to access cross-domain image');
 				}
 			}
+
+			// Render a few extra times because the canvas takes a while to catch up
 			if (Date.now() - 100 > this.lastRenderTimeStamp) {
 				this.lastRenderTime = video.currentTime;
 			}
