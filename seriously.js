@@ -2513,8 +2513,11 @@ function Seriously(options) {
 					console.log('Unable to access cross-domain image');
 				}
 			}
-			this.lastRenderTime = video.currentTime;
+			if (Date.now() - 100 > this.lastRenderTimeStamp) {
+				this.lastRenderTime = video.currentTime;
+			}
 			this.lastRenderFrame = video.mozPresentedFrames;
+			this.lastRenderTimeStamp = Date.now();
 
 			this.dirty = false;
 		}
