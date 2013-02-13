@@ -72,7 +72,7 @@ Seriously.plugin('blend', (function () {
 				'#define BlendVividLightf(base, blend)	((blend < 0.5) ? BlendColorBurnf(base, (2.0 * blend)) : BlendColorDodgef(base, (2.0 * (blend - 0.5))))\n' +
 				'#define BlendPinLightf(base, blend)	((blend < 0.5) ? BlendDarkenf(base, (2.0 * blend)) : BlendLightenf(base, (2.0 *(blend - 0.5))))\n' +
 				'#define BlendHardMixf(base, blend)		((BlendVividLightf(base, blend) < 0.5) ? 0.0 : 1.0)\n' +
-				'#define BlendReflectf(base, blend)		((blend == 1.0) ? blend : min(base * base / (1.0 - blend), 1.0))\n' +		
+				'#define BlendReflectf(base, blend)		((blend == 1.0) ? blend : min(base * base / (1.0 - blend), 1.0))\n' +
 				/*
 				** Vector3 blending modes
 				*/
@@ -119,7 +119,7 @@ Seriously.plugin('blend', (function () {
 				'uniform float opacity;\n' +
 				'\n' +
 				'void main(void) {\n' +
-				'	vec3 color;\n' + 
+				'	vec3 color;\n' +
 				'	vec4 topPixel = texture2D(top, vTexCoord);\n' +
 				'	vec4 bottomPixel = texture2D(bottom, vTexCoord);\n' +
 //				'	topPixel.a *= opacity;\n' +

@@ -38,6 +38,7 @@ Seriously.plugin('ascii', (function () {
 			var me = this;
 
 			parent();
+			this.texture = this.frameBuffer.texture;
 
 			gl = this.gl;
 

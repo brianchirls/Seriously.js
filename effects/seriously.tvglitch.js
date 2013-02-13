@@ -1,7 +1,7 @@
 (function (window, undefined) {
 "use strict";
 
-window.Seriously = window.Seriously ||
+var Seriously = window.Seriously = window.Seriously ||
 	{ plugin: function (name, opt) { this[name] = opt; } };
 
 Seriously.plugin('tvglitch', (function () {
@@ -94,6 +94,10 @@ Seriously.plugin('tvglitch', (function () {
 				'uniform float distortion;\n' +
 				'uniform float vsync;\n' +
 				'uniform float bars;\n' +
+				'uniform float frameSharpness;\n' +
+				'uniform float frameShape;\n' +
+				'uniform float frameLimit;\n' +
+				'uniform vec4 frameColor;\n' +
 				'\n' +
 				//todo: need much better pseudo-random number generator
 				Seriously.util.shader.noiseHelpers +
@@ -142,8 +146,12 @@ Seriously.plugin('tvglitch', (function () {
 				'		pixel.rgb *= (1.0 - scanlines);\n' +
 				'	}\n' +
 				
+				'	float f = (1.0 - vPosition.x * vPosition.x) * (1.0 - vPosition.y * vPosition.y);\n' +
+				'	float frame = clamp( frameSharpness * (pow(f, frameShape) - frameLimit), 0.0, 1.0);\n' +
+
 				//'	gl_FragColor.r = vec4(1.0);\n' +
-				'	gl_FragColor = pixel; //vec4(vec3(particleOffset), 1.0);\n' +
+
+				'	gl_FragColor = mix(frameColor, pixel, frame); //vec4(vec3(particleOffset), 1.0);\n' +
 //				'	gl_FragColor = vec4(particleOffset);\n' +
 //				'	gl_FragColor.a = 1.0;\n' +
 				'}\n';
@@ -262,6 +270,32 @@ Seriously.plugin('tvglitch', (function () {
 				defaultValue: 0,
 				min: 0,
 				max: 1
+			},
+			frameShape: {
+				type: 'number',
+				uniform: 'frameShape',
+				min: 0,
+				max: 2,
+				defaultValue: 0.27
+			},
+			frameLimit: {
+				type: 'number',
+				uniform: 'frameLimit',
+				min: -1,
+				max: 1,
+				defaultValue: 0.34
+			},
+			frameSharpness: {
+				type: 'number',
+				uniform: 'frameSharpness',
+				min: 0,
+				max: 40,
+				defaultValue: 8.4
+			},
+			frameColor: {
+				type: 'color',
+				uniform: 'frameColor',
+				defaultValue: [0, 0, 0, 1]
 			}
 		},
 		description: '',
