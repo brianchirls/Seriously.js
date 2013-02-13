@@ -1958,7 +1958,9 @@ function Seriously(options) {
 			this.targets.splice(i, 1);
 		}
 
-		this.setSize();
+		if (this.targets.length) {
+			this.setSize();
+		}
 	};
 
 	EffectNode.prototype.removeSource = function (source) {
