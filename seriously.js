@@ -438,18 +438,18 @@ window.addEventListener('message', function(event) {
 
 function checkSource(source) {
 	var element, canvas, ctx, texture;
-	
+
 	element = getElement(source, ['img', 'canvas', 'video']);
 	if (!element) {
 		return false;
 	}
-	
+
 	canvas = document.createElement('canvas');
 	if (!canvas) {
 		console.log('Browser does not support canvas or Seriously.js');
 		return false;
 	}
-	
+
 	if (window.WebGLRenderingContext) {
 		try {
 			ctx = canvas.getContext('experimental-webgl');
@@ -488,11 +488,11 @@ function checkSource(source) {
 			return false;
 		}
 	}
-		
+
 
 	// This method will return a false positive for resources that aren't
 	// actually images or haven't loaded yet
-	
+
 	return true;
 }
 
@@ -584,7 +584,7 @@ function FrameBuffer(gl, width, height, useFloat) {
 
 FrameBuffer.prototype.destroy = function() {
 	var gl = this.gl;
-	
+
 	if (gl) {
 		gl.deleteFramebuffer(this.frameBuffer);
 		gl.deleteRenderbuffer(this.renderBuffer);
@@ -775,7 +775,7 @@ function ShaderProgram(gl, vertexShaderSource, fragmentShaderSource) {
 
 	this.gl = gl;
 	this.program = program;
-	
+
 	this.destroy = function() {
 		var i;
 
@@ -784,14 +784,14 @@ function ShaderProgram(gl, vertexShaderSource, fragmentShaderSource) {
 			gl.deleteShader(vertexShader);
 			gl.deleteShader(fragmentShader);
 		}
-		
+
 		for (i in this) {
 			if (this.hasOwnProperty(i)) {
-				
+
 				delete this[i];
 			}
 		}
-		
+
 		program = null;
 		vertexShader = null;
 		fragmentShader = null;
@@ -1381,22 +1381,22 @@ function Seriously(options) {
 
 	Node.prototype.destroy = function () {
 		var i;
-		
+
 		delete this.gl;
 		delete this.seriously;
-		
+
 		//clear out uniforms
 		for (i in this.uniforms) {
 			if (this.uniforms.hasOwnProperty(i)) {
 				delete this.uniforms[i];
 			}
 		}
-		
+
 		//clear out list of targets and disconnect each
 		if (this.targets) {
 			delete this.targets;
 		}
-		
+
 		//clear out frameBuffer
 		if (this.frameBuffer && this.frameBuffer.destroy) {
 			this.frameBuffer.destroy();
@@ -1409,7 +1409,7 @@ function Seriously(options) {
 			nodes.splice(i, 1);
 		}
 		delete nodesById[this.id];
-		
+
 		this.isDestroyed = true;
 	};
 
@@ -1657,7 +1657,7 @@ function Seriously(options) {
 				if (this.hasOwnProperty(i) && i !== 'isDestroyed') {
 					if (this.__lookupGetter__(i) ||
 						typeof this[i] !== 'function') {
-						
+
 						delete this[i];
 					} else {
 						this[i] = nop;
@@ -1667,7 +1667,7 @@ function Seriously(options) {
 
 			//todo: remove getters/setters
 		};
-		
+
 		this.isDestroyed = function() {
 			return me.isDestroyed;
 		};
@@ -2398,19 +2398,19 @@ function Seriously(options) {
 
 	EffectNode.prototype.destroy = function () {
 		var i, item, hook = this.hook;
-		
+
 		//let effect destroy itself
 		if (this.effect.destroy && typeof this.effect.destroy === 'function') {
 			this.effect.destroy.call(this);
 		}
 		delete this.effect;
-		
+
 		//shader
 		if (this.shader && this.shader.destroy && this.shader !== baseShader) {
 			this.shader.destroy();
 		}
 		delete this.shader;
-		
+
 		//stop watching any input elements
 		for (i in this.inputElements) {
 			if (this.inputElements.hasOwnProperty(i)) {
@@ -2418,7 +2418,7 @@ function Seriously(options) {
 				item.element.removeEventListener('change', item.listener, true);
 			}
 		}
-		
+
 		//sources
 		for (i in this.sources) {
 			if (this.sources.hasOwnProperty(i)) {
@@ -2444,7 +2444,7 @@ function Seriously(options) {
 				delete this[i];
 			}
 		}
-		
+
 		//remove any aliases
 		for (i in aliases) {
 			if (aliases.hasOwnProperty(i)) {
@@ -2454,18 +2454,18 @@ function Seriously(options) {
 				}
 			}
 		}
-		
+
 		//remove self from master list of effects
 		i = effects.indexOf(this);
 		if (i >= 0) {
 			effects.splice(i, 1);
 		}
-		
+
 		i = allEffectsByHook[hook].indexOf(this);
 		if (i >= 0) {
 			allEffectsByHook[hook].splice(i, 1);
 		}
-		
+
 		Node.prototype.destroy.call(this);
 	};
 
@@ -2498,7 +2498,7 @@ function Seriously(options) {
 		this.readPixels = function (x, y, width, height, dest) {
 			return me.readPixels(x, y, width, height, dest);
 		};
-		
+
 		this.reset = function() {
 			me.reset();
 			return this;
@@ -2543,12 +2543,12 @@ function Seriously(options) {
 			var i, nop = function() { };
 
 			me.destroy();
-			
+
 			for (i in this) {
 				if (this.hasOwnProperty(i) && i !== 'isDestroyed') {
 					if (this.__lookupGetter__(i) ||
 						typeof this[i] !== 'function') {
-						
+
 						delete this[i];
 					} else {
 						this[i] = nop;
@@ -2792,7 +2792,7 @@ function Seriously(options) {
 		if (!this.initialized) {
 			this.initialize();
 		}
-		
+
 		if (!this.allowRefresh) {
 			return;
 		}
@@ -2940,7 +2940,7 @@ function Seriously(options) {
 		if (this.gl && this.texture) {
 			this.gl.deleteTexture(this.texture);
 		}
-	
+
 		//targets
 		for (i = 0; i < this.targets.length; i++) {
 			item = this.targets[i];
@@ -2955,14 +2955,14 @@ function Seriously(options) {
 		if (i >= 0) {
 			sources.splice(i, 1);
 		}
-		
+
 		for (i in this) {
 			if (this.hasOwnProperty(i) && i !== 'id') {
 				delete this[i];
 			}
 		}
 
-		Node.prototype.destroy.call(this);		
+		Node.prototype.destroy.call(this);
 	};
 
 	//todo: implement render for array and typed array
@@ -3327,7 +3327,7 @@ function Seriously(options) {
 			if (!this.source) {
 				return;
 			}
-			
+
 			this.source.render();
 
 			this.uniforms.source = this.source.texture;
@@ -3389,7 +3389,7 @@ function Seriously(options) {
 
 	TargetNode.prototype.destroy = function() {
 		var i;
-		
+
 		//source
 		if (this.source && this.source.removeTarget) {
 			this.source.removeTarget(this);
@@ -3401,13 +3401,13 @@ function Seriously(options) {
 		delete this.pixels;
 		delete this.auto;
 		this.callbacks.splice(0);
-		
+
 		//remove self from master list of targets
 		i = targets.indexOf(this);
 		if (i >= 0) {
 			targets.splice(i, 1);
 		}
-		
+
 		Node.prototype.destroy.call(this);
 	};
 
@@ -3513,30 +3513,30 @@ function Seriously(options) {
 			node = nodes.shift();
 			node.destroy();
 		}
-	
+
 		if (baseShader) {
 			baseShader.destroy();
 			baseShader = null;
 		}
-		
+
 		//clean up rectangleModel
 		if (gl) {
 			gl.deleteBuffer(rectangleModel.vertex);
 			gl.deleteBuffer(rectangleModel.texCoord);
 			gl.deleteBuffer(rectangleModel.index);
 		}
-		
+
 		if (rectangleModel) {
 			delete rectangleModel.vertex;
 			delete rectangleModel.texCoord;
 			delete rectangleModel.index;
 		}
-		
+
 		for (i in this) {
 			if (this.hasOwnProperty(i) && i !== 'isDestroyed') {
 				if (this.__lookupGetter__(i) ||
 					typeof this[i] !== 'function') {
-					
+
 					delete this[i];
 				} else {
 					this[i] = nop;
@@ -3554,14 +3554,14 @@ function Seriously(options) {
 		effects = null;
 		nodes = null;
 		callbacks.splice(0);
-		
+
 		isDestroyed = true;
 	};
 
 	this.isDestroyed = function() {
 		return isDestroyed;
 	};
-	
+
 	this.incompatible = function (pluginHook) {
 		var i,
 			plugin,
@@ -3572,7 +3572,7 @@ function Seriously(options) {
 		if (failure) {
 			return failure;
 		}
-		
+
 		if (!pluginHook) {
 			for (i in allEffectsByHook) {
 				if (allEffectsByHook.hasOwnProperty(i) && allEffectsByHook[i].length) {
@@ -3585,7 +3585,7 @@ function Seriously(options) {
 				}
 			}
 		}
-		
+
 		return false;
 	};
 
@@ -3737,7 +3737,7 @@ Seriously.prototype.benchmark = Seriously.benchmark = function (options, cb) {
 
 Seriously.incompatible = function (pluginHook) {
 	var canvas, gl, plugin;
-	
+
 	if (incompatibility === undefined) {
 		canvas = document.createElement('canvas');
 		if (!canvas || !canvas.getContext) {
@@ -3753,17 +3753,17 @@ Seriously.incompatible = function (pluginHook) {
 				} catch(webglError) {
 				}
 			}
-			
+
 			if (!gl) {
 				incompatibility = 'context';
 			}
 		}
 	}
-	
+
 	if (incompatibility) {
 		return incompatibility;
 	}
-	
+
 	if (pluginHook) {
 		plugin = seriousEffects[pluginHook];
 		if (plugin && typeof plugin.compatible === 'function' &&
@@ -3772,7 +3772,7 @@ Seriously.incompatible = function (pluginHook) {
 			return 'plugin-' + pluginHook;
 		}
 	}
-	
+
 	return false;
 };
 
@@ -3887,17 +3887,17 @@ Seriously.plugin = function (hook, effect) {
 
 Seriously.removePlugin = function (hook) {
 	var all, effect, plugin;
-	
+
 	if (!hook) {
 		return this;
 	}
-	
+
 	plugin = seriousEffects[hook];
 
 	if (!plugin) {
 		return this;
 	}
-	
+
 	all = allEffectsByHook[hook];
 	if (all) {
 		while (all.length) {
@@ -3906,9 +3906,9 @@ Seriously.removePlugin = function (hook) {
 		}
 		delete allEffectsByHook[hook];
 	}
-	
+
 	delete seriousEffects[hook];
-	
+
 	return this;
 };
 

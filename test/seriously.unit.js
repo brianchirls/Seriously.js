@@ -9,11 +9,11 @@
 			newGlobals = [],
 			skipIds = false,
 			s;
-		
+
 		expect(5);
 
 		ok(window.Seriously, 'Seriously exists');
-		
+
 		equal(typeof window.Seriously, 'function', 'Seriously is a function');
 
 		// workaround: https://github.com/jquery/qunit/issues/212
@@ -37,11 +37,11 @@
 				}
 			}
 		}
-		
+
 		p = props + (props === 1 ? ' property' : ' properties') + ' added to global: [' +
 			newGlobals.join(', ') + ']';
 		equal(props, 1, p);
-		
+
 		s = new Seriously();
 		ok(s instanceof Seriously, 'Create Seriously instance with new');
 		s.destroy();
@@ -111,7 +111,7 @@
 
 		p = Seriously.plugin('removeme', {});
 		ok(p && p.title === 'removeme', 'First plugin loaded');
-		
+
 		s = Seriously();
 		e = s.effect('removeme');
 
@@ -123,7 +123,7 @@
 		/*
 		 * todo: test that created effect is destroyed
 		 */
-		
+
 		try {
 			s.effect('removeme');
 		} catch (ee) {
@@ -131,7 +131,7 @@
 		}
 
 		ok(error, 'Plugin doesn\'t exist; using throws error');
-		
+
 		s.destroy();
 	});
 
@@ -148,12 +148,12 @@
 		p = Seriously.plugin('pluginDuplicate', {
 			title: 'Duplicate'
 		});
-		
+
 		ok(p === undefined, 'Duplicate plugin ignored');
-		
+
 		allEffects = Seriously.effects();
 		equal(allEffects.pluginDuplicate.title, 'Original', 'Original plugin remains');
-		
+
 		Seriously.removePlugin('pluginDuplicate');
 	});
 
@@ -173,9 +173,9 @@
 		} catch (e) {
 			error1 = true;
 		}
-		
+
 		ok(error1, 'Defining plugin throws error');
-		
+
 		try {
 			s = Seriously();
 			s.effect('badPlugin');
@@ -184,7 +184,7 @@
 		}
 
 		ok(error2, 'Plugin doesn\'t exist; using throws error');
-		
+
 		s.destroy();
 		Seriously.removePlugin('badPlugin');
 	});
@@ -207,7 +207,7 @@
 				{ plugin: function (name, opt) { this[name] = opt; } };
 
 			win.Seriously.plugin('test', {});
-			
+
 			//then load Seriously
 			script = doc.createElement('script');
 			script.src = '../seriously.js';
@@ -396,7 +396,7 @@
 		}
 		return;
 	});
-	
+
 	test('Create two Source objects on identical sources', function () {
 		var img, seriously, source1, source2;
 
@@ -406,7 +406,7 @@
 		source2 = seriously.source('#colorbars');
 
 		ok(source1 === source2, 'Source objects are the same');
-		
+
 		seriously.destroy();
 	});
 
@@ -428,7 +428,7 @@
 		source2 = seriously.source('#colorbars');
 
 		ok(source1 === source2, 'Source objects are the same');
-		
+
 		seriously.destroy();
 		Seriously.removePlugin('test');
 	});
@@ -513,7 +513,7 @@
 
 		seriously.go(function () {
 			success('seriously.go callback called successfully', changed);
-		});		
+		});
 
 		effect.num = 5;
 		changed = true;
@@ -528,7 +528,7 @@
 	test('Number', function () {
 		var s, e, val, input;
 		expect(6);
-		
+
 		Seriously.plugin('testNumberInput', {
 			inputs: {
 				number: {
@@ -546,7 +546,7 @@
 				}
 			}
 		});
-		
+
 		s = Seriously();
 		e = s.effect('testNumberInput');
 
@@ -569,7 +569,7 @@
 		e.number = 'not a number';
 		val = e.number;
 		equal(val, 42, 'Bad number reverts to default value');
-		
+
 		input = document.createElement('input');
 		input.setAttribute('type', 'text');
 		input.value = 75;
@@ -613,49 +613,49 @@
 				}
 			}
 		});
-		
+
 		s = Seriously();
 		e = s.effect('testColorInput');
-		
+
 		e.color = 'rgb(10, 20, 30)';
 		val = e.color;
 		ok( compare(val, [10/255, 20/255, 30/255, 1]), 'Set color by rgb');
-		
+
 		e.color = 'rgba(30, 20, 10, 0.8)';
 		val = e.color;
 		ok( compare(val, [30/255, 20/255, 10/255, 0.8]), 'Set color by rgba');
-		
+
 		//todo: test rgb percentages
 		//todo: test hsl/hsla
-		
+
 		e.color = '#123';
 		val = e.color;
 		ok( compare(val, [1/15, 2/15, 3/15, 1]), 'Set color by 3-character hex');
-		
+
 		e.color = '#1234';
 		val = e.color;
 		ok( compare(val, [0x1/15, 0x2/15, 0x3/15, 0x4/15]), 'Set color by 4-character hex');
-		
+
 		e.color = '#123456';
 		val = e.color;
 		ok( compare(val, [0x12/255, 0x34/255, 0x56/255, 1]), 'Set color by 6-character hex');
-		
+
 		e.color = '#654321AA';
 		val = e.color;
 		ok( compare(val, [0x65/255, 0x43/255, 0x21/255, 0xAA/255]), 'Set color by 8-character hex');
-		
+
 		e.color = '#fffff';
 		val = e.color;
 		ok( compare(val, [0, 0, 0, 0]), 'Set color by bad hex is transparent black');
-		
+
 		e.color = 'lightcyan';
 		val = e.color;
 		ok( compare(val, [224/255,1,1,1]), 'Set color by name');
-		
+
 		e.color = 'garbage';
 		val = e.color;
 		ok( compare(val, [0, 0, 0, 0]), 'Set color by unknown name is transparent black');
-		
+
 		e.color = 0.3;
 		val = e.color;
 		ok( compare(val, [0.3, 0.3, 0.3, 1]), 'Set color by single number');
@@ -677,7 +677,7 @@
 	test('Enum', function() {
 		var s, e, val;
 		expect(4);
-		
+
 		Seriously.plugin('testEnumInput', {
 			inputs: {
 				input: {
@@ -691,7 +691,7 @@
 				}
 			}
 		});
-		
+
 		s = Seriously();
 		e = s.effect('testEnumInput');
 
@@ -713,21 +713,93 @@
 		Seriously.removePlugin('testEnumInput');
 	});
 
+	module('Transform');
+	test('Basic Transformations', function () {
+		var seriously, source, target,
+			sourceCanvas, targetCanvas, img,
+			ctx,
+			pixels = new Uint8Array(16),
+			comparison = [ //image is upside down
+				0, 0, 255, 255,
+				255, 255, 255, 255,
+				255, 0, 0, 255,
+				0, 255, 0, 255
+			];
+
+		expect(3);
+
+		targetCanvas = document.createElement('canvas');
+		targetCanvas.width = 2;
+		targetCanvas.height = 2;
+
+		sourceCanvas = document.createElement('canvas');
+		sourceCanvas.width = 2;
+		sourceCanvas.height = 2;
+
+		ctx = sourceCanvas.getContext && sourceCanvas.getContext('2d');
+		ctx.fillStyle = '#f00'; //red
+		ctx.fillRect(0, 0, 1, 1);
+		ctx.fillStyle = '#0f0'; //green
+		ctx.fillRect(1, 0, 1, 1);
+		ctx.fillStyle = '#00f'; //blue
+		ctx.fillRect(0, 1, 1, 1);
+		ctx.fillStyle = '#fff'; //white
+		ctx.fillRect(1, 1, 1, 1);
+
+		seriously = new Seriously();
+		source = seriously.source(sourceCanvas);
+		target = seriously.target(targetCanvas);
+		target.source = source;
+
+		target.rotateZ(Math.PI / 2); //90 degrees counter-clockwise
+		target.readPixels(0, 0, 2, 2, pixels);
+		ok(compare(pixels, [
+			255, 0, 0, 255,
+			0, 0, 255, 255,
+			0, 255, 0, 255,
+			255, 255, 255, 255
+		]), 'Rotate 90 degrees counter-clockwise on Z-Axis');
+
+		target.reset();
+		target.rotateX(Math.PI); //180 degrees counter-clockwise
+		target.readPixels(0, 0, 2, 2, pixels);
+		ok(compare(pixels, [ //image is upside down
+			255, 0, 0, 255,
+			0, 255, 0, 255,
+			0, 0, 255, 255,
+			255, 255, 255, 255
+		]), 'Rotate 180 degrees on X-Axis (Flip Vertical)');
+
+		target.reset();
+		target.rotateY(Math.PI); //180 degrees counter-clockwise
+		target.readPixels(0, 0, 2, 2, pixels);
+		ok(compare(pixels, [ //image is upside down
+			255, 255, 255, 255,
+			0, 0, 255, 255,
+			0, 255, 0, 255,
+			255, 0, 0, 255
+		]), 'Rotate 180 degrees on Y-Axis (Flip Horizontal)');
+
+		seriously.destroy();
+		return;
+	});
+
+
 	module('Destroy');
 	test('Destroy things', function() {
 		var seriously, source, target, effect, canvas;
-		
+
 		expect(12);
-		
+
 		Seriously.plugin('test', {});
-		
+
 		canvas = document.createElement('canvas');
 
-		seriously = new Seriously();		
+		seriously = new Seriously();
 		source = seriously.source('#colorbars');
 		effect = seriously.effect('test');
 		target = seriously.target(canvas);
-		
+
 		ok(!seriously.isDestroyed(), 'New Seriously instance is not destroyed');
 		ok(!source.isDestroyed(), 'New source is not destroyed');
 		ok(!effect.isDestroyed(), 'New effect is not destroyed');
@@ -753,7 +825,7 @@
 		ok(target.isDestroyed(), 'Destroy Seriously instance destroys target');
 
 		ok(seriously.effect() === undefined, 'Attempt to create effect with destroyed Seriously does nothing');
-		
+
 		Seriously.removePlugin('test');
 	});
 
@@ -787,10 +859,10 @@
 	module('Alias');
 
 	module('Utilities');
-	
+
 	asyncTest('setTimeoutZero', function() {
 		var countdown = 2, startTime = Date.now();
-		
+
 		expect(2);
 
 		Seriously.util.setTimeoutZero(function() {
@@ -804,13 +876,13 @@
 			start();
 		});
 	});
-	
+
 	asyncTest('checkSource', function() {
 		var pass, fail,
 			tests = 2;
-		
+
 		expect(4);
-		
+
 		function checkImagePass(img) {
 			var canvas, ctx;
 
@@ -827,7 +899,7 @@
 			}
 
 		}
-		
+
 		function checkImageFail(img) {
 			var canvas, ctx;
 
@@ -843,7 +915,7 @@
 				start();
 			}
 		}
-		
+
 		pass = document.getElementById('colorbars');
 		if (pass.width) {
 			checkImagePass.call(pass, pass);
@@ -852,13 +924,13 @@
 				checkImagePass(this);
 			}, false);
 		}
-		
+
 		fail = document.createElement('img');
 		fail.src = 'http://www.mozilla.org/images/template/screen/logo_footer.png';
 		fail.addEventListener('load', function() {
 			checkImageFail(this);
 		}, false);
 
-		
+
 	});
 }());
