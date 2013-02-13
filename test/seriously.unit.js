@@ -3,6 +3,22 @@
 (function () {
 	"use strict";
 
+	function compare(a, b) {
+		var i;
+
+		if (a.length !== b.length) {
+			return false;
+		}
+
+		for (i = 0; i < a.length; i++) {
+			if (a[i] !== b[i]) {
+				return false;
+			}
+		}
+
+		return true;
+	}
+
 	module('Core');
 	test('Core', function () {
 		var p, props = 0,
@@ -277,25 +293,8 @@
 	 * destroy source before img loaded
 	 * checkSource on cross-origin image, dirty canvas
 	*/
-	
+
 	asyncTest('Source Types', function () {
-		function compare(a, b) {
-			var i;
-
-			if (a.length !== b.length) {
-				return false;
-			}
-			
-			for (i = 0; i < a.length; i++) {
-				if (a[i] !== b[i]) {
-					return false;
-					
-				}
-			}
-			
-			return true;
-		}
-
 		var seriously, source, target,
 			sourceCanvas, targetCanvas, img,
 			ctx,
@@ -586,25 +585,8 @@
 	test('Color', function () {
 		var e, s, val;
 
-		function compare(a, b) {
-			var i;
-
-			if (a.length !== b.length) {
-				return false;
-			}
-			
-			for (i = 0; i < a.length; i++) {
-				if (a[i] !== b[i]) {
-					return false;
-					
-				}
-			}
-			
-			return true;
-		}
-
 		expect(12);
-		
+
 		Seriously.plugin('testColorInput', {
 			inputs: {
 				color: {
