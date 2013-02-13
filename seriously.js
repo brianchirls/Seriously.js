@@ -24,27 +24,27 @@ defaultTransform,
 // http://www.w3.org/TR/css3-color/#svg-color
 colorNames = {
 	'transparent': [0,0,0,0],
-	'aliceblue':	[240/255,248/255,255/255,1],
+	'aliceblue':	[240/255,248/255,1,1],
 	'antiquewhite':	[250/255,235/255,215/255,1],
-	'aqua':	[0,255/255,255/255,1],
-	'aquamarine':	[127/255,255/255,212/255,1],
-	'azure':	[240/255,255/255,255/255,1],
+	'aqua':	[0,1,1,1],
+	'aquamarine':	[127/255,1,212/255,1],
+	'azure':	[240/255,1,1,1],
 	'beige':	[245/255,245/255,220/255,1],
-	'bisque':	[255/255,228/255,196/255,1],
+	'bisque':	[1,228/255,196/255,1],
 	'black':	[0,0,0,1],
-	'blanchedalmond':	[255/255,235/255,205/255,1],
-	'blue':	[0,0,255/255,1],
+	'blanchedalmond':	[1,235/255,205/255,1],
+	'blue':	[0,0,1,1],
 	'blueviolet':	[138/255,43/255,226/255,1],
 	'brown':	[165/255,42/255,42/255,1],
 	'burlywood':	[222/255,184/255,135/255,1],
 	'cadetblue':	[95/255,158/255,160/255,1],
-	'chartreuse':	[127/255,255/255,0,1],
+	'chartreuse':	[127/255,1,0,1],
 	'chocolate':	[210/255,105/255,30/255,1],
-	'coral':	[255/255,127/255,80/255,1],
+	'coral':	[1,127/255,80/255,1],
 	'cornflowerblue':	[100/255,149/255,237/255,1],
-	'cornsilk':	[255/255,248/255,220/255,1],
+	'cornsilk':	[1,248/255,220/255,1],
 	'crimson':	[220/255,20/255,60/255,1],
-	'cyan':	[0,255/255,255/255,1],
+	'cyan':	[0,1,1,1],
 	'darkblue':	[0,0,139/255,1],
 	'darkcyan':	[0,139/255,139/255,1],
 	'darkgoldenrod':	[184/255,134/255,11/255,1],
@@ -54,7 +54,7 @@ colorNames = {
 	'darkkhaki':	[189/255,183/255,107/255,1],
 	'darkmagenta':	[139/255,0,139/255,1],
 	'darkolivegreen':	[85/255,107/255,47/255,1],
-	'darkorange':	[255/255,140/255,0,1],
+	'darkorange':	[1,140/255,0,1],
 	'darkorchid':	[153/255,50/255,204/255,1],
 	'darkred':	[139/255,0,0,1],
 	'darksalmon':	[233/255,150/255,122/255,1],
@@ -64,52 +64,52 @@ colorNames = {
 	'darkslategrey':	[47/255,79/255,79/255,1],
 	'darkturquoise':	[0,206/255,209/255,1],
 	'darkviolet':	[148/255,0,211/255,1],
-	'deeppink':	[255/255,20/255,147/255,1],
-	'deepskyblue':	[0,191/255,255/255,1],
+	'deeppink':	[1,20/255,147/255,1],
+	'deepskyblue':	[0,191/255,1,1],
 	'dimgray':	[105/255,105/255,105/255,1],
 	'dimgrey':	[105/255,105/255,105/255,1],
-	'dodgerblue':	[30/255,144/255,255/255,1],
+	'dodgerblue':	[30/255,144/255,1,1],
 	'firebrick':	[178/255,34/255,34/255,1],
-	'floralwhite':	[255/255,250/255,240/255,1],
+	'floralwhite':	[1,250/255,240/255,1],
 	'forestgreen':	[34/255,139/255,34/255,1],
-	'fuchsia':	[255/255,0,255/255,1],
+	'fuchsia':	[1,0,1,1],
 	'gainsboro':	[220/255,220/255,220/255,1],
-	'ghostwhite':	[248/255,248/255,255/255,1],
-	'gold':	[255/255,215/255,0,1],
+	'ghostwhite':	[248/255,248/255,1,1],
+	'gold':	[1,215/255,0,1],
 	'goldenrod':	[218/255,165/255,32/255,1],
 	'gray':	[128/255,128/255,128/255,1],
 	'green':	[0,128/255,0,1],
-	'greenyellow':	[173/255,255/255,47/255,1],
+	'greenyellow':	[173/255,1,47/255,1],
 	'grey':	[128/255,128/255,128/255,1],
-	'honeydew':	[240/255,255/255,240/255,1],
-	'hotpink':	[255/255,105/255,180/255,1],
+	'honeydew':	[240/255,1,240/255,1],
+	'hotpink':	[1,105/255,180/255,1],
 	'indianred':	[205/255,92/255,92/255,1],
 	'indigo':	[75/255,0,130/255,1],
-	'ivory':	[255/255,255/255,240/255,1],
+	'ivory':	[1,1,240/255,1],
 	'khaki':	[240/255,230/255,140/255,1],
 	'lavender':	[230/255,230/255,250/255,1],
-	'lavenderblush':	[255/255,240/255,245/255,1],
+	'lavenderblush':	[1,240/255,245/255,1],
 	'lawngreen':	[124/255,252/255,0,1],
-	'lemonchiffon':	[255/255,250/255,205/255,1],
+	'lemonchiffon':	[1,250/255,205/255,1],
 	'lightblue':	[173/255,216/255,230/255,1],
 	'lightcoral':	[240/255,128/255,128/255,1],
-	'lightcyan':	[224/255,255/255,255/255,1],
+	'lightcyan':	[224/255,1,1,1],
 	'lightgoldenrodyellow':	[250/255,250/255,210/255,1],
 	'lightgray':	[211/255,211/255,211/255,1],
 	'lightgreen':	[144/255,238/255,144/255,1],
 	'lightgrey':	[211/255,211/255,211/255,1],
-	'lightpink':	[255/255,182/255,193/255,1],
-	'lightsalmon':	[255/255,160/255,122/255,1],
+	'lightpink':	[1,182/255,193/255,1],
+	'lightsalmon':	[1,160/255,122/255,1],
 	'lightseagreen':	[32/255,178/255,170/255,1],
 	'lightskyblue':	[135/255,206/255,250/255,1],
 	'lightslategray':	[119/255,136/255,153/255,1],
 	'lightslategrey':	[119/255,136/255,153/255,1],
 	'lightsteelblue':	[176/255,196/255,222/255,1],
-	'lightyellow':	[255/255,255/255,224/255,1],
-	'lime':	[0,255/255,0,1],
+	'lightyellow':	[1,1,224/255,1],
+	'lime':	[0,1,0,1],
 	'limegreen':	[50/255,205/255,50/255,1],
 	'linen':	[250/255,240/255,230/255,1],
-	'magenta':	[255/255,0,255/255,1],
+	'magenta':	[1,0,1,1],
 	'maroon':	[128/255,0,0,1],
 	'mediumaquamarine':	[102/255,205/255,170/255,1],
 	'mediumblue':	[0,0,205/255,1],
@@ -121,55 +121,55 @@ colorNames = {
 	'mediumturquoise':	[72/255,209/255,204/255,1],
 	'mediumvioletred':	[199/255,21/255,133/255,1],
 	'midnightblue':	[25/255,25/255,112/255,1],
-	'mintcream':	[245/255,255/255,250/255,1],
-	'mistyrose':	[255/255,228/255,225/255,1],
-	'moccasin':	[255/255,228/255,181/255,1],
-	'navajowhite':	[255/255,222/255,173/255,1],
+	'mintcream':	[245/255,1,250/255,1],
+	'mistyrose':	[1,228/255,225/255,1],
+	'moccasin':	[1,228/255,181/255,1],
+	'navajowhite':	[1,222/255,173/255,1],
 	'navy':	[0,0,128/255,1],
 	'oldlace':	[253/255,245/255,230/255,1],
 	'olive':	[128/255,128/255,0,1],
 	'olivedrab':	[107/255,142/255,35/255,1],
-	'orange':	[255/255,165/255,0,1],
-	'orangered':	[255/255,69/255,0,1],
+	'orange':	[1,165/255,0,1],
+	'orangered':	[1,69/255,0,1],
 	'orchid':	[218/255,112/255,214/255,1],
 	'palegoldenrod':	[238/255,232/255,170/255,1],
 	'palegreen':	[152/255,251/255,152/255,1],
 	'paleturquoise':	[175/255,238/255,238/255,1],
 	'palevioletred':	[219/255,112/255,147/255,1],
-	'papayawhip':	[255/255,239/255,213/255,1],
-	'peachpuff':	[255/255,218/255,185/255,1],
+	'papayawhip':	[1,239/255,213/255,1],
+	'peachpuff':	[1,218/255,185/255,1],
 	'peru':	[205/255,133/255,63/255,1],
-	'pink':	[255/255,192/255,203/255,1],
+	'pink':	[1,192/255,203/255,1],
 	'plum':	[221/255,160/255,221/255,1],
 	'powderblue':	[176/255,224/255,230/255,1],
 	'purple':	[128/255,0,128/255,1],
-	'red':	[255/255,0,0,1],
+	'red':	[1,0,0,1],
 	'rosybrown':	[188/255,143/255,143/255,1],
 	'royalblue':	[65/255,105/255,225/255,1],
 	'saddlebrown':	[139/255,69/255,19/255,1],
 	'salmon':	[250/255,128/255,114/255,1],
 	'sandybrown':	[244/255,164/255,96/255,1],
 	'seagreen':	[46/255,139/255,87/255,1],
-	'seashell':	[255/255,245/255,238/255,1],
+	'seashell':	[1,245/255,238/255,1],
 	'sienna':	[160/255,82/255,45/255,1],
 	'silver':	[192/255,192/255,192/255,1],
 	'skyblue':	[135/255,206/255,235/255,1],
 	'slateblue':	[106/255,90/255,205/255,1],
 	'slategray':	[112/255,128/255,144/255,1],
 	'slategrey':	[112/255,128/255,144/255,1],
-	'snow':	[255/255,250/255,250/255,1],
-	'springgreen':	[0,255/255,127/255,1],
+	'snow':	[1,250/255,250/255,1],
+	'springgreen':	[0,1,127/255,1],
 	'steelblue':	[70/255,130/255,180/255,1],
 	'tan':	[210/255,180/255,140/255,1],
 	'teal':	[0,128/255,128/255,1],
 	'thistle':	[216/255,191/255,216/255,1],
-	'tomato':	[255/255,99/255,71/255,1],
+	'tomato':	[1,99/255,71/255,1],
 	'turquoise':	[64/255,224/255,208/255,1],
 	'violet':	[238/255,130/255,238/255,1],
 	'wheat':	[245/255,222/255,179/255,1],
-	'white':	[255/255,255/255,255/255,1],
+	'white':	[1,1,1,1],
 	'whitesmoke':	[245/255,245/255,245/255,1],
-	'yellow':	[255/255,255/255,0,1],
+	'yellow':	[1,1,0,1],
 	'yellowgreen':	[154/255,205/255,50/255,1]
 },
 
@@ -504,8 +504,7 @@ function FrameBuffer(gl, width, height, useFloat) {
 		tex,
 		status;
 
-	//todo: check float webgl extension
-	useFloat = useFloat && !!gl.getExtension("OES_texture_float");
+	useFloat = false && useFloat && !!gl.getExtension("OES_texture_float"); //useFloat is not ready!
 	if (useFloat) {
 		this.type = gl.FLOAT;
 	} else {
@@ -2309,7 +2308,9 @@ function Seriously(options) {
 			this.targets.splice(i, 1);
 		}
 
-		this.setSize();
+		if (this.targets.length) {
+			this.setSize();
+		}
 	};
 
 	EffectNode.prototype.removeSource = function (source) {
@@ -2923,11 +2924,12 @@ function Seriously(options) {
 				}
 			}
 
-			this.lastRenderTime = this.currentTime;
-
-			this.lastRenderTime = video.currentTime;
+			// Render a few extra times because the canvas takes a while to catch up
+			if (Date.now() - 100 > this.lastRenderTimeStamp) {
+				this.lastRenderTime = video.currentTime;
+			}
 			this.lastRenderFrame = video.mozPresentedFrames;
-			this.dirty = true;
+			this.lastRenderTimeStamp = Date.now();
 		}
 
 		if (this.transformed || this.fov) {
@@ -3573,6 +3575,10 @@ function Seriously(options) {
 		return targetNode.pub;
 	};
 
+	this.aliases = function () {
+		return Object.keys(aliases);
+	};
+
 	this.removeAlias = function (name) {
 		if (aliases[name]) {
 			delete this[name];
@@ -3720,6 +3726,7 @@ function Seriously(options) {
 		'	gl_Position = projection * gl_Position;\n' +
 		'	gl_Position.z = 0.0;\n' + //prevent near clipping
 		'	vTexCoord = vec2(texCoord.s, texCoord.t);\n' +
+		'	vPosition = gl_Position;\n' +
 		'}\n';
 
 	baseFragmentShader = '#ifdef GL_ES\n\n' +
