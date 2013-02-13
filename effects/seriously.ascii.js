@@ -80,6 +80,7 @@ Seriously.plugin('ascii', (function () {
 				'\n' +
 				'uniform sampler2D source;\n' +
 				'uniform sampler2D letters;\n' +
+				'uniform vec4 background;\n' +
 				'uniform vec3 srsSize;\n' +
 				'\n' +
 				'const vec3 lumcoeff = vec3(0.2125,0.7154,0.0721);\n' +
@@ -95,7 +96,7 @@ Seriously.plugin('ascii', (function () {
 				'	float luma = dot(sample.rgb,lumcoeff);\n' +
 				'	vec4 clamped = vec4(floor(sample.rgb * 8.0) / 8.0, sample.a);\n' +
 				'	float char = floor(luma * 94.0) / 94.0;\n' +
-				'	gl_FragColor = clamped * lookup(char);\n' + //
+				'	gl_FragColor = mix(background, clamped, lookup(char).r);\n' +
 				'}\n';
 			
 			return shaderSource;
@@ -138,6 +139,7 @@ Seriously.plugin('ascii', (function () {
 
 			unif.transform = this.transform;
 			unif.source = scaledBuffer.texture;
+			unif.background = uniforms.background;
 
 			parent(shader, model, unif, frameBuffer);
 		},
@@ -147,6 +149,11 @@ Seriously.plugin('ascii', (function () {
 				type: 'image',
 				uniform: 'source',
 				shaderDirty: false
+			},
+			background: {
+				type: 'color',
+				uniform: 'background',
+				defaultValue: [0, 0, 0, 1]
 			}
 		},
 		description: 'Display image as ascii text in 8-bit color.',
