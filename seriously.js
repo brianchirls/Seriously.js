@@ -1599,6 +1599,10 @@ function Seriously(options) {
 			return this;
 		};
 
+		this.readPixels = function (x, y, width, height, dest) {
+			return me.readPixels(x, y, width, height, dest);
+		};
+
 		this.alias = function(inputName, aliasName) {
 			me.alias(inputName, aliasName);
 			return this;
@@ -3052,6 +3056,50 @@ function Seriously(options) {
 
 		this.render = function(callback) {
 			me.render(callback);
+		};
+
+		this.readPixels = function (x, y, width, height, dest) {
+			return me.readPixels(x, y, width, height, dest);
+		};
+
+		this.reset = function() {
+			me.reset();
+			return this;
+		};
+
+		this.setTransform = function(transform) {
+			me.setTransform(transform);
+			return this;
+		};
+
+		this.perspective = function(fov) {
+			me.perspective(fov);
+			return this;
+		};
+
+		this.translate = function(x, y, z) {
+			me.translate(x, y, z);
+			return this;
+		};
+
+		this.scale = function(x, y) {
+			me.scale(x, y);
+			return this;
+		};
+
+		this.rotateX = function(angle) {
+			me.rotateX(angle);
+			return this;
+		};
+
+		this.rotateY = function(angle) {
+			me.rotateY(angle);
+			return this;
+		};
+
+		this.rotateZ = function(angle) {
+			me.rotateZ(angle);
+			return this;
 		};
 
 		this.go = function(options) {
