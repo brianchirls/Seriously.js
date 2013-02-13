@@ -1257,7 +1257,7 @@ function Seriously(options) {
 		} else {
 			mat4.identity(this.projection);
 			this.projection[0] = this.height / this.width;
-			this.projection[10] = 2/200;
+//			this.projection[10] = 2/200;
 			this.uniforms.srsSize[2] = 1;
 		}
 

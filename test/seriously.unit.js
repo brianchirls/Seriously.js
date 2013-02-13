@@ -708,7 +708,7 @@
 				0, 255, 0, 255
 			];
 
-		expect(3);
+		expect(4);
 
 		targetCanvas = document.createElement('canvas');
 		targetCanvas.width = 2;
@@ -761,6 +761,18 @@
 			0, 255, 0, 255,
 			255, 0, 0, 255
 		]), 'Rotate 180 degrees on Y-Axis (Flip Horizontal)');
+
+		target.reset();
+		target.translate(1, 0, 0);
+		target.render();
+		target.readPixels(0, 0, 2, 2, pixels);
+		ok(compare(pixels, [ //image is upside down
+			0, 0, 0, 0,
+			0, 0, 255, 255,
+			0, 0, 0, 0,
+			255, 0, 0, 255
+		]), 'Translate 1 unit (50%) to the right');
+
 
 		seriously.destroy();
 		return;
