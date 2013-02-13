@@ -3124,6 +3124,10 @@ function Seriously(options) {
 		return targetNode.pub;
 	};
 
+	this.aliases = function () {
+		return Object.keys(aliases);
+	};
+
 	this.removeAlias = function (name) {
 		if (aliases[name]) {
 			delete this[name];
