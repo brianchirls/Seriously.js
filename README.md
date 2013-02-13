@@ -42,6 +42,7 @@ Full documentation is in progress at the [wiki](https://github.com/brianchirls/S
 - Ripple
 - Scanlines
 - Sepia tone
+- Sketch
 - Split
 - Tone Adjust
 - TV Glitch
