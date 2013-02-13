@@ -77,7 +77,7 @@ Seriously.plugin('hex', {
 			type: 'number',
 			uniform: 'size',
 			min: 0,
-			max: 2,
+			max: 0.4,
 			defaultValue: 0.01
 		},
 		center: {

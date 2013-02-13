@@ -1,5 +1,5 @@
-/*jslint devel: true, bitwise: true, browser: true, white: true, nomen: true, plusplus: true, maxerr: 50, indent: 4 */
-/*global Float32Array, Uint8Array, Uint16Array, WebGLTexture, HTMLInputElement, HTMLSelectElement, HTMLElement, WebGLFramebuffer, HTMLCanvasElement, WebGLRenderingContext */
+/*jslint devel: true, bitwise: true, browser: true, white: true, nomen: true, plusplus: true, maxerr: 50, indent: 4, todo: true */
+/*global Float32Array, Float64Array, Uint8Array, Uint16Array, WebGLTexture, HTMLInputElement, HTMLSelectElement, HTMLElement, WebGLFramebuffer, HTMLCanvasElement, WebGLRenderingContext */
 (function (window, undefined) {
 "use strict";
 
@@ -219,7 +219,71 @@ mat4 = {
 		var top = near*Math.tan(fovy*Math.PI / 360.0),
 			right = top*aspect;
 		return mat4.frustum(-right, right, -top, top, near, far, dest);
-	}
+	},
+	multiply: function (mat, mat2, dest) {
+		if (!dest) { dest = mat; }
+
+		// Cache the matrix values (makes for huge speed increases!)
+		var a00 = mat[ 0], a01 = mat[ 1], a02 = mat[ 2], a03 = mat[3],
+			a10 = mat[ 4], a11 = mat[ 5], a12 = mat[ 6], a13 = mat[7],
+			a20 = mat[ 8], a21 = mat[ 9], a22 = mat[10], a23 = mat[11],
+			a30 = mat[12], a31 = mat[13], a32 = mat[14], a33 = mat[15],
+
+		// Cache only the current line of the second matrix
+			b0 = mat2[0], b1 = mat2[1], b2 = mat2[2], b3 = mat2[3];
+		dest[0] = b0*a00 + b1*a10 + b2*a20 + b3*a30;
+		dest[1] = b0*a01 + b1*a11 + b2*a21 + b3*a31;
+		dest[2] = b0*a02 + b1*a12 + b2*a22 + b3*a32;
+		dest[3] = b0*a03 + b1*a13 + b2*a23 + b3*a33;
+
+		b0 = mat2[4];
+		b1 = mat2[5];
+		b2 = mat2[6];
+		b3 = mat2[7];
+		dest[4] = b0*a00 + b1*a10 + b2*a20 + b3*a30;
+		dest[5] = b0*a01 + b1*a11 + b2*a21 + b3*a31;
+		dest[6] = b0*a02 + b1*a12 + b2*a22 + b3*a32;
+		dest[7] = b0*a03 + b1*a13 + b2*a23 + b3*a33;
+
+		b0 = mat2[8];
+		b1 = mat2[9];
+		b2 = mat2[10];
+		b3 = mat2[11];
+		dest[8] = b0*a00 + b1*a10 + b2*a20 + b3*a30;
+		dest[9] = b0*a01 + b1*a11 + b2*a21 + b3*a31;
+		dest[10] = b0*a02 + b1*a12 + b2*a22 + b3*a32;
+		dest[11] = b0*a03 + b1*a13 + b2*a23 + b3*a33;
+
+		b0 = mat2[12];
+		b1 = mat2[13];
+		b2 = mat2[14];
+		b3 = mat2[15];
+		dest[12] = b0*a00 + b1*a10 + b2*a20 + b3*a30;
+		dest[13] = b0*a01 + b1*a11 + b2*a21 + b3*a31;
+		dest[14] = b0*a02 + b1*a12 + b2*a22 + b3*a32;
+		dest[15] = b0*a03 + b1*a13 + b2*a23 + b3*a33;
+
+		return dest;
+	},
+	identity: function (dest) {
+		dest[0] = 1;
+		dest[1] = 0;
+		dest[2] = 0;
+		dest[3] = 0;
+		dest[4] = 0;
+		dest[5] = 1;
+		dest[6] = 0;
+		dest[7] = 0;
+		dest[8] = 0;
+		dest[9] = 0;
+		dest[10] = 1;
+		dest[11] = 0;
+		dest[12] = 0;
+		dest[13] = 0;
+		dest[14] = 0;
+		dest[15] = 1;
+		return dest;
+    }
 },
 
 requestAnimFrame = (function(){
@@ -279,18 +343,20 @@ function extend(dest, src) {
 	}
 
 	for ( property in src ) {
-		g = src.__lookupGetter__(property);
-		s = src.__lookupSetter__(property);
+		if (src.hasOwnProperty(property)) {
+			g = src.__lookupGetter__(property);
+			s = src.__lookupSetter__(property);
 
-		if (g || s) {
-			if (g) {
-				dest.__defineGetter__(property, g);
+			if (g || s) {
+				if (g) {
+					dest.__defineGetter__(property, g);
+				}
+				if (s) {
+					dest.__defineSetter__(property, s);
+				}
+			} else {
+				dest[ property ] = src[ property ];
 			}
-			if (s) {
-				dest.__defineSetter__(property, s);
-			}
-		} else {
-			dest[ property ] = src[ property ];
 		}
 	}
 
@@ -372,18 +438,18 @@ window.addEventListener('message', function(event) {
 
 function checkSource(source) {
 	var element, canvas, ctx, texture;
-	
+
 	element = getElement(source, ['img', 'canvas', 'video']);
 	if (!element) {
 		return false;
 	}
-	
+
 	canvas = document.createElement('canvas');
 	if (!canvas) {
 		console.log('Browser does not support canvas or Seriously.js');
 		return false;
 	}
-	
+
 	if (window.WebGLRenderingContext) {
 		try {
 			ctx = canvas.getContext('experimental-webgl');
@@ -422,11 +488,11 @@ function checkSource(source) {
 			return false;
 		}
 	}
-		
+
 
 	// This method will return a false positive for resources that aren't
 	// actually images or haven't loaded yet
-	
+
 	return true;
 }
 
@@ -518,7 +584,7 @@ function FrameBuffer(gl, width, height, useFloat) {
 
 FrameBuffer.prototype.destroy = function() {
 	var gl = this.gl;
-	
+
 	if (gl) {
 		gl.deleteFramebuffer(this.frameBuffer);
 		gl.deleteRenderbuffer(this.renderBuffer);
@@ -709,7 +775,7 @@ function ShaderProgram(gl, vertexShaderSource, fragmentShaderSource) {
 
 	this.gl = gl;
 	this.program = program;
-	
+
 	this.destroy = function() {
 		var i;
 
@@ -718,14 +784,14 @@ function ShaderProgram(gl, vertexShaderSource, fragmentShaderSource) {
 			gl.deleteShader(vertexShader);
 			gl.deleteShader(fragmentShader);
 		}
-		
+
 		for (i in this) {
 			if (this.hasOwnProperty(i)) {
-				
+
 				delete this[i];
 			}
 		}
-		
+
 		program = null;
 		vertexShader = null;
 		fragmentShader = null;
@@ -802,10 +868,10 @@ function Seriously(options) {
 		var shape = {};
 
 		shape.vertices = new Float32Array([
-			-1, -1, -1,
-			1, -1, -1,
-			1, 1, -1,
-			-1, 1, -1
+			-1, -1, 0,
+			1, -1, 0,
+			1, 1, 0,
+			-1, 1, 0
 		]);
 
 		shape.indices = new Uint16Array([
@@ -1018,21 +1084,43 @@ function Seriously(options) {
 	}
 
 	Node = function (options) {
-		this.transform = new Float32Array(defaultTransform);
+		var width, height, depth;
+		this.transform = new Float32Array(16);
+		this.projection = new Float32Array(16);
 
 		if (options) {
 			this.desiredWidth = parseInt(options.width, 10);
 			this.desiredHeight = parseInt(options.height, 10);
+			this.fov = parseInt(options.fov, 10);
+		}
+		if (isNaN(this.fov)) {
+			this.fov = 0;
+		}
+
+		width = this.width = this.desiredWidth || 1;
+		height = this.height = this.desiredHeight || 1;
+		//depth = Math.sin(Math.PI / 4) / Math.sin(this.fov * Math.PI / 360); // 1 / sin(angle/2)
+		if (this.fov) {
+			depth = 1 / Math.tan(this.fov * Math.PI / 360.0);
+		} else {
+			depth = 1;
 		}
 
 		this.gl = gl;
 
+		this.reset();
+
 		this.uniforms = {
-			transform: this.transform
+			transform: this.transform,
+			srsSize: [width, height, depth],
+			projection: this.projection
 		};
+
+		this.perspective(this.fov);
 
 		this.dirty = true;
 		this.isDestroyed = false;
+		this.transformed = false;
 
 		this.seriously = seriously;
 
@@ -1106,28 +1194,108 @@ function Seriously(options) {
 	};
 
 	Node.prototype.reset = function () {
-		this.transform = new Float32Array([
-			1, 0, 0, 0,
-			0, 1, 0, 0,
-			0, 0, 1, 0,
-			0, 0, 0, 1
-		]);
+		var i;
+		for (i = 0; i < 16; i++) {
+			this.transform[i] = defaultTransform[i];
+		}
+		this.transformed = false;
+		this.setDirty();
+	};
+
+	Node.prototype.setSize = function (width, height) {
+		if (!width || !height) {
+			return;
+		}
+		this.width = width;
+		this.height = height;
+
+		this.perspective(this.fov);
+		this.uniforms.srsSize[0] = width;
+		this.uniforms.srsSize[1] = height;
+	};
+
+
+	Node.prototype.setTransform = function(mat) {
+		var i, val, isDefault = true;
+
+		if (!mat ||
+			!Array.isArray(mat) && !(mat instanceof Float32Array) && !(mat instanceof Float64Array)) {
+			this.reset();
+			return;
+		}
+
+		if (mat.length < 16) {
+			throw 'transform matrix must be array or typed array of 16 numbers.';
+		}
+
+		for (i = 0; i < 16; i++) {
+			val = mat[i];
+			if (isNaN(val)) {
+				throw 'transform matrix must be array or typed array of 16 numbers.';
+			}
+			if (val !== defaultTransform[i]) {
+				isDefault = false;
+			}
+			this.transform[i] = val;
+		}
+
+		this.transformed = !isDefault;
+		this.setDirty();
+	};
+
+	Node.prototype.perspective = function(fov) {
+		fov = parseFloat(fov);
+		if (isNaN(fov)) {
+			this.fov = 0;
+		} else {
+			this.fov = fov;
+		}
+
+		if (this.fov) {
+			mat4.perspective(this.fov, this.width / this.height, 1, 100, this.projection);
+			this.uniforms.srsSize[2] = 1 / Math.tan(this.fov * Math.PI / 360.0);
+		} else {
+			mat4.identity(this.projection);
+			this.projection[0] = this.height / this.width;
+//			this.projection[10] = 2/200;
+			this.uniforms.srsSize[2] = 1;
+		}
+
 		this.setDirty();
 	};
 
 	//matrix code inspired by glMatrix
-	//todo: only 2D for now, so z is always 0.  allow 3D later.
-	Node.prototype.translate = function(x, y) {
+	Node.prototype.translate = function(x, y, z) {
 		var mat = this.transform;
-		mat[12] = mat[0]*x + mat[4]*y + /* mat[8]*z + */ mat[12];
-		mat[13] = mat[1]*x + mat[5]*y + /* mat[9]*z + */ mat[13];
-		mat[14] = mat[2]*x + mat[6]*y + /* mat[10]*z + */ mat[14];
-		mat[15] = mat[3]*x + mat[7]*y + /* mat[11]*z + */ mat[15];
+
+		if (isNaN(x)) {
+			x = 0;
+		}
+
+		if (isNaN(y)) {
+			y = 0;
+		}
+		y *= this.width / this.height;
+
+		if (isNaN(z)) {
+			z = 0;
+		}
+
+		mat[12] = mat[0]*x + mat[4]*y + mat[8]*z + mat[12];
+		mat[13] = mat[1]*x + mat[5]*y + mat[9]*z + mat[13];
+		mat[14] = mat[2]*x + mat[6]*y + mat[10]*z + mat[14];
+		mat[15] = mat[3]*x + mat[7]*y + mat[11]*z + mat[15];
+
+		this.transformed = true;
 		this.setDirty();
 	};
 
 	//todo: only 2D for now, so z is always 1.  allow 3D later.
 	Node.prototype.scale = function(x, y) {
+		if (y === undefined) {
+			y = x;
+		}
+
 		var mat = this.transform;
 		mat[0] *= x;
 		mat[1] *= x;
@@ -1137,6 +1305,31 @@ function Seriously(options) {
 		mat[5] *= y;
 		mat[6] *= y;
 		mat[7] *= y;
+
+		this.transformed = true;
+		this.setDirty();
+	};
+
+	Node.prototype.rotateX = function(angle) {
+		var mat = this.transform,
+			sin = Math.sin(angle),
+			cos = Math.cos(angle),
+
+		// Cache the matrix values (faster!)
+			a10 = mat[4], a11 = mat[5], a12 = mat[6], a13 = mat[7],
+			a20 = mat[8], a21 = mat[9], a22 = mat[10], a23 = mat[11];
+
+		// Perform axis-specific matrix multiplication
+		mat[4] = a10*cos + a20*-sin;
+		mat[5] = a11*cos + a21*-sin;
+		mat[6] = a12*cos + a22*-sin;
+		mat[7] = a13*cos + a23*-sin;
+
+		mat[8] = a10*sin + a20*cos;
+		mat[9] = a11*sin + a21*cos;
+		mat[10] = a12*sin + a22*cos;
+		mat[11] = a13*sin + a23*cos;
+		this.transformed = true;
 		this.setDirty();
 	};
 
@@ -1145,7 +1338,7 @@ function Seriously(options) {
 			sin = Math.sin(angle),
 			cos = Math.cos(angle),
 
-		// Cache the matrix values (makes for huge speed increases!)
+		// Cache the matrix values (faster!)
 			a00 = mat[0], a01 = mat[1], a02 = mat[2], a03 = mat[3],
 			a20 = mat[8], a21 = mat[9], a22 = mat[10], a23 = mat[11];
 
@@ -1159,6 +1352,7 @@ function Seriously(options) {
 		mat[9] = a01*sin + a21*cos;
 		mat[10] = a02*sin + a22*cos;
 		mat[11] = a03*sin + a23*cos;
+		this.transformed = true;
 		this.setDirty();
 	};
 
@@ -1181,25 +1375,28 @@ function Seriously(options) {
 		mat[5] = a01*-sin + a11*cos;
 		mat[6] = a02*-sin + a12*cos;
 		mat[7] = a03*-sin + a13*cos;
+		this.transformed = true;
 		this.setDirty();
 	};
 
 	Node.prototype.destroy = function () {
 		var i;
-		
+
 		delete this.gl;
 		delete this.seriously;
-		
+
 		//clear out uniforms
 		for (i in this.uniforms) {
-			delete this.uniforms[i];
+			if (this.uniforms.hasOwnProperty(i)) {
+				delete this.uniforms[i];
+			}
 		}
-		
+
 		//clear out list of targets and disconnect each
 		if (this.targets) {
 			delete this.targets;
 		}
-		
+
 		//clear out frameBuffer
 		if (this.frameBuffer && this.frameBuffer.destroy) {
 			this.frameBuffer.destroy();
@@ -1212,15 +1409,622 @@ function Seriously(options) {
 			nodes.splice(i, 1);
 		}
 		delete nodesById[this.id];
-		
+
 		this.isDestroyed = true;
+	};
+
+	Effect = function (effectNode) {
+		var name, me = effectNode;
+
+		function arrayToHex(color) {
+			var i, val, s = '#';
+			for (i = 0; i < 4; i++) {
+				val = Math.min(255, Math.round(color[i] * 255 || 0));
+				s += val.toString(16);
+			}
+			return s;
+		}
+
+		function setInput(inputName, input) {
+			var lookup, value, effectInput, i;
+
+			effectInput = me.effect.inputs[inputName];
+
+			lookup = me.inputElements[inputName];
+
+			if ( typeof input === 'string' && isNaN(input)) {
+				if (effectInput.type === 'enum') {
+					if (effectInput.options && effectInput.options.filter) {
+						i = ('' + input).toLowerCase();
+						value = effectInput.options.filter(function (e) {
+							return (typeof e === 'string' && e.toLowerCase() === i) ||
+								(e.length && typeof e[0] === 'string' && e[0].toLowerCase() === i);
+						});
+
+						value = value.length;
+					}
+
+					if (!value) {
+						input = getElement(input, ['select']);
+					}
+
+				} else if (effectInput.type === 'number' || effectInput.type === 'boolean') {
+					input = getElement(input, ['input', 'select']);
+				} else if (effectInput.type === 'image') {
+					input = getElement(input, ['canvas', 'img', 'video']);
+				}
+				//todo: color? date/time?
+			}
+
+			if (input instanceof HTMLInputElement || input instanceof HTMLSelectElement) {
+				value = input.value;
+
+				if (lookup && lookup.element !== input) {
+					lookup.element.removeEventListener('change', lookup.listener, true);
+					delete me.inputElements[inputName];
+					lookup = null;
+				}
+
+				if (!lookup) {
+					lookup = {
+						element: input,
+						listener: (function (name, element) {
+							return function() {
+								var oldValue, newValue;
+
+								if (input.type === 'checkbox') {
+									//special case for check box
+									oldValue = input.checked;
+								} else {
+									oldValue = element.value;
+								}
+								newValue = me.setInput(name, oldValue);
+
+								//special case for color type
+								if (effectInput.type === 'color') {
+									newValue = arrayToHex(newValue);
+								}
+
+								//if input validator changes our value, update HTML Element
+								//todo: make this optional...somehow
+								if (newValue !== oldValue) {
+									element.value = newValue;
+								}
+							};
+						}(inputName, input))
+					};
+
+					if (input.type === 'checkbox') {
+						value = input.checked;
+					}
+
+					me.inputElements[inputName] = lookup;
+					input.addEventListener('change', lookup.listener, true);
+				}
+			} else {
+				if (lookup) {
+					lookup.element.removeEventListener('change', lookup.listener, true);
+					delete me.inputElements[inputName];
+				}
+				value = input;
+			}
+
+			me.setInput(inputName, value);
+			return me.inputs[inputName];
+		}
+
+		function makeImageSetter(inputName) {
+			return function (value) {
+				var val = setInput(inputName, value);
+				return val && val.pub;
+			};
+		}
+
+		function makeImageGetter(inputName) {
+			return function () {
+				var val = me.inputs[inputName];
+				return val && val.pub;
+			};
+		}
+
+		function makeSetter(inputName) {
+			return function (value) {
+				return setInput(inputName, value);
+			};
+		}
+
+		function makeGetter(inputName) {
+			return function () {
+				return me.inputs[inputName];
+			};
+		}
+
+		//priveleged publicly accessible methods/setters/getters
+		//todo: provide an alternate method
+		for (name in me.effect.inputs) {
+			if (me.effect.inputs.hasOwnProperty(name)) {
+				if (this[name] === undefined) {
+					if (me.effect.inputs[name].type === 'image') {
+						this.__defineSetter__(name, makeImageSetter(name));
+						this.__defineGetter__(name, makeImageGetter(name));
+					} else {
+						this.__defineSetter__(name, makeSetter(name));
+
+						this.__defineGetter__(name, makeGetter(name));
+					}
+				} else {
+					//todo: this is temporary. get rid of it.
+					throw 'Cannot overwrite Seriously.' + name;
+				}
+			}
+		}
+
+		this.__defineGetter__('inputs', function () {
+			return {
+				source: {
+					type: 'image'
+				}
+			};
+		});
+
+		this.__defineSetter__('inputs', function () {
+			//should we throw an error or just fail silently
+			return;
+		});
+
+		this.__defineGetter__('original', function () {
+			return me.source;
+		});
+
+		this.__defineSetter__('original', function () {
+		});
+
+		this.__defineSetter__('width', function(value) {
+			me.setSize(value);
+		});
+
+		this.__defineSetter__('height', function(value) {
+			me.setSize(undefined, value);
+		});
+
+		this.__defineGetter__('id', function () {
+			return me.id;
+		});
+
+		this.__defineSetter__('id', function () {
+		});
+
+		this.render = function(callback) {
+			me.render(callback);
+			return this;
+		};
+
+		this.readPixels = function (x, y, width, height, dest) {
+			return me.readPixels(x, y, width, height, dest);
+		};
+
+		this.alias = function(inputName, aliasName) {
+			me.alias(inputName, aliasName);
+			return this;
+		};
+
+		this.reset = function() {
+			me.reset();
+			return this;
+		};
+
+		this.setTransform = function(transform) {
+			me.setTransform(transform);
+			return this;
+		};
+
+		this.perspective = function(fov) {
+			me.perspective(fov);
+			return this;
+		};
+
+		this.translate = function(x, y, z) {
+			me.translate(x, y, z);
+			return this;
+		};
+
+		this.scale = function(x, y) {
+			me.scale(x, y);
+			return this;
+		};
+
+		this.rotateX = function(angle) {
+			me.rotateX(angle);
+			return this;
+		};
+
+		this.rotateY = function(angle) {
+			me.rotateY(angle);
+			return this;
+		};
+
+		this.rotateZ = function(angle) {
+			me.rotateZ(angle);
+			return this;
+		};
+
+		this.matte = function(polygons) {
+			me.matte(polygons);
+		};
+
+		this.destroy = function() {
+			var i, nop = function() { };
+
+			me.destroy();
+
+			for (i in this) {
+				if (this.hasOwnProperty(i) && i !== 'isDestroyed') {
+					if (this.__lookupGetter__(i) ||
+						typeof this[i] !== 'function') {
+
+						delete this[i];
+					} else {
+						this[i] = nop;
+					}
+				}
+			}
+
+			//todo: remove getters/setters
+		};
+
+		this.isDestroyed = function() {
+			return me.isDestroyed;
+		};
+	};
+
+	EffectNode = function (hook, options) {
+		Node.call(this, options);
+
+		this.effect = seriousEffects[hook];
+		this.sources = {};
+		this.targets = [];
+		this.inputElements = {};
+		this.dirty = true;
+		this.shaderDirty = true;
+		this.hook = hook;
+		this.options = options;
+
+		//todo: set up frame buffer(s), inputs, transforms, stencils, draw method. allow plugin to override
+
+		this.inputs = {};
+		var name, input;
+		for (name in this.effect.inputs) {
+			if (this.effect.inputs.hasOwnProperty(name)) {
+				input = this.effect.inputs[name];
+
+				this.inputs[name] = input.defaultValue;
+				if (input.uniform) {
+					this.uniforms[input.uniform] = input.defaultValue;
+				}
+			}
+		}
+
+		if (gl) {
+			this.buildShader();
+		}
+
+		this.pub = new Effect(this);
+
+		effects.push(this);
+
+		allEffectsByHook[hook].push(this);
+	};
+
+	extend(EffectNode, Node);
+
+	EffectNode.prototype.initialize = function () {
+		if (!this.initialized) {
+			var that = this;
+
+			if (this.shape) {
+				this.model = makeGlModel(this.shape, this.gl);
+			} else {
+				this.model = rectangleModel;
+			}
+
+			if (typeof this.effect.initialize === 'function') {
+				this.effect.initialize.call(this, function () {
+					that.initFrameBuffer(true);
+				}, gl);
+			} else {
+				this.initFrameBuffer(true);
+			}
+
+			if (this.frameBuffer) {
+				this.texture = this.frameBuffer.texture;
+			}
+
+			this.initialized = true;
+		}
+	};
+
+	EffectNode.prototype.setSize = function (width, height) {
+		var i, maxWidth = 0, maxHeight = 0, dirty = false;
+
+		if (width !== undefined) {
+			if (width <= 0) {
+				this.desiredWidth = null;
+			} else {
+				if (this.desiredWidth !== width) {
+					dirty = true;
+				}
+				this.desiredWidth = width;
+			}
+		}
+
+		if (height !== undefined) {
+			if (height <= 0) {
+				this.desiredHeight = null;
+			} else {
+				if (this.desiredHeight !== height) {
+					dirty = true;
+				}
+				this.desiredHeight = height;
+			}
+		}
+
+		if (!this.desiredWidth || !this.desiredHeight) {
+			for (i = 0; i < this.targets.length; i++) {
+				maxWidth = Math.max(maxWidth, this.targets[i].width);
+				maxHeight = Math.max(maxHeight, this.targets[i].height);
+			}
+
+			this.width = this.desiredWidth || maxWidth;
+			this.height = this.desiredHeight || maxHeight;
+
+			this.setDirty();
+
+			for (i in this.sources) {
+				if (this.sources.hasOwnProperty(i) && this.sources[i].setSize) {
+					this.sources[i].setSize();
+				}
+			}
+		} else {
+			this.width = this.desiredWidth;
+			this.height = this.desiredHeight;
+
+			if (dirty) {
+				this.setDirty();
+			}
+		}
+
+		//this.uniforms.srsSize[0] = this.width;
+		//this.uniforms.srsSize[1] = this.height;
+		Node.prototype.setSize.call(this, this.width, this.height);
+	};
+
+	EffectNode.prototype.setTarget = function (target) {
+		var i;
+		for (i = 0; i < this.targets.length; i++) {
+			if (this.targets[i] === target) {
+				return;
+			}
+		}
+
+		this.targets.push(target);
+
+		this.setSize();
+	};
+
+	EffectNode.prototype.removeTarget = function (target) {
+		var i = this.targets && this.targets.indexOf(target);
+		if (i >= 0) {
+			this.targets.splice(i, 1);
+		}
+
+		if (this.targets.length) {
+			this.setSize();
+		}
+	};
+
+	EffectNode.prototype.removeSource = function (source) {
+		var i, pub = source && source.pub;
+
+		for (i in this.inputs) {
+			if (this.inputs.hasOwnProperty(i) &&
+				(this.inputs[i] === source || this.inputs[i] === pub)) {
+				this.inputs[i] = null;
+			}
+		}
+
+		for (i in this.sources) {
+			if (this.sources.hasOwnProperty(i) &&
+				(this.sources[i] === source || this.sources[i] === pub)) {
+				this.sources[i] = null;
+			}
+		}
+	};
+
+	EffectNode.prototype.buildShader = function () {
+		var shader, effect = this.effect;
+		if (this.shaderDirty) {
+			if (effect.shader) {
+				shader = effect.shader.call(this, this.inputs, {
+					vertex: baseVertexShader,
+					fragment: baseFragmentShader
+				}, Seriously.util);
+
+				if (shader instanceof ShaderProgram) {
+					this.shader = shader;
+				} else if (shader && shader.vertex && shader.fragment) {
+					this.shader = new ShaderProgram(gl, shader.vertex, shader.fragment);
+				} else {
+					this.shader = baseShader;
+				}
+			} else {
+				this.shader = baseShader;
+			}
+
+			this.shaderDirty = false;
+		}
+	};
+
+	EffectNode.prototype.render = function (callback) {
+		var i,
+			frameBuffer,
+			effect = this.effect,
+			that = this,
+			dirty = this.dirty || this.reusedFrameBuffer;
+
+		if (!this.initialized) {
+			this.initialize();
+		}
+
+		if (this.shaderDirty) {
+			this.buildShader();
+		}
+
+		if (dirty) {
+			for (i in this.sources) {
+				if (this.sources.hasOwnProperty(i) &&
+					(!effect.requires || effect.requires.call(this, i, this.inputs))) {
+					this.sources[i].render();
+				}
+			}
+
+			if (this.reusedFrameBuffer) {
+				//todo: frameBuffer =
+			} else if (this.frameBuffer) {
+				frameBuffer = this.frameBuffer.frameBuffer;
+			}
+
+			if (typeof effect.draw === 'function') {
+				effect.draw.call(this, this.shader, this.model, this.uniforms, frameBuffer,
+					function(shader, model, uniforms, frameBuffer, node, options) {
+						draw(shader, model, uniforms, frameBuffer, node || that, options);
+					});
+			} else if (frameBuffer) {
+				draw(this.shader, this.model, this.uniforms, frameBuffer, this);
+			}
+
+			this.dirty = false;
+		}
+
+		if (callback && typeof callback === 'function') {
+			callback();
+		}
+
+		return this;
+	};
+
+	EffectNode.prototype.setInput = function (name, value) {
+		var input, uniform;
+
+		//trace back all sources to make sure we're not making a cyclical connection
+		function traceSources(node, original) {
+			var i,
+				source,
+				sources;
+
+			if ( !(node instanceof EffectNode) ) {
+				return false;
+			}
+
+			sources = node.sources;
+
+			for (i in sources) {
+				if (sources.hasOwnProperty(i)) {
+					source = sources[i];
+
+					if ( source === original || traceSources(source, original) ) {
+						return true;
+					}
+				}
+			}
+
+			return false;
+		}
+
+		if (this.effect.inputs.hasOwnProperty(name)) {
+			input = this.effect.inputs[name];
+			if (input.type === 'image') {
+				//&& !(value instanceof Effect) && !(value instanceof Source)) {
+
+				if (value) {
+					value = findInputNode(value);
+
+					if (value !== this.sources[name]) {
+						if (this.sources[name]) {
+							this.sources[name].removeTarget(this);
+						}
+
+						if ( traceSources(value, this) ) {
+							throw 'Attempt to make cyclical connection.';
+						}
+
+						this.sources[name] = value;
+						value.setTarget(this);
+					}
+				} else {
+					value = false;
+				}
+
+				uniform = this.sources[name];
+			} else {
+				value = input.validate.call(this, value, input, name);
+				uniform = value;
+			}
+
+			this.inputs[name] = value;
+
+			if (input.uniform) {
+				this.uniforms[input.uniform] = uniform;
+			}
+
+			if (input.shaderDirty) {
+				this.shaderDirty = true;
+			}
+
+			this.setDirty();
+
+			return value;
+		}
+	};
+
+	EffectNode.prototype.alias = function (inputName, aliasName) {
+		var that = this,
+			reservedNames = ['source', 'target', 'effect', 'effects', 'benchmark', 'incompatible',
+				'util', 'ShaderProgram', 'inputValidators', 'save', 'load',
+				'plugin', 'removePlugin', 'alias', 'removeAlias', 'stop', 'go',
+				'destroy', 'isDestroyed'];
+
+		if (reservedNames.indexOf(aliasName) >= 0) {
+			throw aliasName + ' is a reserved name and cannot be used as an alias.';
+		}
+
+		if (this.effect.inputs.hasOwnProperty(inputName)) {
+			if (!aliasName) {
+				aliasName = inputName;
+			}
+
+			seriously.removeAlias(aliasName);
+
+			aliases[aliasName] = {
+				node: this,
+				input: inputName
+			};
+
+			seriously.__defineSetter__(aliasName, function (value) {
+				return that.setInput(inputName, value);
+			});
+
+			seriously.__defineGetter__(aliasName, function () {
+				return that.inputs[inputName];
+			});
+		}
+
+		return this;
 	};
 
 	/*
 	matte function to be assigned as a method to EffectNode and TargetNode
 	*/
-
-	function matte(poly) {
+	EffectNode.prototype.matte = function (poly) {
 		var polys,
 			polygons = [],
 			polygon,
@@ -1384,6 +2188,13 @@ function Seriously(options) {
 		}
 
 		function triangulate(poly) {
+			var v, points = poly.vertices,
+				n, V = [], indices = [],
+				nv, count, m, u, w,
+
+				//todo: give these variables much better names
+				a, b, c, s, t;
+
 			function pointInTriangle(a, b, c, p) {
 				var ax, ay, bx, by, cx, cy, apx, apy, bpx, bpy, cpx, cpy,
 					cXap, bXcp, aXbp;
@@ -1421,10 +2232,6 @@ function Seriously(options) {
 				return true;
 			}
 
-			var v, points = poly.vertices,
-				n, V = [], indices = [],
-				nv, count, m, u, w;
-
 			//copy points
 			//for (v = 0; v < poly.vertices.length; v++) {
 			//	points.push(poly.vertices[v]);
@@ -1443,7 +2250,9 @@ function Seriously(options) {
 
 			nv = n;
 			count = 2 * nv;
-			for (m = 0, v = nv - 1; nv > 2; ) {
+			m = 0;
+			v = nv - 1;
+			while (nv > 2) {
 				if ((count--) <= 0) {
 					return indices;
 				}
@@ -1464,7 +2273,6 @@ function Seriously(options) {
 				}
 
 				if (snip(u, v, w, nv, V)) {
-					var a, b, c, s, t;
 					a = V[u];
 					b = V[v];
 					c = V[w];
@@ -1590,603 +2398,40 @@ function Seriously(options) {
 		if (this.gl) {
 			makeGlModel(shape, this.gl);
 		}
-	}
-
-	Effect = function (effectNode) {
-		var name, me = effectNode;
-
-		function arrayToHex(color) {
-			var i, val, s = '#';
-			for (i = 0; i < 4; i++) {
-				val = Math.min(255, Math.round(color[i] * 255 || 0));
-				s += val.toString(16);
-			}
-			return s;
-		}
-
-		function setInput(inputName, input) {
-			var lookup, value, effectInput, i;
-
-			effectInput = me.effect.inputs[inputName];
-
-			lookup = me.inputElements[inputName];
-
-			if ( typeof input === 'string' && isNaN(input)) {
-				if (effectInput.type === 'enum') {
-					if (effectInput.options && effectInput.options.filter) {
-						i = ('' + input).toLowerCase();
-						value = effectInput.options.filter(function (e) {
-							return (typeof e === 'string' && e.toLowerCase() === i) ||
-								(e.length && typeof e[0] === 'string' && e[0].toLowerCase() === i);
-						});
-
-						value = value.length;
-					}
-
-					if (!value) {
-						input = getElement(input, ['select']);
-					}
-
-				} else if (effectInput.type === 'number' || effectInput.type === 'boolean') {
-					input = getElement(input, ['input', 'select']);
-				} else if (effectInput.type === 'image') {
-					input = getElement(input, ['canvas', 'img', 'video']);
-				}
-				//todo: color? date/time?
-			}
-
-			if (input instanceof HTMLInputElement || input instanceof HTMLSelectElement) {
-				value = input.value;
-
-				if (lookup && lookup.element !== input) {
-					lookup.element.removeEventListener('change', lookup.listener, true);
-					delete me.inputElements[inputName];
-					lookup = null;
-				}
-
-				if (!lookup) {
-					lookup = {
-						element: input,
-						listener: (function (name, element) {
-							return function() {
-								var oldValue, newValue;
-
-								if (input.type === 'checkbox') {
-									//special case for check box
-									oldValue = input.checked;
-								} else {
-									oldValue = element.value;
-								}
-								newValue = me.setInput(name, oldValue);
-
-								//special case for color type
-								if (effectInput.type === 'color') {
-									newValue = arrayToHex(newValue);
-								}
-
-								//if input validator changes our value, update HTML Element
-								//todo: make this optional...somehow
-								if (newValue !== oldValue) {
-									element.value = newValue;
-								}
-							};
-						}(inputName, input))
-					};
-
-					if (input.type === 'checkbox') {
-						value = input.checked;
-					}
-
-					me.inputElements[inputName] = lookup;
-					input.addEventListener('change', lookup.listener, true);
-				}
-			} else {
-				if (lookup) {
-					lookup.element.removeEventListener('change', lookup.listener, true);
-					delete me.inputElements[inputName];
-				}
-				value = input;
-			}
-
-			me.setInput(inputName, value);
-			return me.inputs[inputName];
-		}
-
-		//priveleged publicly accessible methods/setters/getters
-		//todo: provide an alternate method
-		for (name in me.effect.inputs) {
-			if (this[name] === undefined) {
-				if (me.effect.inputs[name].type === 'image') {
-					this.__defineSetter__(name, (function (inputName) {
-						return function (value) {
-							var val = setInput(inputName, value);
-							return val && val.pub;
-						};
-					}(name)));
-
-					this.__defineGetter__(name, (function (inputName) {
-						return function () {
-							var val = me.inputs[inputName];
-							return val && val.pub;
-						};
-					}(name)));
-				} else {
-					this.__defineSetter__(name, (function (inputName) {
-						return function (value) {
-							return setInput(inputName, value);
-						};
-					}(name)));
-
-					this.__defineGetter__(name, (function (inputName) {
-						return function () {
-							return me.inputs[inputName];
-						};
-					}(name)));
-				}
-			} else {
-				//todo: this is temporary. get rid of it.
-				throw 'Cannot overwrite Seriously.' + name;
-			}
-		}
-
-		this.__defineGetter__('inputs', function () {
-			return {
-				source: {
-					type: 'image'
-				}
-			};
-		});
-
-		this.__defineSetter__('inputs', function () {
-			//should we throw an error or just fail silently
-			return;
-		});
-
-		this.__defineGetter__('original', function () {
-			return me.source;
-		});
-
-		this.__defineSetter__('original', function () {
-		});
-
-		this.__defineSetter__('width', function(value) {
-			me.setSize(value);
-		});
-
-		this.__defineSetter__('height', function(value) {
-			me.setSize(undefined, value);
-		});
-
-		this.__defineGetter__('id', function () {
-			return me.id;
-		});
-
-		this.__defineSetter__('id', function () {
-		});
-
-		this.render = function(callback) {
-			me.render(callback);
-			return this;
-		};
-
-		this.alias = function(inputName, aliasName) {
-			me.alias(inputName, aliasName);
-			return this;
-		};
-
-		this.reset = function() {
-			me.reset();
-		};
-
-		this.translate = function(x, y, z) {
-			me.translate(x, y, z);
-		};
-
-		this.scale = function(x, y) {
-			me.scale(x, y);
-		};
-
-		this.rotateY = function(angle) {
-			me.rotateZ(angle);
-		};
-
-		this.rotateZ = function(angle) {
-			me.rotateZ(angle);
-		};
-
-		this.matte = function(polygons) {
-			me.matte(polygons);
-		};
-
-		this.destroy = function() {
-			var i, nop = function() { };
-
-			me.destroy();
-			
-			for (i in this) {
-				if (this.hasOwnProperty(i) && i !== 'isDestroyed') {
-					if (this.__lookupGetter__(i) ||
-						typeof this[i] !== 'function') {
-						
-						delete this[i];
-					} else {
-						this[i] = nop;
-					}
-				}
-			}
-			
-			//todo: remove getters/setters
-		};
-		
-		this.isDestroyed = function() {
-			return me.isDestroyed;
-		};
 	};
-
-	EffectNode = function (hook, options) {
-		Node.call(this, options);
-
-		this.effect = seriousEffects[hook];
-		this.sources = {};
-		this.targets = [];
-		this.inputElements = {};
-		this.dirty = true;
-		this.shaderDirty = true;
-		this.hook = hook;
-		this.options = options;
-
-		//todo: set up frame buffer(s), inputs, transforms, stencils, draw method. allow plugin to override
-
-		this.inputs = {};
-		var name, input;
-		for (name in this.effect.inputs) {
-			input = this.effect.inputs[name];
-
-			this.inputs[name] = input.defaultValue;
-			if (input.uniform) {
-				this.uniforms[input.uniform] = input.defaultValue;
-			}
-		}
-
-		if (gl) {
-			this.buildShader();
-		}
-
-		this.pub = new Effect(this);
-
-		effects.push(this);
-		
-		allEffectsByHook[hook].push(this);
-	};
-
-	extend(EffectNode, Node);
-
-	EffectNode.prototype.initialize = function () {
-		if (!this.initialized) {
-			var that = this;
-
-			if (this.shape) {
-				this.model = makeGlModel(this.shape, this.gl);
-			} else {
-				this.model = rectangleModel;
-			}
-
-			if (typeof this.effect.initialize === 'function') {
-				this.effect.initialize.call(this, function () {
-					that.initFrameBuffer(true);
-				}, gl);
-			} else {
-				this.initFrameBuffer(true);
-			}
-
-			if (this.frameBuffer) {
-				this.texture = this.frameBuffer.texture;
-			}
-
-			this.initialized = true;
-		}
-	};
-
-	EffectNode.prototype.setSize = function (width, height) {
-		var i, maxWidth = 0, maxHeight = 0, dirty = false;
-
-		if (width !== undefined) {
-			if (width <= 0) {
-				this.desiredWidth = null;
-			} else {
-				if (this.desiredWidth !== width) {
-					dirty = true;
-				}
-				this.desiredWidth = width;
-			}
-		}
-
-		if (height !== undefined) {
-			if (height <= 0) {
-				this.desiredHeight = null;
-			} else {
-				if (this.desiredHeight !== height) {
-					dirty = true;
-				}
-				this.desiredHeight = height;
-			}
-		}
-
-		if (!this.desiredWidth || !this.desiredHeight) {
-			for (i = 0; i < this.targets.length; i++) {
-				maxWidth = Math.max(maxWidth, this.targets[i].width);
-				maxHeight = Math.max(maxHeight, this.targets[i].height);
-			}
-
-			this.width = this.desiredWidth || maxWidth;
-			this.height = this.desiredHeight || maxHeight;
-
-			this.setDirty();
-
-			for (i in this.sources) {
-				if (this.sources[i].setSize) {
-					this.sources[i].setSize();
-				}
-			}
-		} else {
-			this.width = this.desiredWidth;
-			this.height = this.desiredHeight;
-
-			if (dirty) {
-				this.setDirty();
-			}
-		}
-
-	};
-
-	EffectNode.prototype.setTarget = function (target) {
-		var i;
-		for (i = 0; i < this.targets.length; i++) {
-			if (this.targets[i] === target) {
-				return;
-			}
-		}
-
-		this.targets.push(target);
-
-		this.setSize();
-	};
-
-	EffectNode.prototype.removeTarget = function (target) {
-		var i = this.targets && this.targets.indexOf(target);
-		if (i >= 0) {
-			this.targets.splice(i, 1);
-		}
-
-		if (this.targets.length) {
-			this.setSize();
-		}
-	};
-
-	EffectNode.prototype.removeSource = function (source) {
-		var i, pub = source && source.pub;
-		
-		for (i in this.inputs) {
-			if (this.inputs[i] === source || this.inputs[i] === pub) {
-				this.inputs[i] = null;
-			}
-		}
-		
-		for (i in this.sources) {
-			if (this.sources[i] === source || this.sources[i] === pub) {
-				this.sources[i] = null;
-			}
-		}
-	};
-
-	EffectNode.prototype.buildShader = function () {
-		var shader, effect = this.effect;
-		if (this.shaderDirty) {
-			if (effect.shader) {
-				shader = effect.shader.call(this, this.inputs, {
-					vertex: baseVertexShader,
-					fragment: baseFragmentShader
-				}, Seriously.util);
-
-				if (shader instanceof ShaderProgram) {
-					this.shader = shader;
-				} else if (shader && shader.vertex && shader.fragment) {
-					this.shader = new ShaderProgram(gl, shader.vertex, shader.fragment);
-				} else {
-					this.shader = baseShader;
-				}
-			} else {
-				this.shader = baseShader;
-			}
-
-			this.shaderDirty = false;
-		}
-	};
-
-	EffectNode.prototype.render = function (callback) {
-		var i,
-			frameBuffer,
-			effect = this.effect,
-			that = this,
-			dirty = this.dirty || this.reusedFrameBuffer;
-
-		if (!this.initialized) {
-			this.initialize();
-		}
-
-		if (this.shaderDirty) {
-			this.buildShader();
-		}
-
-		if (dirty) {
-			for (i in this.sources) {
-				if (!effect.requires || effect.requires.call(this, i, this.inputs)) {
-					this.sources[i].render();
-				}
-			}
-
-			if (this.reusedFrameBuffer) {
-				//todo: frameBuffer =
-			} else if (this.frameBuffer) {
-				frameBuffer = this.frameBuffer.frameBuffer;
-			}
-
-			if (typeof effect.draw === 'function') {
-				effect.draw.call(this, this.shader, this.model, this.uniforms, frameBuffer,
-					function(shader, model, uniforms, frameBuffer, node, options) {
-						draw(shader, model, uniforms, frameBuffer, node || that, options);
-					});
-			} else if (frameBuffer) {
-				draw(this.shader, this.model, this.uniforms, frameBuffer, this);
-			}
-
-			this.dirty = false;
-		}
-
-		if (callback && typeof callback === 'function') {
-			callback();
-		}
-
-		return this;
-	};
-
-	EffectNode.prototype.setInput = function (name, value) {
-		var input, uniform;
-
-		//trace back all sources to make sure we're not making a cyclical connection
-		function traceSources(node, original) {
-			var i,
-				source,
-				sources;
-
-			if ( !(node instanceof EffectNode) ) {
-				return false;
-			}
-
-			sources = node.sources;
-
-			for (i in sources) {
-				source = sources[i];
-
-				if ( source === original || traceSources(source, original) ) {
-					return true;
-				}
-			}
-
-			return false;
-		}
-
-		if (this.effect.inputs.hasOwnProperty(name)) {
-			input = this.effect.inputs[name];
-			if (input.type === 'image') {
-				//&& !(value instanceof Effect) && !(value instanceof Source)) {
-
-				if (value) {
-					value = findInputNode(value);
-
-					if (value !== this.sources[name]) {
-						if (this.sources[name]) {
-							this.sources[name].removeTarget(this);
-						}
-
-						if ( traceSources(value, this) ) {
-							throw 'Attempt to make cyclical connection.';
-						}
-
-						this.sources[name] = value;
-						value.setTarget(this);
-					}
-				} else {
-					value = false;
-				}
-
-				uniform = this.sources[name];
-			} else {
-				value = input.validate.call(this, value, input, name);
-				uniform = value;
-			}
-
-			this.inputs[name] = value;
-
-			if (input.uniform) {
-				this.uniforms[input.uniform] = uniform;
-			}
-
-			if (input.shaderDirty) {
-				this.shaderDirty = true;
-			}
-
-			this.setDirty();
-
-			return value;
-		}
-	};
-
-	EffectNode.prototype.alias = function (inputName, aliasName) {
-		var that = this,
-			reservedNames = ['source', 'target', 'effect', 'effects', 'benchmark', 'incompatible',
-				'util', 'ShaderProgram', 'inputValidators', 'save', 'load',
-				'plugin', 'removePlugin', 'alias', 'removeAlias', 'stop', 'go',
-				'destroy', 'isDestroyed'];
-		
-		if (reservedNames.indexOf(aliasName) >= 0) {
-			throw aliasName + ' is a reserved name and cannot be used as an alias.';
-		}
-
-		if (this.effect.inputs.hasOwnProperty(inputName)) {
-			if (!aliasName) {
-				aliasName = inputName;
-			}
-
-			seriously.removeAlias(aliasName);
-
-			aliases[aliasName] = {
-				node: this,
-				input: inputName
-			};
-
-			seriously.__defineSetter__(aliasName, function (value) {
-				return that.setInput(inputName, value);
-			});
-
-			seriously.__defineGetter__(aliasName, function () {
-				return that.inputs[inputName];
-			});
-		}
-
-		return this;
-	};
-
-	EffectNode.prototype.matte = matte;
 
 	EffectNode.prototype.destroy = function () {
 		var i, item, hook = this.hook;
-		
+
 		//let effect destroy itself
 		if (this.effect.destroy && typeof this.effect.destroy === 'function') {
 			this.effect.destroy.call(this);
 		}
 		delete this.effect;
-		
+
 		//shader
 		if (this.shader && this.shader.destroy && this.shader !== baseShader) {
 			this.shader.destroy();
 		}
 		delete this.shader;
-		
+
 		//stop watching any input elements
 		for (i in this.inputElements) {
-			item = this.inputElements[i];
-			item.element.removeEventListener('change', item.listener, true);
+			if (this.inputElements.hasOwnProperty(i)) {
+				item = this.inputElements[i];
+				item.element.removeEventListener('change', item.listener, true);
+			}
 		}
-		
+
 		//sources
 		for (i in this.sources) {
-			item = this.sources[i];
-			if (item && item.removeTarget) {
-				item.removeTarget(this);
+			if (this.sources.hasOwnProperty(i)) {
+				item = this.sources[i];
+				if (item && item.removeTarget) {
+					item.removeTarget(this);
+				}
+				delete this.sources[i];
 			}
-			delete this.sources[i];
 		}
 
 		//targets
@@ -2199,30 +2444,32 @@ function Seriously(options) {
 		}
 
 		for (i in this) {
-			if (i !== 'id' && this.hasOwnProperty(i)) {
+			if (this.hasOwnProperty(i) && i !== 'id') {
 				delete this[i];
 			}
 		}
-		
+
 		//remove any aliases
 		for (i in aliases) {
-			item = aliases[i];
-			if (item.node === this) {
-				seriously.removeAlias(i);
+			if (aliases.hasOwnProperty(i)) {
+				item = aliases[i];
+				if (item.node === this) {
+					seriously.removeAlias(i);
+				}
 			}
 		}
-		
+
 		//remove self from master list of effects
 		i = effects.indexOf(this);
 		if (i >= 0) {
 			effects.splice(i, 1);
 		}
-		
+
 		i = allEffectsByHook[hook].indexOf(this);
 		if (i >= 0) {
 			allEffectsByHook[hook].splice(i, 1);
 		}
-		
+
 		Node.prototype.destroy.call(this);
 	};
 
@@ -2255,17 +2502,57 @@ function Seriously(options) {
 		this.readPixels = function (x, y, width, height, dest) {
 			return me.readPixels(x, y, width, height, dest);
 		};
-		
+
+		this.reset = function() {
+			me.reset();
+			return this;
+		};
+
+		this.setTransform = function(transform) {
+			me.setTransform(transform);
+			return this;
+		};
+
+		this.perspective = function(fov) {
+			me.perspective(fov);
+			return this;
+		};
+
+		this.translate = function(x, y, z) {
+			me.translate(x, y, z);
+			return this;
+		};
+
+		this.scale = function(x, y) {
+			me.scale(x, y);
+			return this;
+		};
+
+		this.rotateX = function(angle) {
+			me.rotateX(angle);
+			return this;
+		};
+
+		this.rotateY = function(angle) {
+			me.rotateY(angle);
+			return this;
+		};
+
+		this.rotateZ = function(angle) {
+			me.rotateZ(angle);
+			return this;
+		};
+
 		this.destroy = function() {
 			var i, nop = function() { };
 
 			me.destroy();
-			
+
 			for (i in this) {
 				if (this.hasOwnProperty(i) && i !== 'isDestroyed') {
 					if (this.__lookupGetter__(i) ||
 						typeof this[i] !== 'function') {
-						
+
 						delete this[i];
 					} else {
 						this[i] = nop;
@@ -2290,10 +2577,9 @@ function Seriously(options) {
 			that = this,
 			matchedType = false;
 
-		Node.call(this, options);
-
-		width = this.desiredWidth;
-		height = this.desiredHeight;
+		Node.call(this, opts);
+		width = this.width;
+		height = this.height;
 
 		if ( typeof source === 'string' && isNaN(source) ) {
 			source = getElement(source, ['canvas', 'img', 'video']);
@@ -2305,6 +2591,7 @@ function Seriously(options) {
 				this.desiredHeight = height = source.height;
 
 				this.render = this.renderImageCanvas;
+				this.setSize(width, height);
 			} else if (source.tagName === 'IMG') {
 				width = source.naturalWidth;
 				height = source.naturalHeight;
@@ -2315,13 +2602,11 @@ function Seriously(options) {
 					source.addEventListener('load', function() {
 						that.desiredWidth = source.naturalWidth;
 						that.desiredHeight = source.naturalHeight;
-						that.currentTime = source.src;
-
-						that.width = that.desiredWidth;
-						that.height = that.desiredHeight;
-
+						that.setSize(source.naturalWidth, source.naturalHeight);
 						that.initialize();
 					}, true);
+				} else {
+					that.setSize(source.naturalWidth, source.naturalHeight);
 				}
 
 				this.render = this.renderImageCanvas;
@@ -2335,12 +2620,13 @@ function Seriously(options) {
 					source.addEventListener('loadedmetadata', function() {
 						that.desiredWidth = source.videoWidth;
 						that.desiredHeight = source.videoHeight;
-
-						that.width = that.desiredWidth;
-						that.height = that.desiredHeight;
-
+						that.setSize(source.videoWidth, source.videoHeight);
 						that.initialize();
 					}, true);
+				} else {
+					that.desiredWidth = source.videoWidth;
+					that.desiredHeight = source.videoHeight;
+					that.setSize(source.videoWidth, source.videoHeight);
 				}
 
 				this.render = this.renderVideo;
@@ -2359,6 +2645,7 @@ function Seriously(options) {
 
 			this.desiredWidth = width = source.width;
 			this.desiredHeight = height = source.height;
+			this.setSize(width, height);
 			matchedType = true;
 
 			this.render = this.renderImageCanvas;
@@ -2370,6 +2657,10 @@ function Seriously(options) {
 			if (width * height * 4 !== source.length) {
 				throw 'Array length must be height x width x 4.';
 			}
+
+			this.desiredWidth = width;
+			this.desiredHeight = height;
+			this.setSize(width, height);
 
 			matchedType = true;
 
@@ -2387,6 +2678,10 @@ function Seriously(options) {
 			if (width * height * 4 !== source.length) {
 				throw 'Typed array length must be height x width x 4.';
 			}
+
+			this.desiredWidth = width;
+			this.desiredHeight = height;
+			this.setSize(width, height);
 
 			matchedType = true;
 
@@ -2412,12 +2707,16 @@ function Seriously(options) {
 				//throw 'Must specify width and height when using a WebGL texture as a source';
 			}
 
+			this.desiredWidth = width;
+			this.desiredHeight = height;
+			this.setSize(width, height);
+
 			if (opts.flip === undefined) {
 				flip = false;
 			}
 			matchedType = true;
 
-			this.texture = source;
+			this.sourceTexture = source;
 			this.initialized = true;
 
 			//todo: if WebGLTexture source is from a different context render it and copy it over
@@ -2436,6 +2735,7 @@ function Seriously(options) {
 		this.flip = flip;
 		this.width = width;
 		this.height = height;
+
 		this.targets = [];
 		this.pub = new Source(this);
 
@@ -2450,7 +2750,7 @@ function Seriously(options) {
 	extend(SourceNode, Node);
 
 	SourceNode.prototype.initialize = function() {
-		if (!gl || this.texture) {
+		if (!gl || this.sourceTexture) {
 			return;
 		}
 
@@ -2462,7 +2762,7 @@ function Seriously(options) {
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 		gl.bindTexture(gl.TEXTURE_2D, null);
 
-		this.texture = texture;
+		this.sourceTexture = texture;
 		this.initialized = true;
 		this.allowRefresh = true;
 		this.setDirty();
@@ -2496,7 +2796,7 @@ function Seriously(options) {
 		if (!this.initialized) {
 			this.initialize();
 		}
-		
+
 		if (!this.allowRefresh) {
 			return;
 		}
@@ -2505,7 +2805,7 @@ function Seriously(options) {
 			this.lastRenderFrame !== video.mozPresentedFrames ||
 			this.lastRenderTime !== video.currentTime) {
 
-			gl.bindTexture(gl.TEXTURE_2D, this.texture);
+			gl.bindTexture(gl.TEXTURE_2D, this.sourceTexture);
 			gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, this.flip);
 			try {
 				gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, video);
@@ -2522,10 +2822,22 @@ function Seriously(options) {
 			}
 			this.lastRenderFrame = video.mozPresentedFrames;
 			this.lastRenderTimeStamp = Date.now();
-
-			this.dirty = false;
 		}
 
+		if (this.transformed || this.fov) {
+			if (!this.frameBuffer) {
+				this.initFrameBuffer();
+			}
+			this.texture = this.frameBuffer.texture;
+			this.uniforms.source = this.sourceTexture;
+			if (this.dirty) {
+				draw(baseShader, rectangleModel, this.uniforms, this.frameBuffer.frameBuffer, this);
+			}
+		} else {
+			this.texture = this.sourceTexture;
+		}
+
+		this.dirty = false;
 		if (callback && typeof callback === 'function') {
 			callback();
 		}
@@ -2547,7 +2859,7 @@ function Seriously(options) {
 		}
 
 		if (this.dirty) {
-			gl.bindTexture(gl.TEXTURE_2D, this.texture);
+			gl.bindTexture(gl.TEXTURE_2D, this.sourceTexture);
 			gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, this.flip);
 			try {
 				gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, media);
@@ -2559,9 +2871,22 @@ function Seriously(options) {
 			}
 
 			this.lastRenderTime = Date.now() / 1000;
-
-			this.dirty = false;
+			this.dirty = true;
 		}
+
+		if (this.transformed || this.fov) {
+			if (!this.frameBuffer) {
+				this.initFrameBuffer();
+			}
+			this.texture = this.frameBuffer.texture;
+			this.uniforms.source = this.sourceTexture;
+			if (this.dirty) {
+				draw(baseShader, rectangleModel, this.uniforms, this.frameBuffer.frameBuffer, this);
+			}
+		} else {
+			this.texture = this.sourceTexture;
+		}
+		this.dirty = false;
 
 		if (callback && typeof callback === 'function') {
 			callback();
@@ -2579,18 +2904,35 @@ function Seriously(options) {
 			this.initialize();
 		}
 
+		//this.currentTime = media.currentTime || 0;
+
 		if (!this.allowRefresh) {
 			return;
 		}
 
 		if (this.dirty) {
-			gl.bindTexture(gl.TEXTURE_2D, this.texture);
+			gl.bindTexture(gl.TEXTURE_2D, this.sourceTexture);
 			gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, this.flip);
 			gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, this.width, this.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, media);
 
 			this.lastRenderTime = Date.now() / 1000;
-			this.dirty = false;
+			this.dirty = true;
 		}
+
+		if (this.transformed || this.fov) {
+			if (!this.frameBuffer) {
+				this.initFrameBuffer();
+			}
+			this.texture = this.frameBuffer.texture;
+			this.uniforms.source = this.sourceTexture;
+			if (this.dirty) {
+				draw(baseShader, rectangleModel, this.uniforms, this.frameBuffer.frameBuffer, this);
+			}
+		} else {
+			this.texture = this.sourceTexture;
+		}
+		this.dirty = false;
+
 		if (callback && typeof callback === 'function') {
 			callback();
 		}
@@ -2602,7 +2944,7 @@ function Seriously(options) {
 		if (this.gl && this.texture) {
 			this.gl.deleteTexture(this.texture);
 		}
-	
+
 		//targets
 		for (i = 0; i < this.targets.length; i++) {
 			item = this.targets[i];
@@ -2617,14 +2959,14 @@ function Seriously(options) {
 		if (i >= 0) {
 			sources.splice(i, 1);
 		}
-		
+
 		for (i in this) {
-			if (i !== 'id' && this.hasOwnProperty(i)) {
+			if (this.hasOwnProperty(i) && i !== 'id') {
 				delete this[i];
 			}
 		}
 
-		Node.prototype.destroy.call(this);		
+		Node.prototype.destroy.call(this);
 	};
 
 	//todo: implement render for array and typed array
@@ -2671,18 +3013,16 @@ function Seriously(options) {
 				me.target.width = value;
 
 				me.setDirty();
-				return;
-
+				/*
 				if (this.source && this.source.setSize) {
 					this.source.setSize(value);
 
-					//for secondary webgl nodes, we need a new array
-					/*
-					if ( this.pixels && this.pixels.length !== (this.width * this.height * 4) ) {
-						delete this.pixels;
-					}
-					*/
+					//todo: for secondary webgl nodes, we need a new array
+					//if ( this.pixels && this.pixels.length !== (this.width * this.height * 4) ) {
+					//	delete this.pixels;
+					//}
 				}
+				*/
 			}
 		});
 
@@ -2718,6 +3058,50 @@ function Seriously(options) {
 			me.render(callback);
 		};
 
+		this.readPixels = function (x, y, width, height, dest) {
+			return me.readPixels(x, y, width, height, dest);
+		};
+
+		this.reset = function() {
+			me.reset();
+			return this;
+		};
+
+		this.setTransform = function(transform) {
+			me.setTransform(transform);
+			return this;
+		};
+
+		this.perspective = function(fov) {
+			me.perspective(fov);
+			return this;
+		};
+
+		this.translate = function(x, y, z) {
+			me.translate(x, y, z);
+			return this;
+		};
+
+		this.scale = function(x, y) {
+			me.scale(x, y);
+			return this;
+		};
+
+		this.rotateX = function(angle) {
+			me.rotateX(angle);
+			return this;
+		};
+
+		this.rotateY = function(angle) {
+			me.rotateY(angle);
+			return this;
+		};
+
+		this.rotateZ = function(angle) {
+			me.rotateZ(angle);
+			return this;
+		};
+
 		this.go = function(options) {
 			me.go(options);
 		};
@@ -2734,12 +3118,12 @@ function Seriously(options) {
 			var i, nop = function() { };
 
 			me.destroy();
-			
+
 			for (i in this) {
 				if (this.hasOwnProperty(i) && i !== 'isDestroyed') {
 					if (this.__lookupGetter__(i) ||
 						typeof this[i] !== 'function') {
-						
+
 						delete this[i];
 					} else {
 						this[i] = nop;
@@ -2765,9 +3149,7 @@ function Seriously(options) {
 			i, element, elements, context,
 			frameBuffer;
 
-		Node.call(this, options);
-
-//		mat4.perspective(90, 1, 1, 100, this.transform);
+		Node.call(this, opts);
 
 		this.renderToTexture = opts.renderToTexture;
 
@@ -2898,6 +3280,9 @@ function Seriously(options) {
 		this.width = width;
 		this.height = height;
 		this.callbacks = [];
+
+		this.setSize(width, height);
+
 		if (opts.auto !== undefined) {
 			this.auto = opts.auto;
 		} else {
@@ -2990,7 +3375,7 @@ function Seriously(options) {
 			if (!this.source) {
 				return;
 			}
-			
+
 			this.source.render();
 
 			this.uniforms.source = this.source.texture;
@@ -3052,7 +3437,7 @@ function Seriously(options) {
 
 	TargetNode.prototype.destroy = function() {
 		var i;
-		
+
 		//source
 		if (this.source && this.source.removeTarget) {
 			this.source.removeTarget(this);
@@ -3064,13 +3449,13 @@ function Seriously(options) {
 		delete this.pixels;
 		delete this.auto;
 		this.callbacks.splice(0);
-		
+
 		//remove self from master list of targets
 		i = targets.indexOf(this);
 		if (i >= 0) {
 			targets.splice(i, 1);
 		}
-		
+
 		Node.prototype.destroy.call(this);
 	};
 
@@ -3176,30 +3561,30 @@ function Seriously(options) {
 			node = nodes.shift();
 			node.destroy();
 		}
-	
+
 		if (baseShader) {
 			baseShader.destroy();
 			baseShader = null;
 		}
-		
+
 		//clean up rectangleModel
 		if (gl) {
 			gl.deleteBuffer(rectangleModel.vertex);
 			gl.deleteBuffer(rectangleModel.texCoord);
 			gl.deleteBuffer(rectangleModel.index);
 		}
-		
+
 		if (rectangleModel) {
 			delete rectangleModel.vertex;
 			delete rectangleModel.texCoord;
 			delete rectangleModel.index;
 		}
-		
+
 		for (i in this) {
 			if (this.hasOwnProperty(i) && i !== 'isDestroyed') {
 				if (this.__lookupGetter__(i) ||
 					typeof this[i] !== 'function') {
-					
+
 					delete this[i];
 				} else {
 					this[i] = nop;
@@ -3217,14 +3602,14 @@ function Seriously(options) {
 		effects = null;
 		nodes = null;
 		callbacks.splice(0);
-		
+
 		isDestroyed = true;
 	};
 
 	this.isDestroyed = function() {
 		return isDestroyed;
 	};
-	
+
 	this.incompatible = function (pluginHook) {
 		var i,
 			plugin,
@@ -3235,10 +3620,10 @@ function Seriously(options) {
 		if (failure) {
 			return failure;
 		}
-		
+
 		if (!pluginHook) {
 			for (i in allEffectsByHook) {
-				if (allEffectsByHook[i].length) {
+				if (allEffectsByHook.hasOwnProperty(i) && allEffectsByHook[i].length) {
 					plugin = seriousEffects[i];
 					if (plugin && typeof plugin.compatible === 'function' &&
 						!plugin.compatible.call(this)) {
@@ -3248,7 +3633,7 @@ function Seriously(options) {
 				}
 			}
 		}
-		
+
 		return false;
 	};
 
@@ -3258,17 +3643,22 @@ function Seriously(options) {
 		'precision mediump float;\n' +
 		'#endif \n' +
 		'\n' +
-		'attribute vec3 position;\n' +
+		'attribute vec4 position;\n' +
 		'attribute vec2 texCoord;\n' +
 		'\n' +
+		'uniform vec3 srsSize;\n' +
+		'uniform mat4 projection;\n' +
 		'uniform mat4 transform;\n' +
 		'\n' +
 		'varying vec2 vTexCoord;\n' +
 		'varying vec4 vPosition;\n' +
 		'\n' +
 		'void main(void) {\n' +
-		'	gl_Position = transform * vec4(position, 1.0);\n' +
-//		'	gl_Position = vec4(position, 1.0);\n' +
+		'	vec4 pos = position * vec4(srsSize.x / srsSize.y, 1.0, 1.0, 1.0);\n' +
+		'	gl_Position = transform * pos;\n' +
+		'	gl_Position.z -= srsSize.z;\n' +
+		'	gl_Position = projection * gl_Position;\n' +
+		'	gl_Position.z = 0.0;\n' + //prevent near clipping
 		'	vTexCoord = vec2(texCoord.s, texCoord.t);\n' +
 		'	vPosition = gl_Position;\n' +
 		'}\n';
@@ -3395,7 +3785,7 @@ Seriously.prototype.benchmark = Seriously.benchmark = function (options, cb) {
 
 Seriously.incompatible = function (pluginHook) {
 	var canvas, gl, plugin;
-	
+
 	if (incompatibility === undefined) {
 		canvas = document.createElement('canvas');
 		if (!canvas || !canvas.getContext) {
@@ -3411,17 +3801,17 @@ Seriously.incompatible = function (pluginHook) {
 				} catch(webglError) {
 				}
 			}
-			
+
 			if (!gl) {
 				incompatibility = 'context';
 			}
 		}
 	}
-	
+
 	if (incompatibility) {
 		return incompatibility;
 	}
-	
+
 	if (pluginHook) {
 		plugin = seriousEffects[pluginHook];
 		if (plugin && typeof plugin.compatible === 'function' &&
@@ -3430,7 +3820,7 @@ Seriously.incompatible = function (pluginHook) {
 			return 'plugin-' + pluginHook;
 		}
 	}
-	
+
 	return false;
 };
 
@@ -3457,72 +3847,74 @@ Seriously.plugin = function (hook, effect) {
 
 	if (effect.inputs) {
 		for (name in effect.inputs) {
-			if (reserved.indexOf(name) >= 0 || Object.prototype[name]) {
-				throw 'Reserved effect input name: ' + name;
-			}
+			if (effect.inputs.hasOwnProperty(name)) {
+				if (reserved.indexOf(name) >= 0 || Object.prototype[name]) {
+					throw 'Reserved effect input name: ' + name;
+				}
 
-			input = effect.inputs[name];
+				input = effect.inputs[name];
 
-			if (isNaN(input.min)) {
-				input.min = -Infinity;
-			}
+				if (isNaN(input.min)) {
+					input.min = -Infinity;
+				}
 
-			if (isNaN(input.max)) {
-				input.max = Infinity;
-			}
+				if (isNaN(input.max)) {
+					input.max = Infinity;
+				}
 
-			if (isNaN(input.minCount)) {
-				input.minCount = -Infinity;
-			}
+				if (isNaN(input.minCount)) {
+					input.minCount = -Infinity;
+				}
 
-			if (isNaN(input.maxCount)) {
-				input.maxCount = Infinity;
-			}
+				if (isNaN(input.maxCount)) {
+					input.maxCount = Infinity;
+				}
 
-			if (isNaN(input.step)) {
-				input.step = 0;
-			}
+				if (isNaN(input.step)) {
+					input.step = 0;
+				}
 
-			if (input.defaultValue === undefined || input.defaultValue === null) {
-				if (input.type === 'number') {
-					input.defaultValue = Math.min(Math.max(0, input.min), input.max);
-				} else if (input.type === 'color') {
-					input.defaultValue = [0, 0, 0, 0];
-				} else if (input.type === 'enum') {
-					if (input.options && input.options.length) {
-						input.defaultValue = input.options[0];
+				if (input.defaultValue === undefined || input.defaultValue === null) {
+					if (input.type === 'number') {
+						input.defaultValue = Math.min(Math.max(0, input.min), input.max);
+					} else if (input.type === 'color') {
+						input.defaultValue = [0, 0, 0, 0];
+					} else if (input.type === 'enum') {
+						if (input.options && input.options.length) {
+							input.defaultValue = input.options[0];
+						} else {
+							input.defaultValue = '';
+						}
+					} else if (input.type === 'boolean') {
+						input.defaultValue = false;
 					} else {
 						input.defaultValue = '';
 					}
-				} else if (input.type === 'boolean') {
-					input.defaultValue = false;
-				} else {
-					input.defaultValue = '';
 				}
-			}
 
-			if (input.type === 'vector') {
-				if (input.dimensions < 2) {
-					input.dimensions = 2;
-				} else if (input.dimensions > 4) {
-					input.dimensions = 4;
-				} else if (!input.dimensions || isNaN(input.dimensions)) {
-					input.dimensions = 4;
+				if (input.type === 'vector') {
+					if (input.dimensions < 2) {
+						input.dimensions = 2;
+					} else if (input.dimensions > 4) {
+						input.dimensions = 4;
+					} else if (!input.dimensions || isNaN(input.dimensions)) {
+						input.dimensions = 4;
+					} else {
+						input.dimensions = Math.round(input.dimensions);
+					}
 				} else {
-					input.dimensions = Math.round(input.dimensions);
+					input.dimensions = 1;
 				}
-			} else {
-				input.dimensions = 1;
-			}
 
-			input.shaderDirty = !!input.shaderDirty;
+				input.shaderDirty = !!input.shaderDirty;
 
-			if (typeof input.validate !== 'function') {
-				input.validate = Seriously.inputValidators[input.type] || nop;
-			}
+				if (typeof input.validate !== 'function') {
+					input.validate = Seriously.inputValidators[input.type] || nop;
+				}
 
-			if (!effect.defaultImageInput && input.type === 'image') {
-				effect.defaultImageInput = name;
+				if (!effect.defaultImageInput && input.type === 'image') {
+					effect.defaultImageInput = name;
+				}
 			}
 		}
 	}
@@ -3543,17 +3935,17 @@ Seriously.plugin = function (hook, effect) {
 
 Seriously.removePlugin = function (hook) {
 	var all, effect, plugin;
-	
+
 	if (!hook) {
 		return this;
 	}
-	
+
 	plugin = seriousEffects[hook];
 
 	if (!plugin) {
 		return this;
 	}
-	
+
 	all = allEffectsByHook[hook];
 	if (all) {
 		while (all.length) {
@@ -3562,9 +3954,9 @@ Seriously.removePlugin = function (hook) {
 		}
 		delete allEffectsByHook[hook];
 	}
-	
+
 	delete seriousEffects[hook];
-	
+
 	return this;
 };
 
@@ -3741,31 +4133,35 @@ Seriously.prototype.effects = Seriously.effects = function () {
 		i;
 
 	for (name in seriousEffects) {
-		effect = seriousEffects[name];
-		manifest = {
-			title: effect.title || name,
-			description: effect.description || '',
-			inputs: {}
-		};
-
-		for (i in effect.inputs) {
-			input = effect.inputs[i];
-			manifest.inputs[i] = {
-				type: input.type,
-				defaultValue: input.defaultValue,
-				step: input.step,
-				min: input.min,
-				max: input.max,
-				minCount: input.minCount,
-				maxCount: input.maxCount,
-				dimensions: input.dimensions,
-				title: input.title || i,
-				description: input.description || '',
-				options: input.options || []
+		if (seriousEffects.hasOwnProperty(name)) {
+			effect = seriousEffects[name];
+			manifest = {
+				title: effect.title || name,
+				description: effect.description || '',
+				inputs: {}
 			};
-		}
 
-		effects[name] = manifest;
+			for (i in effect.inputs) {
+				if (effect.inputs.hasOwnProperty(i)) {
+					input = effect.inputs[i];
+					manifest.inputs[i] = {
+						type: input.type,
+						defaultValue: input.defaultValue,
+						step: input.step,
+						min: input.min,
+						max: input.max,
+						minCount: input.minCount,
+						maxCount: input.maxCount,
+						dimensions: input.dimensions,
+						title: input.title || i,
+						description: input.description || '',
+						options: input.options || []
+					};
+				}
+			}
+
+			effects[name] = manifest;
+		}
 	}
 
 	return effects;
@@ -3779,7 +4175,7 @@ if (window.Float32Array) {
 		0, 0, 0, 1
 	]);
 	//todo: set scale
-	mat4.perspective(90, 1, 1, 100, defaultTransform);
+//	mat4.perspective(90, 1, 1, 100, new Float32Array(defaultTransform));
 }
 
 //check for plugins loaded out of order
@@ -3788,8 +4184,8 @@ if (window.Seriously) {
 		(function() {
 			var i;
 			for (i in window.Seriously) {
-				if (i !== 'plugin' &&
-					window.Seriously.hasOwnProperty(i) &&
+				if (window.Seriously.hasOwnProperty(i) &&
+					i !== 'plugin' &&
 					typeof window.Seriously[i] === 'object') {
 
 					Seriously.plugin(i, window.Seriously[i]);
