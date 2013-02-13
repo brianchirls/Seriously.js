@@ -1958,7 +1958,9 @@ function Seriously(options) {
 			this.targets.splice(i, 1);
 		}
 
-		this.setSize();
+		if (this.targets.length) {
+			this.setSize();
+		}
 	};
 
 	EffectNode.prototype.removeSource = function (source) {
@@ -2513,8 +2515,13 @@ function Seriously(options) {
 					console.log('Unable to access cross-domain image');
 				}
 			}
-			this.lastRenderTime = video.currentTime;
+
+			// Render a few extra times because the canvas takes a while to catch up
+			if (Date.now() - 100 > this.lastRenderTimeStamp) {
+				this.lastRenderTime = video.currentTime;
+			}
 			this.lastRenderFrame = video.mozPresentedFrames;
+			this.lastRenderTimeStamp = Date.now();
 
 			this.dirty = false;
 		}
@@ -3259,6 +3266,7 @@ function Seriously(options) {
 		'	gl_Position = transform * vec4(position, 1.0);\n' +
 //		'	gl_Position = vec4(position, 1.0);\n' +
 		'	vTexCoord = vec2(texCoord.s, texCoord.t);\n' +
+		'	vPosition = gl_Position;\n' +
 		'}\n';
 
 	baseFragmentShader = '#ifdef GL_ES\n\n' +
