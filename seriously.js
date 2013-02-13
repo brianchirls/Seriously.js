@@ -1972,11 +1972,6 @@ function Seriously(options) {
 			return this;
 		};
 
-		this.distort = function(from, to) {
-			me.distort(from, to);
-			return this;
-		};
-
 		this.setTransform = function(transform) {
 			me.setTransform(transform);
 			return this;
@@ -2479,11 +2474,6 @@ function Seriously(options) {
 		
 		this.reset = function() {
 			me.reset();
-			return this;
-		};
-
-		this.distort = function(from, to) {
-			me.distort(from, to);
 			return this;
 		};
 
