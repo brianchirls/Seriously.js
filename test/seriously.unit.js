@@ -1,10 +1,10 @@
 /*jslint devel: true, bitwise: true, browser: true, white: true, nomen: true, plusplus: true, maxerr: 50, indent: 4 */
 /* global module, test, asyncTest, expect, ok, equal, start, stop, Seriously */
-(function() {
+(function () {
 	"use strict";
 
 	module('Core');
-	test('Core', function() {
+	test('Core', function () {
 		var p, props = 0,
 			newGlobals = [],
 			skipIds = false,
@@ -104,7 +104,7 @@
 	 * define plugin
 	*/
 
-	test('Remove Plugin', function() {
+	test('Remove Plugin', function () {
 		var p, s, error, e, allEffects;
 
 		expect(3);
@@ -135,7 +135,7 @@
 		s.destroy();
 	});
 
-	test('Define plugin with duplicate name', function() {
+	test('Define plugin with duplicate name', function () {
 		var p, allEffects;
 
 		expect(3);
@@ -157,7 +157,7 @@
 		Seriously.removePlugin('pluginDuplicate');
 	});
 
-	test('Define plugin with reserved input name', function() {
+	test('Define plugin with reserved input name', function () {
 		var p, s, error1 = false, error2 = false;
 
 		expect(2);
@@ -189,14 +189,14 @@
 		Seriously.removePlugin('badPlugin');
 	});
 
-	asyncTest('Plugin loaded before Seriously', function() {
+	asyncTest('Plugin loaded before Seriously', function () {
 		var iframe;
 
 		expect(3);
 
 		iframe = document.createElement('iframe');
 		iframe.style.display = 'none';
-		iframe.addEventListener('load', function() {
+		iframe.addEventListener('load', function () {
 			var iframe = this,
 				win = this.contentWindow,
 				doc = this.contentDocument,
@@ -211,7 +211,7 @@
 			//then load Seriously
 			script = doc.createElement('script');
 			script.src = '../seriously.js';
-			script.addEventListener('load', function() {
+			script.addEventListener('load', function () {
 				var s, e;
 
 				ok(typeof win.Seriously === 'function', 'Seriously is a function');
@@ -240,7 +240,7 @@
 	 * create effect
 	*/
 
-	test('Effect Polygon Matte', function() {
+	test('Effect Polygon Matte', function () {
 	var seriously, effect;
 
 		//todo: expects
@@ -278,7 +278,7 @@
 	 * checkSource on cross-origin image, dirty canvas
 	*/
 	
-	asyncTest('Source Types', function() {
+	asyncTest('Source Types', function () {
 		function compare(a, b) {
 			var i;
 
@@ -387,7 +387,7 @@
 		ok(pixels && compare(pixels, comparison), 'Array source rendered accurately.');
 		source.destroy();
 
-		//todo: implement and test WebGLTexture source		
+		//todo: implement and test WebGLTexture source
 
 		syncDone = true;
 		if (asyncDone) {
@@ -495,7 +495,7 @@
 		expect(countdown);
 
 		//this should only run when 'go' is operating, after target is dirty
-		target.go(function() {
+		target.go(function () {
 			success('Target.go callback called successfully', changed);
 		});
 
@@ -511,7 +511,7 @@
 			success('Target callback called successfully');
 		});
 
-		seriously.go(function() {
+		seriously.go(function () {
 			success('seriously.go callback called successfully', changed);
 		});		
 
@@ -525,7 +525,7 @@
 	 * all different types
 	 * test html elements as inputs (with overwriting)
 	 */
-	test('Number', function() {
+	test('Number', function () {
 		var s, e, val, input;
 		expect(6);
 		
@@ -583,7 +583,7 @@
 
 	});
 
-	test('Color', function() {
+	test('Color', function () {
 		var e, s, val;
 
 		function compare(a, b) {
