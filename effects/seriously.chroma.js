@@ -17,9 +17,11 @@ Seriously.plugin('chroma', {
 			'precision mediump float;\n' +
 			'#endif \n' +
 			'\n' +
-			'attribute vec3 position;\n' +
+			'attribute vec4 position;\n' +
 			'attribute vec2 texCoord;\n' +
 			'\n' +
+			'uniform vec3 srsSize;\n' +
+			'uniform mat4 projection;\n' +
 			'uniform mat4 transform;\n' +
 			'\n' +
 			'varying vec2 vTexCoord;\n' +
@@ -41,8 +43,12 @@ Seriously.plugin('chroma', {
 			'	secondaryComponents = dot(1.0 - screenPrimary, screen.rgb);\n' +
 			'	screenSat = fmax - mix(secondaryComponents - fmin, secondaryComponents / 2.0, balance);\n' +
 			'\n' +
-			'	gl_Position = vec4(position, 1.0);\n' +
-			'	vTexCoord = vec2(texCoord.s, texCoord.t);\n' +
+		'	vec4 pos = position * vec4(srsSize.x / srsSize.y, 1.0, 1.0, 1.0);\n' +
+		'	gl_Position = transform * pos;\n' +
+		'	gl_Position.z -= srsSize.z;\n' +
+		'	gl_Position = projection * gl_Position;\n' +
+		'	gl_Position.z = 0.0;\n' + //prevent near clipping
+		'	vTexCoord = vec2(texCoord.s, texCoord.t);\n' +
 			'}\n';
 		shaderSource.fragment = '#ifdef GL_ES\n' +
 			'precision mediump float;\n' +
