@@ -823,6 +823,7 @@ function Seriously(options) {
 		effects = [],
 		aliases = {},
 		callbacks = [],
+		animationCallbacks = [],
 		glCanvas,
 		gl,
 		rectangleModel,
@@ -929,7 +930,15 @@ function Seriously(options) {
 	//any sources that are updated are set to dirty, forcing all dependent nodes to render on next pass
 	//target nodes that are set to auto by .go() will render immediately when set to dirty
 	function monitorSources() {
-		var i, node, media;
+		var i, node, media,
+			keepRunning = false;
+
+		if (animationCallbacks.length) {
+			for (i = 0; i < animationCallbacks.length; i++) {
+				animationCallbacks[i].call(seriously);
+			}
+		}
+
 		if (sources && sources.length) {
 			for (i = 0; i < sources.length; i++) {
 				node = sources[i];
@@ -943,13 +952,17 @@ function Seriously(options) {
 				}
 			}
 
-			for (i = 0; i < targets.length; i++) {
-				node = targets[i];
-				if (node.auto && node.dirty) {
-					node.render();
-				}
-			}
+			keepRunning = true;
+		}
 
+		for (i = 0; i < targets.length; i++) {
+			node = targets[i];
+			if (node.auto && node.dirty) {
+				node.render();
+			}
+		}
+
+		if (keepRunning) {
 			requestAnimFrame(monitorSources);
 		}
 	}
@@ -1084,7 +1097,7 @@ function Seriously(options) {
 			callbacksRunning = false;
 		}
 
-		if (!callbacksRunning) {
+		if (!callbacksRunning && callbacks.length) {
 			setTimeoutZero(run);
 			callbacksRunning = true;
 		}
@@ -2748,10 +2761,9 @@ function Seriously(options) {
 
 		sources.push(this);
 
-		if (sources.length === 1) {
+		if (sources.length === 1 && !animationCallbacks.length) {
 			monitorSources();
 		}
-
 	};
 
 	extend(SourceNode, Node);
@@ -3547,8 +3559,25 @@ function Seriously(options) {
 		}
 	};
 
+	this.animate = function (callback) {
+		if (!callback || typeof callback !== 'function') {
+			return;
+		}
+
+		if (animationCallbacks.indexOf(callback) < 0) {
+			animationCallbacks.push(callback);
+		}
+
+		this.go();
+
+		if (!sources.length && animationCallbacks.length === 1) {
+			monitorSources();
+		}
+	};
+
 	this.stop = function(options) {
 		var i;
+		animationCallbacks.splice(0);
 		callbacks.splice(0);
 		for (i = 0; i < targets.length; i++) {
 			targets[i].stop(options);
