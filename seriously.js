@@ -936,10 +936,17 @@ function Seriously(options) {
 
 				media = node.source;
 				if (node.lastRenderTime === undefined ||
-					node.dirty ||
-					media.currentTime !== undefined && node.lastRenderTime !== media.currentTime) {
+						node.dirty ||
+						media.currentTime !== undefined && node.lastRenderTime !== media.currentTime) {
 					node.dirty = false;
 					node.setDirty();
+				}
+			}
+
+			for (i = 0; i < targets.length; i++) {
+				node = targets[i];
+				if (node.auto && node.dirty) {
+					node.render();
 				}
 			}
 
@@ -3347,7 +3354,7 @@ function Seriously(options) {
 
 		if (this.auto) {
 			that = this;
-			setTimeoutZero(render);
+			requestAnimFrame(render);
 		}
 	};
 
