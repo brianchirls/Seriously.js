@@ -4206,6 +4206,9 @@ Seriously.util = {
 	setTimeoutZero: setTimeoutZero,
 	ShaderProgram: ShaderProgram,
 	FrameBuffer: FrameBuffer,
+	requestAnimationFrame: function(callback) {
+		requestAnimFrame(callback);
+	},
 	shader: {
 		makeNoise: 'float makeNoise(float u, float v, float timer) {\n' +
 					'	float x = u * v * mod(timer * 1000.0, 100.0);\n' +
