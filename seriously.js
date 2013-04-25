@@ -1717,9 +1717,11 @@
 		};
 
 		EffectNode = function (hook, options) {
+			var key;
+
 			Node.call(this, options);
 
-			this.effect = seriousEffects[hook];
+			this.effectRef = seriousEffects[hook];
 			this.sources = {};
 			this.targets = [];
 			this.inputElements = {};
@@ -1727,6 +1729,17 @@
 			this.shaderDirty = true;
 			this.hook = hook;
 			this.options = options;
+
+			if (this.effectRef.definition) {
+				this.effect = this.effectRef.definition(options);
+				for (key in this.effectRef) {
+					if (this.effectRef.hasOwnProperty(key) && !this.effect[key]) {
+						this.effect[key] = this.effectRef[key];
+					}
+				}
+			} else {
+				this.effect = extend(this.effectRef);
+			}
 
 			//todo: set up frame buffer(s), inputs, transforms, stencils, draw method. allow plugin to override
 
@@ -3778,13 +3791,14 @@
 		return false;
 	};
 
-	Seriously.plugin = function (hook, effect) {
+	Seriously.plugin = function (hook, definition, meta) {
 		var reserved = ['render', 'initialize', 'original', 'width', 'height',
 			'transform', 'translate', 'translateX', 'translateY', 'translateZ',
 			'rotate', 'rotateX', 'rotateY', 'rotateZ', 'scale', 'scaleX', 'scaleY',
 			'scaleZ', 'benchmark', 'plugin', 'alias', 'reset',
 			'prototype', 'destroy', 'isDestroyed'],
-			name, input;
+			name, input,
+			effect;
 
 		function nop(value) {
 			return value;
@@ -3795,8 +3809,18 @@
 			return;
 		}
 
-		if (!effect) {
+		if (meta === undefined && typeof definition === 'object') {
+			meta = definition;
+		}
+
+		if (!meta) {
 			return;
+		}
+
+		effect = extend({}, meta);
+
+		if (typeof definition === 'function') {
+			effect.definition = definition;
 		}
 
 		if (effect.inputs) {
@@ -3877,9 +3901,11 @@
 			effect.title = hook;
 		}
 
+		/*
 		if (typeof effect.requires !== 'function') {
 			effect.requires = false;
 		}
+		*/
 
 		seriousEffects[hook] = effect;
 		allEffectsByHook[hook] = [];
