@@ -20,6 +20,7 @@ Full documentation is in progress at the [wiki](https://github.com/brianchirls/S
 - Basic 2D transforms (translate, rotate, scale, skew) on effect nodes
 - Plugin architecture for adding new effects
 - Read pixel array from any node
+- Load with [AMD](http://requirejs.org/docs/whyamd.html#amd)/[RequireJS](http://www.requirejs.org/)
 
 ### Included Effects
 - Ascii Text
