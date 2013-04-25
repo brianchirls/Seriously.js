@@ -1,7 +1,27 @@
 /*jslint devel: true, bitwise: true, browser: true, white: true, nomen: true, plusplus: true, maxerr: 50, indent: 4, todo: true */
 /*global Float32Array, Float64Array, Uint8Array, Uint16Array, WebGLTexture, HTMLInputElement, HTMLSelectElement, HTMLElement, WebGLFramebuffer, HTMLCanvasElement, WebGLRenderingContext */
-(function (window, undefined) {
-"use strict";
+(function (root, factory) {
+	'use strict';
+	if (typeof exports === 'object') {
+		// Node. Does not work with strict CommonJS, but
+		// only CommonJS-like enviroments that support module.exports,
+		// like Node.
+		module.exports = factory(root);
+	} else if (typeof define === 'function' && define.amd) {
+		// AMD. Register as an anonymous module.
+		define('seriously', function () {
+			var Seriously = factory(root);
+			if (!root.Seriously) {
+				root.Seriously = Seriously;
+			}
+			return Seriously;
+		});
+	} else {
+		// Browser globals
+		root.Seriously = factory(root);
+	}
+}(this, function (window, undefined) {
+'use strict';
 
 var document = window.document,
 	console = window.console,
@@ -4496,6 +4516,6 @@ Seriously.util.shader.snoise4d = '#ifndef NOISE4D\n' +
 	'}\n' +
 	'#endif\n';
 
-window.Seriously = Seriously;
+return Seriously;
 
-}(window));
+}));

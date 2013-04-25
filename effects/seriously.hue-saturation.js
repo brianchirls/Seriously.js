@@ -1,9 +1,22 @@
-(function (window, undefined) {
+(function (root, factory) {
+	'use strict';
+
+	if (typeof exports === 'object') {
+		// Node/CommonJS
+		factory(root.require('seriously'));
+	} else if (typeof root.define === 'function' && root.define.amd) {
+		// AMD. Register as an anonymous module.
+		root.define(['seriously'], factory);
+	} else {
+		var Seriously = root.Seriously;
+		if (!Seriously) {
+			Seriously = { plugin: function (name, opt) { this[name] = opt; } };
+		}
+		factory(Seriously);
+	}
+}(this, function (Seriously, undefined) {
 "use strict";
 
-window.Seriously = window.Seriously ||
-	{ plugin: function (name, opt) { this[name] = opt; } };
-	
 //inspired by Evan Wallace (https://github.com/evanw/glfx.js)
 
 Seriously.plugin('hue-saturation', {
@@ -102,4 +115,4 @@ Seriously.plugin('hue-saturation', {
 	description: 'Rotate hue and multiply saturation.'
 });
 
-}(window));
+}));
