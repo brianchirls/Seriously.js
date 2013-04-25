@@ -515,6 +515,92 @@
 		return true;
 	}
 
+	function validateInputSpecs(effect) {
+		var reserved = ['render', 'initialize', 'original', 'width', 'height',
+			'transform', 'translate', 'translateX', 'translateY', 'translateZ',
+			'rotate', 'rotateX', 'rotateY', 'rotateZ', 'scale', 'scaleX', 'scaleY',
+			'scaleZ', 'benchmark', 'plugin', 'alias', 'reset',
+			'prototype', 'destroy', 'isDestroyed'],
+			input,
+			name;
+
+		function nop(value) {
+			return value;
+		}
+
+		for (name in effect.inputs) {
+			if (effect.inputs.hasOwnProperty(name)) {
+				if (reserved.indexOf(name) >= 0 || Object.prototype[name]) {
+					throw 'Reserved effect input name: ' + name;
+				}
+
+				input = effect.inputs[name];
+
+				if (isNaN(input.min)) {
+					input.min = -Infinity;
+				}
+
+				if (isNaN(input.max)) {
+					input.max = Infinity;
+				}
+
+				if (isNaN(input.minCount)) {
+					input.minCount = -Infinity;
+				}
+
+				if (isNaN(input.maxCount)) {
+					input.maxCount = Infinity;
+				}
+
+				if (isNaN(input.step)) {
+					input.step = 0;
+				}
+
+				if (input.defaultValue === undefined || input.defaultValue === null) {
+					if (input.type === 'number') {
+						input.defaultValue = Math.min(Math.max(0, input.min), input.max);
+					} else if (input.type === 'color') {
+						input.defaultValue = [0, 0, 0, 0];
+					} else if (input.type === 'enum') {
+						if (input.options && input.options.length) {
+							input.defaultValue = input.options[0];
+						} else {
+							input.defaultValue = '';
+						}
+					} else if (input.type === 'boolean') {
+						input.defaultValue = false;
+					} else {
+						input.defaultValue = '';
+					}
+				}
+
+				if (input.type === 'vector') {
+					if (input.dimensions < 2) {
+						input.dimensions = 2;
+					} else if (input.dimensions > 4) {
+						input.dimensions = 4;
+					} else if (!input.dimensions || isNaN(input.dimensions)) {
+						input.dimensions = 4;
+					} else {
+						input.dimensions = Math.round(input.dimensions);
+					}
+				} else {
+					input.dimensions = 1;
+				}
+
+				input.shaderDirty = !!input.shaderDirty;
+
+				if (typeof input.validate !== 'function') {
+					input.validate = Seriously.inputValidators[input.type] || nop;
+				}
+
+				if (!effect.defaultImageInput && input.type === 'image') {
+					effect.defaultImageInput = name;
+				}
+			}
+		}
+	}
+
 	/*
 		helper Classes
 	*/
@@ -1736,6 +1822,9 @@
 					if (this.effectRef.hasOwnProperty(key) && !this.effect[key]) {
 						this.effect[key] = this.effectRef[key];
 					}
+				}
+				if (this.effect.inputs !== this.effectRef.inputs) {
+					validateInputSpecs(this.effect);
 				}
 			} else {
 				this.effect = extend(this.effectRef);
@@ -3792,17 +3881,7 @@
 	};
 
 	Seriously.plugin = function (hook, definition, meta) {
-		var reserved = ['render', 'initialize', 'original', 'width', 'height',
-			'transform', 'translate', 'translateX', 'translateY', 'translateZ',
-			'rotate', 'rotateX', 'rotateY', 'rotateZ', 'scale', 'scaleX', 'scaleY',
-			'scaleZ', 'benchmark', 'plugin', 'alias', 'reset',
-			'prototype', 'destroy', 'isDestroyed'],
-			name, input,
-			effect;
-
-		function nop(value) {
-			return value;
-		}
+		var effect;
 
 		if (seriousEffects[hook]) {
 			console.log('Effect [' + hook + '] already loaded');
@@ -3824,77 +3903,7 @@
 		}
 
 		if (effect.inputs) {
-			for (name in effect.inputs) {
-				if (effect.inputs.hasOwnProperty(name)) {
-					if (reserved.indexOf(name) >= 0 || Object.prototype[name]) {
-						throw 'Reserved effect input name: ' + name;
-					}
-
-					input = effect.inputs[name];
-
-					if (isNaN(input.min)) {
-						input.min = -Infinity;
-					}
-
-					if (isNaN(input.max)) {
-						input.max = Infinity;
-					}
-
-					if (isNaN(input.minCount)) {
-						input.minCount = -Infinity;
-					}
-
-					if (isNaN(input.maxCount)) {
-						input.maxCount = Infinity;
-					}
-
-					if (isNaN(input.step)) {
-						input.step = 0;
-					}
-
-					if (input.defaultValue === undefined || input.defaultValue === null) {
-						if (input.type === 'number') {
-							input.defaultValue = Math.min(Math.max(0, input.min), input.max);
-						} else if (input.type === 'color') {
-							input.defaultValue = [0, 0, 0, 0];
-						} else if (input.type === 'enum') {
-							if (input.options && input.options.length) {
-								input.defaultValue = input.options[0];
-							} else {
-								input.defaultValue = '';
-							}
-						} else if (input.type === 'boolean') {
-							input.defaultValue = false;
-						} else {
-							input.defaultValue = '';
-						}
-					}
-
-					if (input.type === 'vector') {
-						if (input.dimensions < 2) {
-							input.dimensions = 2;
-						} else if (input.dimensions > 4) {
-							input.dimensions = 4;
-						} else if (!input.dimensions || isNaN(input.dimensions)) {
-							input.dimensions = 4;
-						} else {
-							input.dimensions = Math.round(input.dimensions);
-						}
-					} else {
-						input.dimensions = 1;
-					}
-
-					input.shaderDirty = !!input.shaderDirty;
-
-					if (typeof input.validate !== 'function') {
-						input.validate = Seriously.inputValidators[input.type] || nop;
-					}
-
-					if (!effect.defaultImageInput && input.type === 'image') {
-						effect.defaultImageInput = name;
-					}
-				}
-			}
+			validateInputSpecs(effect);
 		}
 
 		if (!effect.title) {
