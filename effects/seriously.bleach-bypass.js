@@ -1,4 +1,20 @@
-(function (window, undefined) {
+(function (root, factory) {
+	'use strict';
+
+	if (typeof exports === 'object') {
+		// Node/CommonJS
+		factory(root.require('seriously'));
+	} else if (typeof root.define === 'function' && root.define.amd) {
+		// AMD. Register as an anonymous module.
+		root.define(['seriously'], factory);
+	} else {
+		var Seriously = root.Seriously;
+		if (!Seriously) {
+			Seriously = { plugin: function (name, opt) { this[name] = opt; } };
+		}
+		factory(Seriously);
+	}
+}(this, function (Seriously, undefined) {
 "use strict";
 
 /*
@@ -10,9 +26,6 @@ http://v002.info/?page_id=34
 
 Modified to keep alpha channel constant
 */
-
-window.Seriously = window.Seriously ||
-	{ plugin: function (name, opt) { this[name] = opt; } };
 
 Seriously.plugin('bleach-bypass', {
 	shader: function(inputs, shaderSource, utilities) {
@@ -74,4 +87,4 @@ Seriously.plugin('bleach-bypass', {
 				'see: "Saving Private Ryan", "Minority Report"'
 });
 
-}(window));
+}));

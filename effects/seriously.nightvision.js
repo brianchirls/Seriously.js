@@ -1,8 +1,21 @@
-(function (window, undefined) {
-"use strict";
+(function (root, factory) {
+	'use strict';
 
-window.Seriously = window.Seriously ||
-	{ plugin: function (name, opt) { this[name] = opt; } };
+	if (typeof exports === 'object') {
+		// Node/CommonJS
+		factory(root.require('seriously'));
+	} else if (typeof root.define === 'function' && root.define.amd) {
+		// AMD. Register as an anonymous module.
+		root.define(['seriously'], factory);
+	} else {
+		var Seriously = root.Seriously;
+		if (!Seriously) {
+			Seriously = { plugin: function (name, opt) { this[name] = opt; } };
+		}
+		factory(Seriously);
+	}
+}(this, function (Seriously, undefined) {
+'use strict';
 
 //based on tutorial: http://www.geeks3d.com/20091009/shader-library-night-vision-post-processing-filter-glsl/
 //todo: make noise better?
@@ -71,4 +84,4 @@ Seriously.plugin('nightvision', {
 	description: ''
 });
 
-}(window));
+}));

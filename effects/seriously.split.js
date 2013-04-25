@@ -1,8 +1,21 @@
-(function (window, undefined) {
-"use strict";
+(function (root, factory) {
+	'use strict';
 
-window.Seriously = window.Seriously ||
-	{ plugin: function (name, opt) { this[name] = opt; } };
+	if (typeof exports === 'object') {
+		// Node/CommonJS
+		factory(root.require('seriously'));
+	} else if (typeof root.define === 'function' && root.define.amd) {
+		// AMD. Register as an anonymous module.
+		root.define(['seriously'], factory);
+	} else {
+		var Seriously = root.Seriously;
+		if (!Seriously) {
+			Seriously = { plugin: function (name, opt) { this[name] = opt; } };
+		}
+		factory(Seriously);
+	}
+}(this, function (Seriously, undefined) {
+"use strict";
 
 Seriously.plugin('split', (function () {
 	var baseShader;
@@ -17,9 +30,11 @@ Seriously.plugin('split', (function () {
 				'precision mediump float;\n' +
 				'#endif \n' +
 				'\n' +
-				'attribute vec3 position;\n' +
+				'attribute vec4 position;\n' +
 				'attribute vec2 texCoord;\n' +
 				'\n' +
+				'uniform vec3 srsSize;\n' +
+				'uniform mat4 projection;\n' +
 				'uniform mat4 transform;\n' +
 				'\n' +
 				'varying vec2 vTexCoord;\n' +
@@ -35,8 +50,11 @@ Seriously.plugin('split', (function () {
 				'   s = sin(angle);\n' +
 				'	t = abs(c + s);\n' +
 				'\n' +
-//				'	gl_Position = vec4(position, 1.0);\n' +
-		'	gl_Position = transform * vec4(position, 1.0);\n' +
+				'	vec4 pos = position * vec4(srsSize.x / srsSize.y, 1.0, 1.0, 1.0);\n' +
+				'	gl_Position = transform * pos;\n' +
+				'	gl_Position.z -= srsSize.z;\n' +
+				'	gl_Position = projection * gl_Position;\n' +
+				'	gl_Position.z = 0.0;\n' + //prevent near clipping
 				'	vTexCoord = vec2(texCoord.s, texCoord.t);\n' +
 				'}\n';
 			shaderSource.fragment = '#ifdef GL_ES\n\n' +
@@ -127,4 +145,4 @@ Seriously.plugin('split', (function () {
 	};
 }()) );
 
-}(window));
+}));
