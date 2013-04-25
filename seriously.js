@@ -3634,9 +3634,9 @@ function Seriously(options) {
 		gl = null;
 		seriously = null;
 		sources = [];
-		targets = null;
-		effects = null;
-		nodes = null;
+		targets = [];
+		effects = [];
+		nodes = [];
 		callbacks.splice(0);
 
 		isDestroyed = true;
