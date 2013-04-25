@@ -17,7 +17,7 @@
 }(this, function (Seriously, undefined) {
 	'use strict';
 
-	Seriously.plugin('split', (function () {
+	Seriously.plugin('split', function () {
 		var baseShader;
 		return {
 			initialize: function (parent) {
@@ -108,40 +108,42 @@
 				}
 
 				return true;
-			},
-			inputs: {
-				sourceA: {
-					type: 'image',
-					uniform: 'sourceA',
-					shaderDirty: false
-				},
-				sourceB: {
-					type: 'image',
-					uniform: 'sourceB',
-					shaderDirty: false
-				},
-				split: {
-					type: 'number',
-					uniform: 'split',
-					defaultValue: 0.5,
-					min: 0,
-					max: 1
-				},
-				angle: {
-					type: 'number',
-					uniform: 'angle',
-					defaultValue: 0
-				},
-				fuzzy: {
-					type: 'number',
-					uniform: 'fuzzy',
-					defaultValue: 0,
-					min: 0,
-					max: 1
-				}
-			},
-			description: 'Split screen or wipe',
-			title: 'Split'
+			}
 		};
-	}()));
+	},
+	{
+		inputs: {
+			sourceA: {
+				type: 'image',
+				uniform: 'sourceA',
+				shaderDirty: false
+			},
+			sourceB: {
+				type: 'image',
+				uniform: 'sourceB',
+				shaderDirty: false
+			},
+			split: {
+				type: 'number',
+				uniform: 'split',
+				defaultValue: 0.5,
+				min: 0,
+				max: 1
+			},
+			angle: {
+				type: 'number',
+				uniform: 'angle',
+				defaultValue: 0
+			},
+			fuzzy: {
+				type: 'number',
+				uniform: 'fuzzy',
+				defaultValue: 0,
+				min: 0,
+				max: 1
+			}
+		},
+		description: 'Split screen or wipe',
+		title: 'Split'
+	});
 }));

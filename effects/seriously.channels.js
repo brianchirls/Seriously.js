@@ -34,30 +34,7 @@
 			w: 3
 		};
 
-	function validateChannel(value, input, name) {
-		var val;
-		if (typeof value === 'string') {
-			val = value.charAt(0).toLowerCase();
-			val = channelLookup[val];
-			if (val === undefined) {
-				val = -1;
-			}
-			if (val < 0) {
-				val = parseFloat(value);
-			}
-		} else {
-			val = value;
-		}
-		
-		if (val === 0 || val === 1 || val === 2 || val === 3) {
-			return val;
-		}
-
-		return this.inputs[name];
-	}
-
-
-	Seriously.plugin('channels', (function () {
+	Seriously.plugin('channels', function () {
 		var shaders = [],
 			sources = [],
 			matrices = [
@@ -65,7 +42,30 @@
 				[],
 				[],
 				[]
-			];
+			],
+			me = this;
+
+		function validateChannel(value, input, name) {
+			var val;
+			if (typeof value === 'string') {
+				val = value.charAt(0).toLowerCase();
+				val = channelLookup[val];
+				if (val === undefined) {
+					val = -1;
+				}
+				if (val < 0) {
+					val = parseFloat(value);
+				}
+			} else {
+				val = value;
+			}
+
+			if (val === 0 || val === 1 || val === 2 || val === 3) {
+				return val;
+			}
+
+			return me.inputs[name];
+		}
 
 		return {
 			shader: function (inputs, shaderSource) {
@@ -145,7 +145,6 @@
 				shaders[sources.length] = shader;
 				return shader;
 			},
-			inPlace: true,
 			inputs: {
 				source: {
 					type: 'image',
@@ -191,9 +190,11 @@
 					validate: validateChannel,
 					defaultValue: 3
 				}
-			},
-			title: 'Channel Mapping',
-			description: ''
+			}
 		};
-	}()));
+	},
+	{
+		inPlace: true,
+		title: 'Channel Mapping'
+	});
 }));
