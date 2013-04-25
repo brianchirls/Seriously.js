@@ -30,7 +30,6 @@
 		Global environment variables
 	*/
 
-	benchmarkResults,
 	incompatibility,
 	seriousEffects = {},
 	timeouts = [],
@@ -3737,111 +3736,6 @@
 			'}\n';
 
 	}
-
-	/*
-		a utility to make sure we can run WebGL, and do it fast enough not to cause problems
-	*/
-	Seriously.prototype.benchmark = Seriously.benchmark = function (options, cb) {
-		var callback = (typeof options === 'function') ? options : cb,
-			opts = ( (typeof options !== 'function') && options ) || {},
-			frameRate = isNaN(opts.frameRate) ? 10 : opts.frameRate,
-			timeLimit = (opts.timeLimit || 2),
-			start = Date.now(),
-			canvas, gl, width, height, texture, i = 0, limit, frames, fps;
-
-		if (!window.WebGLRenderingContext) {
-			benchmarkResults = false;
-			return false;
-		}
-
-		width = isNaN(opts.width) || opts.width <= 0 ? false : opts.width;
-		height = isNaN(opts.height) || opts.height <= 0 ? false : opts.height;
-
-		if (width) {
-			if (!height) {
-				height = width * 9 / 16;
-			}
-		} else if (height) {
-			width = height * 16 / 9;
-		} else {
-			width = 640;
-			height = 360;
-		}
-
-		function iterate() {
-			if (i < frames && Date.now() - start < limit) {
-				gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, canvas);
-				i++;
-
-				setTimeoutZero(iterate);
-
-				return;
-			}
-
-			fps = 1000 * i / (Date.now() - start);
-			benchmarkResults = fps;
-
-			callback(fps >= frameRate && fps);
-		}
-
-		try {
-			canvas = document.createElement('canvas');
-			canvas.width = width;
-			canvas.height = height;
-
-			gl = canvas.getContext('experimental-webgl', {
-				alpha: true,
-				premultipliedAlpha: false,
-				preserveDrawingBuffer: true
-			});
-		} catch(expError) {
-			if (canvas) {
-				try {
-					gl = canvas.getContext('webgl', {
-						alpha: true,
-						premultipliedAlpha: false,
-						preserveDrawingBuffer: true
-					});
-				} catch(webglError) {
-				}
-			}
-		}
-
-		if (!gl) {
-			benchmarkResults = false;
-			return false;
-		}
-
-		if (timeLimit) {
-			try {
-				texture = gl.createTexture();
-				gl.bindTexture(gl.TEXTURE_2D, texture);
-			} catch(error) {
-			}
-
-			limit = timeLimit * 1000;
-			frames = isNaN(opts.frames) || opts.frames <= 0 ? Math.max(frameRate * timeLimit, 20) : opts.frames;
-
-			if (callback) {
-				iterate();
-			} else {
-				while (i < frames && Date.now() - start < limit) {
-					gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, canvas);
-					i++;
-				}
-
-				fps = 1000 * i / (Date.now() - start);
-				benchmarkResults = fps;
-
-				if (fps < frameRate) {
-					return false;
-				}
-				return fps;
-			}
-		}
-
-		return true;
-	};
 
 	Seriously.incompatible = function (pluginHook) {
 		var canvas, gl, plugin;
