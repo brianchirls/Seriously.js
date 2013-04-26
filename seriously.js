@@ -1817,7 +1817,7 @@
 			this.options = options;
 
 			if (this.effectRef.definition) {
-				this.effect = this.effectRef.definition(options);
+				this.effect = this.effectRef.definition.call(this, options);
 				for (key in this.effectRef) {
 					if (this.effectRef.hasOwnProperty(key) && !this.effect[key]) {
 						this.effect[key] = this.effectRef[key];
