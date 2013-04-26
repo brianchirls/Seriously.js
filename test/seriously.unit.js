@@ -205,6 +205,51 @@
 		Seriously.removePlugin('badPlugin');
 	});
 
+	test('Effect definition function', function () {
+		var seriously,
+			effect1,
+			effect2,
+			canvas,
+			target;
+
+		expect(4);
+
+		Seriously.plugin('removeme', function (options) {
+			var id = options.id;
+
+			ok(!!seriously, 'Definition function runs after seriously created #' + id);
+
+			return {
+				initialize: function () {
+					equal(this.effect.title, 'removeme' + id, 'Title property #' + id + ' overwritten');
+				},
+				title: 'removeme' + id
+			};
+		},
+		{
+			title: 'removeme'
+		});
+
+		seriously = new Seriously();
+		effect1 = seriously.effect('removeme', {
+			id: 1
+		});
+		effect2 = seriously.effect('removeme', {
+			id: 2
+		});
+
+		canvas = document.createElement('canvas');
+		target = seriously.target(canvas);
+
+		target.source = effect1;
+		target.render();
+		target.source = effect2;
+		target.render();
+
+		seriously.destroy();
+		Seriously.removePlugin('removeme');
+	});
+
 	asyncTest('Plugin loaded before Seriously', function () {
 		var iframe;
 
@@ -257,7 +302,7 @@
 	*/
 
 	test('Effect Polygon Matte', function () {
-	var seriously, effect;
+		var seriously, effect;
 
 		//todo: expects
 
