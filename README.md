@@ -41,6 +41,7 @@ Full documentation is in progress at the [wiki](https://github.com/brianchirls/S
 - Ripple
 - Scanlines
 - Sepia tone
+- Sketch
 - Split
 - Tone Adjust
 - TV Glitch
@@ -71,9 +72,9 @@ descriptive error messages wherever possible.
 
 Due to security limitations of WebGL, Seriously.js can only process video
 or images that are served from the same domain, unless they are served
-with [CORS headers](http://hacks.mozilla.org/2011/11/using-cors-to-load-webgl-textures-from-cross-domain-images/). Firefox only [supports CORS for video](https://bugzilla.mozilla.org/show_bug.cgi?id=682299) in pre-release
-versions, and videos served with CORS are rare. So for now, it is best
-to host your own video files.
+with [CORS headers](http://hacks.mozilla.org/2011/11/using-cors-to-load-webgl-textures-from-cross-domain-images/).
+Firefox 12 and up [support CORS for video](https://bugzilla.mozilla.org/show_bug.cgi?id=682299) but other browsers do not, and videos served with CORS are rare.
+So for now, it is best to host your own video files.
 
 ### Roadmap:
 
