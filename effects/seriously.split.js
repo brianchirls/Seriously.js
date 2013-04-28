@@ -75,9 +75,25 @@
 					'uniform float fuzzy;\n' +
 					'\n' +
 					'void main(void) {\n' +
+					'	float mn = (split - fuzzy * (1.0 - split));\n' +
+					'	float mx = (split + fuzzy * split);;\n' +
+					'	vec2 coords = vTexCoord - vec2(0.5);\n' +
+					'	coords = vec2(coords.x * c - coords.y * s, coords.x * s + coords.y * c);\n' +
+					'	float scale = max(abs(c - s), abs(s + c));\n' +
+					'	coords /= scale;\n' +
+					'	coords += vec2(0.5);\n' +
+					'	float x = coords.x;;\n' +
+					'	if (x <= mn) {\n' +
+					'		gl_FragColor = texture2D(sourceB, vTexCoord);\n' +
+					'		return;\n' +
+					'	}\n' +
+					'	if (x >= mx) {\n' +
+					'		gl_FragColor = texture2D(sourceA, vTexCoord);\n' +
+					'		return;\n' +
+					'	}\n' +
 					'	vec4 pixel1 = texture2D(sourceA, vTexCoord);\n' +
 					'	vec4 pixel2 = texture2D(sourceB, vTexCoord);\n' +
-					'	gl_FragColor = mix(pixel2, pixel1, smoothstep((split - fuzzy * (1.0 - split)) * t, (split + fuzzy * split) * t, c * vTexCoord.x + s * vTexCoord.y));\n' +
+					'	gl_FragColor = mix(pixel2, pixel1, smoothstep(mn, mx, x));\n' +
 					'}\n';
 
 				return shaderSource;
