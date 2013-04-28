@@ -1777,6 +1777,10 @@
 				me.matte(polygons);
 			};
 
+			this.getTexture = function() {
+				return me.frameBuffer && me.frameBuffer.texture;
+			};
+
 			this.destroy = function() {
 				var i, nop = function() { };
 
