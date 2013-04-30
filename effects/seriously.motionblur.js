@@ -203,7 +203,19 @@ http://v002.info/plugins/v002-blurs/
 				loopUniforms.srsSize[1] = this.height;
 				parent(shader, model, loopUniforms, frameBuffer);
 			},
-			inPlace: false
+			destroy: function () {
+				if (fbs) {
+					fbs[0].destroy();
+					fbs[1].destroy();
+					fbs = null;
+				}
+
+				if (baseShader) {
+					baseShader.destroy();
+				}
+
+				loopUniforms = null;
+			}
 		};
 	},
 	{
