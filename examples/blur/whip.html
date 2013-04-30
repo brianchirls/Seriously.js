@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Seriously.js Whip Pan Example</title>
+	<style type="text/css">
+		img {
+			display: none;
+		}
+	</style>
+</head>
+<body>
+	<img src="../images/pencils.jpg" id="pencils"/>
+	<img src="../images/robot.jpg" id="robot"/>
+	<canvas id="canvas" width="640" height="619"></canvas>
+	<button id="whip">Whip!</button>
+	<script src="../../lib/require.js"></script>
+	<script>
+		require.config({
+			baseUrl: '../../'
+		});
+
+		require([
+			'seriously',
+			'effects/seriously.blend',
+			'effects/seriously.motionblur'
+		], function (Seriously) {
+			var seriously = new Seriously(),
+				blend = seriously.effect('blend'),
+				moblur = seriously.effect('motionblur'),
+				robot = seriously.source('#robot'),
+				pencils = seriously.source('#pencils'),
+				target = seriously.target('#canvas'),
+				progress = 0,
+				i = 0,
+				j = 1,
+				sources = [
+					pencils,
+					robot
+				],
+				lastDraw;
+
+			function easeInOut(t) {
+				if (t < 0.5) {
+					return 0.5 * Math.pow(t * 2, 2);
+				}
+
+				return -0.5 * (Math.pow(Math.abs(t * 2 - 2), 2) - 2);
+			}
+
+			function draw() {
+				var a = sources[i],
+					b = sources[j],
+					amount;
+
+				progress -= (Date.now() - lastDraw) / 1000;
+				progress = Math.max(0, progress);
+				console.log(progress);
+				a.reset();
+				b.reset();
+				if (progress) {
+					amount = easeInOut(progress);
+					a.translateX(1.931 * amount);
+					b.translateX(-1.931 * (1 - amount));
+					moblur.amount = 1 - Math.abs(amount - 0.5) * 2;
+					target.source = moblur;
+					Seriously.util.requestAnimationFrame(draw);
+				} else {
+					target.source = a;
+				}
+				target.render();
+			}
+
+			blend.top = robot;
+			blend.bottom = pencils;
+			moblur.source = blend;
+			target.source = pencils;
+			target.render();
+
+			whip.addEventListener('click', function () {
+				i = (i + 1) % 2;
+				j = (i + 1) % 2;
+				progress = 1;
+				lastDraw = Date.now();
+				draw();
+			}, false);
+		});
+	</script>
+</body>
+</html>
