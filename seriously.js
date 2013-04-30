@@ -727,6 +727,7 @@
 		delete this.frameBuffer;
 		delete this.renderBuffer;
 		delete this.texture;
+		delete this.gl;
 	};
 
 	/* ShaderProgram - utility class for building and accessing WebGL shaders */
