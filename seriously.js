@@ -1786,6 +1786,21 @@
 				return this;
 			};
 
+			this.translateX = function(amount) {
+				me.translate(amount, 0, 0);
+				return this;
+			};
+
+			this.translateY = function(amount) {
+				me.translateY(0, amount, 0);
+				return this;
+			};
+
+			this.translateZ = function(amount) {
+				me.translateZ(0, 0, amount);
+				return this;
+			};
+
 			this.scale = function(x, y) {
 				me.scale(x, y);
 				return this;
@@ -2707,6 +2722,21 @@
 				return this;
 			};
 
+			this.translateX = function(amount) {
+				me.translate(amount, 0, 0);
+				return this;
+			};
+
+			this.translateY = function(amount) {
+				me.translateY(0, amount, 0);
+				return this;
+			};
+
+			this.translateZ = function(amount) {
+				me.translateZ(0, 0, amount);
+				return this;
+			};
+
 			this.scale = function(x, y) {
 				me.scale(x, y);
 				return this;
@@ -3261,6 +3291,21 @@
 
 			this.translate = function(x, y, z) {
 				me.translate(x, y, z);
+				return this;
+			};
+
+			this.translateX = function(amount) {
+				me.translate(amount, 0, 0);
+				return this;
+			};
+
+			this.translateY = function(amount) {
+				me.translateY(0, amount, 0);
+				return this;
+			};
+
+			this.translateZ = function(amount) {
+				me.translateZ(0, 0, amount);
 				return this;
 			};
 
