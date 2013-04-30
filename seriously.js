@@ -687,6 +687,34 @@
 		this.height = height;
 	}
 
+	FrameBuffer.prototype.resize = function(width, height) {
+		var gl = this.gl;
+
+		if (this.width === width || this.height === height) {
+			return;
+		}
+
+		this.width = width;
+		this.height = height;
+
+		if (!gl) {
+			return;
+		}
+
+		gl.bindTexture(gl.TEXTURE_2D, this.texture);
+		gl.bindFramebuffer(gl.FRAMEBUFFER, this.frameBuffer);
+		gl.bindRenderbuffer(gl.RENDERBUFFER, this.renderBuffer);
+
+		//todo: handle float
+		gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+		gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, width, height);
+		gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.texture, 0);
+
+		gl.bindTexture(gl.TEXTURE_2D, null);
+		gl.bindRenderbuffer(gl.RENDERBUFFER, null);
+		gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+	};
+
 	FrameBuffer.prototype.destroy = function() {
 		var gl = this.gl;
 
@@ -1337,6 +1365,10 @@
 			this.perspective(this.fov);
 			this.uniforms.srsSize[0] = width;
 			this.uniforms.srsSize[1] = height;
+
+			if (this.framebuffer) {
+				this.framebuffer.resize(width, height);
+			}
 		};
 
 
