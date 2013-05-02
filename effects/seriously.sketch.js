@@ -89,4 +89,4 @@
 		title: 'Sketch',
 		description: 'Pencil/charcoal sketch'
 	});
-}))
+}));
