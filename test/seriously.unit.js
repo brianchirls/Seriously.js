@@ -969,7 +969,5 @@
 		fail.addEventListener('load', function() {
 			checkImageFail(this);
 		}, false);
-
-
 	});
 }());
