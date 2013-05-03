@@ -210,7 +210,7 @@
 		 * Returns:
 		 * dest if specified, a new mat4 otherwise
 		 */
-		frustum: function(left, right, bottom, top, near, far, dest) {
+		frustum: function (left, right, bottom, top, near, far, dest) {
 			if(!dest) { dest = mat4.create(); }
 			var rl = (right - left),
 				tb = (top - bottom),
@@ -234,7 +234,7 @@
 			return dest;
 		},
 
-		perspective: function(fovy, aspect, near, far, dest) {
+		perspective: function (fovy, aspect, near, far, dest) {
 			var top = near*Math.tan(fovy*Math.PI / 360.0),
 				right = top*aspect;
 			return mat4.frustum(-right, right, -top, top, near, far, dest);
@@ -305,7 +305,7 @@
 		}
 	},
 
-	requestAnimFrame = (function(){
+	requestAnimFrame = (function (){
 		var lastTime = 0;
 		return  window.requestAnimationFrame       ||
 				window.webkitRequestAnimationFrame ||
@@ -354,7 +354,8 @@
 	}
 
 	function extend(dest, src) {
-		var property, g, s;
+		var property,
+			descriptor;
 
 		//todo: are we sure this is safe?
 		if (dest.prototype && src.prototype && dest.prototype !== src.prototype) {
@@ -363,18 +364,17 @@
 
 		for ( property in src ) {
 			if (src.hasOwnProperty(property)) {
-				g = src.__lookupGetter__(property);
-				s = src.__lookupSetter__(property);
+				descriptor = Object.getOwnPropertyDescriptor(src, property);
 
-				if (g || s) {
-					if (g) {
-						dest.__defineGetter__(property, g);
-					}
-					if (s) {
-						dest.__defineSetter__(property, s);
-					}
+				if (descriptor.get || descriptor.set) {
+					Object.defineProperty(dest, property, {
+						configurable: true,
+						enumerable: true,
+						get: descriptor.get,
+						set: descriptor.set
+					});
 				} else {
-					dest[ property ] = src[ property ];
+					dest[property] = src[property];
 				}
 			}
 		}
@@ -426,7 +426,7 @@
 		https://bugzilla.mozilla.org/show_bug.cgi?id=740576
 		Should run fine, but maybe a few milliseconds slower per frame.
 		*/
-		function timeoutFunction() {
+		function timeoutfunction () {
 			if (timeouts.length) {
 				(timeouts.shift())();
 			}
@@ -445,7 +445,7 @@
 		window.postMessage('seriously-timeout-message', window.location);
 	}
 
-	window.addEventListener('message', function(event) {
+	window.addEventListener('message', function (event) {
 		if (event.source === window && event.data === 'seriously-timeout-message') {
 			event.stopPropagation();
 			if (timeouts.length > 0) {
@@ -687,7 +687,7 @@
 		this.height = height;
 	}
 
-	FrameBuffer.prototype.resize = function(width, height) {
+	FrameBuffer.prototype.resize = function (width, height) {
 		var gl = this.gl;
 
 		if (this.width === width || this.height === height) {
@@ -715,7 +715,7 @@
 		gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 	};
 
-	FrameBuffer.prototype.destroy = function() {
+	FrameBuffer.prototype.destroy = function () {
 		var gl = this.gl;
 
 		if (gl) {
@@ -766,7 +766,7 @@
 		function makeShaderSetter(info, loc) {
 
 			if (info.type === gl.SAMPLER_2D) {
-				return function(value) {
+				return function (value) {
 					info.glTexture = gl['TEXTURE' + value];
 					gl.uniform1i(loc, value);
 				};
@@ -774,30 +774,30 @@
 
 			if (info.type === gl.BOOL|| info.type === gl.INT) {
 				if (info.size > 1) {
-					return function(value) {
+					return function (value) {
 						gl.uniform1iv(loc, value);
 					};
 				}
 
-				return function(value) {
+				return function (value) {
 					gl.uniform1i(loc, value);
 				};
 			}
 
 			if (info.type === gl.FLOAT) {
 				if (info.size > 1) {
-					return function(value) {
+					return function (value) {
 						gl.uniform1fv(loc, value);
 					};
 				}
 
-				return function(value) {
+				return function (value) {
 					gl.uniform1f(loc, value);
 				};
 			}
 
 			if (info.type === gl.FLOAT_VEC2) {
-				return function(obj) {
+				return function (obj) {
 					//todo: standardize this so we don't have to do this check
 					if ( Array.isArray(obj) ) {
 						gl.uniform2f(loc, obj[0], obj[1]);
@@ -808,7 +808,7 @@
 			}
 
 			if (info.type === gl.FLOAT_VEC3) {
-				return function(obj) {
+				return function (obj) {
 					//todo: standardize this so we don't have to do this check
 					if ( Array.isArray(obj) ) {
 						gl.uniform3f(loc, obj[0], obj[1], obj[2]);
@@ -819,7 +819,7 @@
 			}
 
 			if (info.type === gl.FLOAT_VEC4) {
-				return function(obj) {
+				return function (obj) {
 					//todo: standardize this so we don't have to do this check
 					if ( Array.isArray(obj) ) {
 						gl.uniform4f(loc, obj[0], obj[1], obj[2], obj[3]);
@@ -830,13 +830,13 @@
 			}
 
 			if (info.type === gl.FLOAT_MAT3) {
-				return function(mat3) {
+				return function (mat3) {
 					gl.uniformMatrix3fv(loc, false, mat3);
 				};
 			}
 
 			if (info.type === gl.FLOAT_MAT4) {
-				return function(mat4) {
+				return function (mat4) {
 					gl.uniformMatrix4fv(loc, false, mat4);
 				};
 			}
@@ -846,7 +846,7 @@
 		}
 
 		function makeShaderGetter(loc) {
-			return function() {
+			return function () {
 				return gl.getUniform(program, loc);
 			};
 		}
@@ -910,7 +910,7 @@
 		this.gl = gl;
 		this.program = program;
 
-		this.destroy = function() {
+		this.destroy = function () {
 			var i;
 
 			if (gl) {
@@ -932,7 +932,7 @@
 		};
 	}
 
-	ShaderProgram.prototype.useProgram = function() {
+	ShaderProgram.prototype.useProgram = function () {
 		this.gl.useProgram(this.program);
 	};
 
@@ -1373,7 +1373,7 @@
 		};
 
 
-		Node.prototype.setTransform = function(mat) {
+		Node.prototype.setTransform = function (mat) {
 			var i, val, isDefault = true;
 
 			if (!mat ||
@@ -1401,7 +1401,7 @@
 			this.setDirty();
 		};
 
-		Node.prototype.perspective = function(fov) {
+		Node.prototype.perspective = function (fov) {
 			fov = parseFloat(fov);
 			if (isNaN(fov)) {
 				this.fov = 0;
@@ -1423,7 +1423,7 @@
 		};
 
 		//matrix code inspired by glMatrix
-		Node.prototype.translate = function(x, y, z) {
+		Node.prototype.translate = function (x, y, z) {
 			var mat = this.transform;
 
 			if (isNaN(x)) {
@@ -1449,7 +1449,7 @@
 		};
 
 		//todo: only 2D for now, so z is always 1.  allow 3D later.
-		Node.prototype.scale = function(x, y) {
+		Node.prototype.scale = function (x, y) {
 			if (y === undefined) {
 				y = x;
 			}
@@ -1468,7 +1468,7 @@
 			this.setDirty();
 		};
 
-		Node.prototype.rotateX = function(angle) {
+		Node.prototype.rotateX = function (angle) {
 			var mat = this.transform,
 				sin = Math.sin(angle),
 				cos = Math.cos(angle),
@@ -1491,7 +1491,7 @@
 			this.setDirty();
 		};
 
-		Node.prototype.rotateY = function(angle) {
+		Node.prototype.rotateY = function (angle) {
 			var mat = this.transform,
 				sin = Math.sin(angle),
 				cos = Math.cos(angle),
@@ -1514,7 +1514,7 @@
 			this.setDirty();
 		};
 
-		Node.prototype.rotateZ = function(angle) {
+		Node.prototype.rotateZ = function (angle) {
 			var mat = this.transform,
 				sin = Math.sin(angle),
 				cos = Math.cos(angle),
@@ -1627,7 +1627,7 @@
 						lookup = {
 							element: input,
 							listener: (function (name, element) {
-								return function() {
+								return function () {
 									var oldValue, newValue;
 
 									if (input.type === 'checkbox') {
@@ -1703,12 +1703,19 @@
 				if (me.effect.inputs.hasOwnProperty(name)) {
 					if (this[name] === undefined) {
 						if (me.effect.inputs[name].type === 'image') {
-							this.__defineSetter__(name, makeImageSetter(name));
-							this.__defineGetter__(name, makeImageGetter(name));
+							Object.defineProperty(this, name, {
+								configurable: true,
+								enumerable: true,
+								get: makeImageGetter(name),
+								set: makeImageSetter(name)
+							});
 						} else {
-							this.__defineSetter__(name, makeSetter(name));
-
-							this.__defineGetter__(name, makeGetter(name));
+							Object.defineProperty(this, name, {
+								configurable: true,
+								enumerable: true,
+								get: makeGetter(name),
+								set: makeSetter(name)
+							});
 						}
 					} else {
 						//todo: this is temporary. get rid of it.
@@ -1717,42 +1724,55 @@
 				}
 			}
 
-			this.__defineGetter__('inputs', function () {
-				return {
-					source: {
-						type: 'image'
+			Object.defineProperties(this, {
+				inputs: {
+					enumerable: true,
+					configurable: true,
+					get: function () {
+						return {
+							source: {
+								type: 'image'
+							}
+						};
 					}
-				};
+				},
+				original: {
+					enumerable: true,
+					configurable: true,
+					get: function () {
+						return me.source;
+					}
+				},
+				width: {
+					enumerable: true,
+					configurable: true,
+					get: function () {
+						return me.width;
+					},
+					set: function (value) {
+						me.setSize(value);
+					}
+				},
+				height: {
+					enumerable: true,
+					configurable: true,
+					get: function () {
+						return me.height;
+					},
+					set: function (value) {
+						me.setSize(undefined, value);
+					}
+				},
+				id: {
+					enumerable: true,
+					configurable: true,
+					get: function () {
+						return me.id;
+					}
+				}
 			});
 
-			this.__defineSetter__('inputs', function () {
-				//should we throw an error or just fail silently
-				return;
-			});
-
-			this.__defineGetter__('original', function () {
-				return me.source;
-			});
-
-			this.__defineSetter__('original', function () {
-			});
-
-			this.__defineSetter__('width', function(value) {
-				me.setSize(value);
-			});
-
-			this.__defineSetter__('height', function(value) {
-				me.setSize(undefined, value);
-			});
-
-			this.__defineGetter__('id', function () {
-				return me.id;
-			});
-
-			this.__defineSetter__('id', function () {
-			});
-
-			this.render = function(callback) {
+			this.render = function (callback) {
 				me.render(callback);
 				return this;
 			};
@@ -1761,95 +1781,95 @@
 				return me.readPixels(x, y, width, height, dest);
 			};
 
-			this.alias = function(inputName, aliasName) {
+			this.alias = function (inputName, aliasName) {
 				me.alias(inputName, aliasName);
 				return this;
 			};
 
-			this.reset = function() {
+			this.reset = function () {
 				me.reset();
 				return this;
 			};
 
-			this.setTransform = function(transform) {
+			this.setTransform = function (transform) {
 				me.setTransform(transform);
 				return this;
 			};
 
-			this.perspective = function(fov) {
+			this.perspective = function (fov) {
 				me.perspective(fov);
 				return this;
 			};
 
-			this.translate = function(x, y, z) {
+			this.translate = function (x, y, z) {
 				me.translate(x, y, z);
 				return this;
 			};
 
-			this.translateX = function(amount) {
+			this.translateX = function (amount) {
 				me.translate(amount, 0, 0);
 				return this;
 			};
 
-			this.translateY = function(amount) {
+			this.translateY = function (amount) {
 				me.translateY(0, amount, 0);
 				return this;
 			};
 
-			this.translateZ = function(amount) {
+			this.translateZ = function (amount) {
 				me.translateZ(0, 0, amount);
 				return this;
 			};
 
-			this.scale = function(x, y) {
+			this.scale = function (x, y) {
 				me.scale(x, y);
 				return this;
 			};
 
-			this.rotateX = function(angle) {
+			this.rotateX = function (angle) {
 				me.rotateX(angle);
 				return this;
 			};
 
-			this.rotateY = function(angle) {
+			this.rotateY = function (angle) {
 				me.rotateY(angle);
 				return this;
 			};
 
-			this.rotateZ = function(angle) {
+			this.rotateZ = function (angle) {
 				me.rotateZ(angle);
 				return this;
 			};
 
-			this.matte = function(polygons) {
+			this.matte = function (polygons) {
 				me.matte(polygons);
 			};
 
-			this.getTexture = function() {
+			this.getTexture = function () {
 				return me.frameBuffer && me.frameBuffer.texture;
 			};
 
-			this.destroy = function() {
-				var i, nop = function() { };
+			this.destroy = function () {
+				var i,
+					descriptor,
+					nop = function () { };
 
 				me.destroy();
 
 				for (i in this) {
 					if (this.hasOwnProperty(i) && i !== 'isDestroyed') {
-						if (this.__lookupGetter__(i) ||
-							typeof this[i] !== 'function') {
-
+						descriptor = Object.getOwnPropertyDescriptor(this, i);
+						if (descriptor.get || descriptor.set ||
+								typeof this[i] !== 'function') {
 							delete this[i];
 						} else {
 							this[i] = nop;
 						}
 					}
 				}
-
-				//todo: remove getters/setters
 			};
 
-			this.isDestroyed = function() {
+			this.isDestroyed = function () {
 				return me.isDestroyed;
 			};
 		};
@@ -2088,7 +2108,7 @@
 
 				if (typeof effect.draw === 'function') {
 					effect.draw.call(this, this.shader, this.model, this.uniforms, frameBuffer,
-						function(shader, model, uniforms, frameBuffer, node, options) {
+						function (shader, model, uniforms, frameBuffer, node, options) {
 							draw(shader, model, uniforms, frameBuffer, node || that, options);
 						});
 				} else if (frameBuffer) {
@@ -2202,12 +2222,15 @@
 					input: inputName
 				};
 
-				seriously.__defineSetter__(aliasName, function (value) {
-					return that.setInput(inputName, value);
-				});
-
-				seriously.__defineGetter__(aliasName, function () {
-					return that.inputs[inputName];
+				Object.defineProperty(this, aliasName, {
+					configurable: true,
+					enumerable: true,
+					get: function () {
+						return that.inputs[inputName];
+					},
+					set: function (value) {
+						return that.setInput(inputName, value);
+					}
 				});
 			}
 
@@ -2676,25 +2699,29 @@
 			var me = sourceNode;
 
 			//priveleged accessor methods
-			this.__defineGetter__('original', function () {
-				return me.source;
+			Object.defineProperties(this, {
+				original: {
+					enumerable: true,
+					configurable: true,
+					get: function () {
+						return me.source;
+					}
+				},
+				id: {
+					enumerable: true,
+					configurable: true,
+					get: function () {
+						return me.id;
+					},
+					set: function () {}
+				}
 			});
 
-			this.__defineSetter__('original', function () {
-			});
-
-			this.__defineGetter__('id', function () {
-				return me.id;
-			});
-
-			this.__defineSetter__('id', function () {
-			});
-
-			this.render = function(callback) {
+			this.render = function (callback) {
 				me.render(callback);
 			};
 
-			this.update = function() {
+			this.update = function () {
 				me.setDirty();
 			};
 
@@ -2702,71 +2729,73 @@
 				return me.readPixels(x, y, width, height, dest);
 			};
 
-			this.reset = function() {
+			this.reset = function () {
 				me.reset();
 				return this;
 			};
 
-			this.setTransform = function(transform) {
+			this.setTransform = function (transform) {
 				me.setTransform(transform);
 				return this;
 			};
 
-			this.perspective = function(fov) {
+			this.perspective = function (fov) {
 				me.perspective(fov);
 				return this;
 			};
 
-			this.translate = function(x, y, z) {
+			this.translate = function (x, y, z) {
 				me.translate(x, y, z);
 				return this;
 			};
 
-			this.translateX = function(amount) {
+			this.translateX = function (amount) {
 				me.translate(amount, 0, 0);
 				return this;
 			};
 
-			this.translateY = function(amount) {
+			this.translateY = function (amount) {
 				me.translateY(0, amount, 0);
 				return this;
 			};
 
-			this.translateZ = function(amount) {
+			this.translateZ = function (amount) {
 				me.translateZ(0, 0, amount);
 				return this;
 			};
 
-			this.scale = function(x, y) {
+			this.scale = function (x, y) {
 				me.scale(x, y);
 				return this;
 			};
 
-			this.rotateX = function(angle) {
+			this.rotateX = function (angle) {
 				me.rotateX(angle);
 				return this;
 			};
 
-			this.rotateY = function(angle) {
+			this.rotateY = function (angle) {
 				me.rotateY(angle);
 				return this;
 			};
 
-			this.rotateZ = function(angle) {
+			this.rotateZ = function (angle) {
 				me.rotateZ(angle);
 				return this;
 			};
 
-			this.destroy = function() {
-				var i, nop = function() { };
+			this.destroy = function () {
+				var i,
+					descriptor,
+					nop = function () { };
 
 				me.destroy();
 
 				for (i in this) {
 					if (this.hasOwnProperty(i) && i !== 'isDestroyed') {
-						if (this.__lookupGetter__(i) ||
-							typeof this[i] !== 'function') {
-
+						descriptor = Object.getOwnPropertyDescriptor(this, i);
+						if (descriptor.get || descriptor.set ||
+								typeof this[i] !== 'function') {
 							delete this[i];
 						} else {
 							this[i] = nop;
@@ -2775,7 +2804,7 @@
 				}
 			};
 
-			this.isDestroyed = function() {
+			this.isDestroyed = function () {
 				return me.isDestroyed;
 			};
 		};
@@ -2813,7 +2842,7 @@
 					if (!source.complete) {
 						deferTexture = true;
 
-						source.addEventListener('load', function() {
+						source.addEventListener('load', function () {
 							that.desiredWidth = source.naturalWidth;
 							that.desiredHeight = source.naturalHeight;
 							that.setSize(source.naturalWidth, source.naturalHeight);
@@ -2831,7 +2860,7 @@
 					if (!source.readyState) {
 						deferTexture = true;
 
-						source.addEventListener('loadedmetadata', function() {
+						source.addEventListener('loadedmetadata', function () {
 							that.desiredWidth = source.videoWidth;
 							that.desiredHeight = source.videoHeight;
 							that.setSize(source.videoWidth, source.videoHeight);
@@ -2934,7 +2963,7 @@
 				this.initialized = true;
 
 				//todo: if WebGLTexture source is from a different context render it and copy it over
-				this.render = function() { };
+				this.render = function () { };
 			}
 
 			if (!matchedType) {
@@ -2962,7 +2991,7 @@
 
 		extend(SourceNode, Node);
 
-		SourceNode.prototype.initialize = function() {
+		SourceNode.prototype.initialize = function () {
 			if (!gl || this.sourceTexture) {
 				return;
 			}
@@ -2999,7 +3028,7 @@
 			}
 		};
 
-		SourceNode.prototype.renderVideo = function(callback) {
+		SourceNode.prototype.renderVideo = function (callback) {
 			var video = this.source;
 
 			if (!gl || !video || !video.videoHeight || !video.videoWidth || video.readyState < 2) {
@@ -3056,7 +3085,7 @@
 			}
 		};
 
-		SourceNode.prototype.renderImageCanvas = function(callback) {
+		SourceNode.prototype.renderImageCanvas = function (callback) {
 			var media = this.source;
 
 			if (!gl || !media || !media.height || !media.width) {
@@ -3106,7 +3135,7 @@
 			}
 		};
 
-		SourceNode.prototype.renderTypedArray = function(callback) {
+		SourceNode.prototype.renderTypedArray = function (callback) {
 			var media = this.source;
 
 			if (!gl || !media || !media.length) {
@@ -3151,7 +3180,7 @@
 			}
 		};
 
-		SourceNode.prototype.destroy = function() {
+		SourceNode.prototype.destroy = function () {
 			var i, item;
 
 			if (this.gl && this.texture) {
@@ -3188,85 +3217,98 @@
 			var me = targetNode;
 
 			//priveleged accessor methods
-			this.__defineGetter__('inputs', function () {
-				return {
-					source: {
-						type: 'image'
-						//todo: include current value
+			Object.defineProperties(this, {
+				inputs: {
+					enumerable: true,
+					configurable: true,
+					get: function () {
+						return {
+							source: {
+								type: 'image'
+							}
+						};
 					}
-				};
-			});
+				},
+				source: {
+					enumerable: true,
+					configurable: true,
+					get: function () {
+						if (me.source) {
+							return me.source.pub;
+						}
+					},
+					set: function (value) {
+						me.setSource(value);
+					}
+				},
+				original: {
+					enumerable: true,
+					configurable: true,
+					get: function () {
+						return me.target;
+					}
+				},
+				width: {
+					enumerable: true,
+					configurable: true,
+					get: function () {
+						return me.width;
+					},
+					set: function (value) {
+						if (!isNaN(value) && value >0 && me.width !== value) {
+							me.width = me.desiredWidth = value;
+							me.target.width = value;
 
-			this.__defineSetter__('inputs', function () {
-				//should we throw an error or just fail silently
-				return;
-			});
+							me.setDirty();
+							/*
+							if (this.source && this.source.setSize) {
+								this.source.setSize(value);
 
-			this.__defineGetter__('source', function () {
-				if (me.source) {
-					return me.source.pub;
+								//todo: for secondary webgl nodes, we need a new array
+								//if ( this.pixels && this.pixels.length !== (this.width * this.height * 4) ) {
+								//	delete this.pixels;
+								//}
+							}
+							*/
+						}
+					}
+				},
+				height: {
+					enumerable: true,
+					configurable: true,
+					get: function () {
+						return me.height;
+					},
+					set: function (value) {
+						if (!isNaN(value) && value >0 && me.height !== value) {
+							me.height = me.desiredHeight = value;
+							me.target.height = value;
+
+							me.setDirty();
+
+							/*
+							if (this.source && this.source.setSize) {
+								this.source.setSize(undefined, value);
+
+								//for secondary webgl nodes, we need a new array
+								//if ( this.pixels && this.pixels.length !== (this.width * this.height * 4) ) {
+								//	delete this.pixels;
+								//}
+							}
+							*/
+						}
+					}
+				},
+				id: {
+					enumerable: true,
+					configurable: true,
+					get: function () {
+						return me.id;
+					}
 				}
 			});
 
-			this.__defineSetter__('source', function (value) {
-				me.setSource(value);
-				return this;
-			});
-
-			this.__defineGetter__('original', function () {
-				return me.target;
-			});
-
-			this.__defineSetter__('original', function () {
-			});
-
-			this.__defineSetter__('width', function(value) {
-				if (!isNaN(value) && value >0 && me.width !== value) {
-					me.width = me.desiredWidth = value;
-					me.target.width = value;
-
-					me.setDirty();
-					/*
-					if (this.source && this.source.setSize) {
-						this.source.setSize(value);
-
-						//todo: for secondary webgl nodes, we need a new array
-						//if ( this.pixels && this.pixels.length !== (this.width * this.height * 4) ) {
-						//	delete this.pixels;
-						//}
-					}
-					*/
-				}
-			});
-
-			this.__defineSetter__('height', function(value) {
-				if (!isNaN(value) && value >0 && me.height !== value) {
-					me.height = me.desiredHeight = value;
-					me.target.height = value;
-
-					me.setDirty();
-
-					/*
-					if (this.source && this.source.setSize) {
-						this.source.setSize(undefined, value);
-
-						//for secondary webgl nodes, we need a new array
-						//if ( this.pixels && this.pixels.length !== (this.width * this.height * 4) ) {
-						//	delete this.pixels;
-						//}
-					}
-					*/
-				}
-			});
-
-			this.__defineGetter__('id', function () {
-				return me.id;
-			});
-
-			this.__defineSetter__('id', function () {
-			});
-
-			this.render = function(callback) {
+			this.render = function (callback) {
 				me.render(callback);
 			};
 
@@ -3274,83 +3316,85 @@
 				return me.readPixels(x, y, width, height, dest);
 			};
 
-			this.reset = function() {
+			this.reset = function () {
 				me.reset();
 				return this;
 			};
 
-			this.setTransform = function(transform) {
+			this.setTransform = function (transform) {
 				me.setTransform(transform);
 				return this;
 			};
 
-			this.perspective = function(fov) {
+			this.perspective = function (fov) {
 				me.perspective(fov);
 				return this;
 			};
 
-			this.translate = function(x, y, z) {
+			this.translate = function (x, y, z) {
 				me.translate(x, y, z);
 				return this;
 			};
 
-			this.translateX = function(amount) {
+			this.translateX = function (amount) {
 				me.translate(amount, 0, 0);
 				return this;
 			};
 
-			this.translateY = function(amount) {
+			this.translateY = function (amount) {
 				me.translateY(0, amount, 0);
 				return this;
 			};
 
-			this.translateZ = function(amount) {
+			this.translateZ = function (amount) {
 				me.translateZ(0, 0, amount);
 				return this;
 			};
 
-			this.scale = function(x, y) {
+			this.scale = function (x, y) {
 				me.scale(x, y);
 				return this;
 			};
 
-			this.rotateX = function(angle) {
+			this.rotateX = function (angle) {
 				me.rotateX(angle);
 				return this;
 			};
 
-			this.rotateY = function(angle) {
+			this.rotateY = function (angle) {
 				me.rotateY(angle);
 				return this;
 			};
 
-			this.rotateZ = function(angle) {
+			this.rotateZ = function (angle) {
 				me.rotateZ(angle);
 				return this;
 			};
 
-			this.go = function(options) {
+			this.go = function (options) {
 				me.go(options);
 			};
 
-			this.stop = function() {
+			this.stop = function () {
 				me.stop();
 			};
 
-			this.getTexture = function() {
+			this.getTexture = function () {
 				return me.frameBuffer.texture;
 			};
 
-			this.destroy = function() {
-				var i, nop = function() { };
+			this.destroy = function () {
+				var i,
+					descriptor,
+					nop = function () { };
 
 				me.destroy();
 
 				for (i in this) {
 					if (this.hasOwnProperty(i) && i !== 'isDestroyed') {
-						if (this.__lookupGetter__(i) ||
-							typeof this[i] !== 'function') {
-
+						descriptor = Object.getOwnPropertyDescriptor(this, i);
+						if (descriptor.get || descriptor.set ||
+								typeof this[i] !== 'function') {
 							delete this[i];
 						} else {
 							this[i] = nop;
@@ -3359,7 +3403,7 @@
 				}
 			};
 
-			this.isDestroyed = function() {
+			this.isDestroyed = function () {
 				return me.isDestroyed;
 			};
 		};
@@ -3524,7 +3568,7 @@
 
 		extend(TargetNode, Node);
 
-		TargetNode.prototype.setSource = function(source) {
+		TargetNode.prototype.setSource = function (source) {
 			var newSource;
 
 			//todo: what if source is null/undefined/false
@@ -3596,7 +3640,7 @@
 			this.callbacks.splice(0);
 		};
 
-		TargetNode.prototype.renderWebGL = function(callback) {
+		TargetNode.prototype.renderWebGL = function (callback) {
 			if (this.dirty) {
 				if (!this.source) {
 					return;
@@ -3617,7 +3661,7 @@
 			}
 		};
 
-		TargetNode.prototype.renderSecondaryWebGL = function(callback) {
+		TargetNode.prototype.renderSecondaryWebGL = function (callback) {
 			if (this.dirty && this.source) {
 				this.source.render();
 
@@ -3645,7 +3689,7 @@
 			}
 		};
 
-		TargetNode.prototype.render2D = function(callback) {
+		TargetNode.prototype.render2D = function (callback) {
 			//todo: make this actually do something
 
 			runCallbacks();
@@ -3661,7 +3705,7 @@
 			}
 		};
 
-		TargetNode.prototype.destroy = function() {
+		TargetNode.prototype.destroy = function () {
 			var i;
 
 			//source
@@ -3704,7 +3748,7 @@
 		/*
 		priveleged methods
 		*/
-		this.effect = function(hook, options) {
+		this.effect = function (hook, options) {
 			if (!seriousEffects[hook]) {
 				throw 'Unknown effect: ' + hook;
 			}
@@ -3746,7 +3790,7 @@
 			}
 		};
 
-		this.go = function(options) {
+		this.go = function (options) {
 			var i;
 
 			if (options) {
@@ -3782,7 +3826,7 @@
 			}
 		};
 
-		this.stop = function(options) {
+		this.stop = function (options) {
 			var i;
 			animationCallbacks.splice(0);
 			callbacks.splice(0);
@@ -3791,15 +3835,19 @@
 			}
 		};
 
-		this.render = function(options) {
+		this.render = function (options) {
 			var i;
 			for (i = 0; i < targets.length; i++) {
 				targets[i].render(options);
 			}
 		};
 
-		this.destroy = function() {
-			var i, node, nop = function() { };
+		this.destroy = function () {
+			var i,
+				node,
+				descriptor,
+				nop = function () { };
+
 			while (nodes.length) {
 				node = nodes.shift();
 				node.destroy();
@@ -3825,9 +3873,9 @@
 
 			for (i in this) {
 				if (this.hasOwnProperty(i) && i !== 'isDestroyed') {
-					if (this.__lookupGetter__(i) ||
-						typeof this[i] !== 'function') {
-
+					descriptor = Object.getOwnPropertyDescriptor(this, i);
+					if (descriptor.get || descriptor.set ||
+							typeof this[i] !== 'function') {
 						delete this[i];
 					} else {
 						this[i] = nop;
@@ -3849,7 +3897,7 @@
 			isDestroyed = true;
 		};
 
-		this.isDestroyed = function() {
+		this.isDestroyed = function () {
 			return isDestroyed;
 		};
 
@@ -4032,7 +4080,7 @@
 	};
 
 	Seriously.inputValidators = {
-		color: function(value) {
+		color: function (value) {
 			var s, a, i;
 			if (typeof value === 'string') {
 				//todo: support percentages, decimals
@@ -4124,7 +4172,7 @@
 
 			return [0, 0, 0, 0];
 		},
-		number: function(value, input) {
+		number: function (value, input) {
 			if (isNaN(value)) {
 				return input.defaultValue || 0;
 			}
@@ -4145,7 +4193,7 @@
 
 			return value;
 		},
-		'enum': function(value, input) {
+		'enum': function (value, input) {
 			var options = input.options || [],
 				filtered;
 
@@ -4159,7 +4207,7 @@
 
 			return input.defaultValue || '';
 		},
-		vector: function(value) {
+		vector: function (value) {
 			var a, i, s, vectorFields = ['x','y','z','w'];
 
 			if ( Array.isArray(value) ) {
@@ -4181,7 +4229,7 @@
 
 			return { x: 0, y: 0, z: 0, w: 0 };
 		},
-		'boolean': function(value) {
+		'boolean': function (value) {
 			if (!value) {
 				return false;
 			}
@@ -4252,7 +4300,7 @@
 	//check for plugins loaded out of order
 	if (window.Seriously) {
 		if (typeof window.Seriously === 'object') {
-			(function() {
+			(function () {
 				var i;
 				for (i in window.Seriously) {
 					if (window.Seriously.hasOwnProperty(i) &&
@@ -4277,7 +4325,7 @@
 		setTimeoutZero: setTimeoutZero,
 		ShaderProgram: ShaderProgram,
 		FrameBuffer: FrameBuffer,
-		requestAnimationFrame: function(callback) {
+		requestAnimationFrame: function (callback) {
 			requestAnimFrame(callback);
 		},
 		shader: {
