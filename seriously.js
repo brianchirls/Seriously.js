@@ -472,7 +472,9 @@
 				a new one the next time it's needed
 				*/
 				event.preventDefault();
-				testContext = undefined;
+				if (testContext && testContext.canvas === this) {
+					testContext = undefined;
+				}
 			}, false);
 		} catch (webglError) {
 			console.log('Unable to access WebGL.');
