@@ -30,6 +30,7 @@
 		Global environment variables
 	*/
 
+	testContext,
 	incompatibility,
 	seriousEffects = {},
 	timeouts = [],
@@ -455,6 +456,31 @@
 		}
 	}, true);
 
+	function getTestContext() {
+		var canvas;
+
+		if (testContext || !window.WebGLRenderingContext) {
+			return testContext;
+		}
+
+		canvas = document.createElement('canvas');
+		try {
+			testContext = canvas.getContext('experimental-webgl');
+			canvas.addEventListener('webglcontextlost', function(event) {
+				/*
+				If/When context is lost, just clear testContext and create
+				a new one the next time it's needed
+				*/
+				event.preventDefault();
+				testContext = undefined;
+			}, false);
+		} catch (webglError) {
+			console.log('Unable to access WebGL.');
+		}
+
+		return testContext;
+	}
+
 	function checkSource(source) {
 		var element, canvas, ctx, texture;
 
@@ -469,13 +495,7 @@
 			return false;
 		}
 
-		if (window.WebGLRenderingContext) {
-			try {
-				ctx = canvas.getContext('experimental-webgl');
-			} catch (webglError) {
-				console.log('Unable to access WebGL. Trying 2D canvas.');
-			}
-		}
+		ctx = getTestContext();
 
 		if (ctx) {
 			texture = ctx.createTexture();
@@ -484,7 +504,7 @@
 			try {
 				ctx.texImage2D(ctx.TEXTURE_2D, 0, ctx.RGBA, ctx.RGBA, ctx.UNSIGNED_BYTE, element);
 			} catch (textureError) {
-				if (textureError.name === 'SECURITY_ERR') {
+				if (textureError.code === window.DOMException.SECURITY_ERR) {
 					console.log('Unable to access cross-domain image');
 				} else {
 					console.log('Error: ' + textureError.message);
@@ -499,7 +519,7 @@
 				ctx.drawImage(element, 0, 0);
 				ctx.getImageData(0, 0, 1, 1);
 			} catch (drawImageError) {
-				if (drawImageError.name === 'SECURITY_ERR') {
+				if (drawImageError.code === window.DOMException.SECURITY_ERR) {
 					console.log('Unable to access cross-domain image');
 				} else {
 					console.log('Error: ' + drawImageError.message);
@@ -3986,15 +4006,7 @@
 			} else if (!window.WebGLRenderingContext) {
 				incompatibility = 'webgl';
 			} else {
-				try {
-					gl = canvas.getContext('experimental-webgl');
-				} catch(expError) {
-					try {
-						gl = canvas.getContext('webgl');
-					} catch(webglError) {
-					}
-				}
-
+				gl = getTestContext();
 				if (!gl) {
 					incompatibility = 'context';
 				}
