@@ -1619,6 +1619,7 @@
 
 					if (lookup && lookup.element !== input) {
 						lookup.element.removeEventListener('change', lookup.listener, true);
+						lookup.element.removeEventListener('input', lookup.listener, true);
 						delete me.inputElements[inputName];
 						lookup = null;
 					}
@@ -1657,11 +1658,16 @@
 						}
 
 						me.inputElements[inputName] = lookup;
-						input.addEventListener('change', lookup.listener, true);
+						if (input.type === 'range') {
+							input.addEventListener('input', lookup.listener, true);
+						} else {
+							input.addEventListener('change', lookup.listener, true);
+						}
 					}
 				} else {
 					if (lookup) {
 						lookup.element.removeEventListener('change', lookup.listener, true);
+						lookup.element.removeEventListener('input', lookup.listener, true);
 						delete me.inputElements[inputName];
 					}
 					value = input;
@@ -2642,6 +2648,7 @@
 				if (this.inputElements.hasOwnProperty(i)) {
 					item = this.inputElements[i];
 					item.element.removeEventListener('change', item.listener, true);
+					item.element.removeEventListener('input', item.listener, true);
 				}
 			}
 

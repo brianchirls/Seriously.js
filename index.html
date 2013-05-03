@@ -202,15 +202,15 @@
 			updateTime();
 
 			translateZ = document.getElementById('translate-z');
-			translateZ.addEventListener('change', updateTransforms);
+			translateZ.addEventListener('input', updateTransforms);
 			rotateX = document.getElementById('rotate-x');
-			rotateX.addEventListener('change', updateTransforms);
+			rotateX.addEventListener('input', updateTransforms);
 			rotateY = document.getElementById('rotate-y');
-			rotateY.addEventListener('change', updateTransforms);
+			rotateY.addEventListener('input', updateTransforms);
 			rotateZ = document.getElementById('rotate-z');
-			rotateZ.addEventListener('change', updateTransforms);
+			rotateZ.addEventListener('input', updateTransforms);
 			perspective = document.getElementById('perspective');
-			perspective.addEventListener('change', function () {
+			perspective.addEventListener('input', function () {
 				blend.perspective(this.value);
 			});
 
