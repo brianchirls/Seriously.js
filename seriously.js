@@ -426,7 +426,7 @@
 		https://bugzilla.mozilla.org/show_bug.cgi?id=740576
 		Should run fine, but maybe a few milliseconds slower per frame.
 		*/
-		function timeoutfunction () {
+		function timeoutFunction() {
 			if (timeouts.length) {
 				(timeouts.shift())();
 			}
