@@ -1927,7 +1927,7 @@
 					validateInputSpecs(this.effect);
 				}
 			} else {
-				this.effect = extend(this.effectRef);
+				this.effect = extend({}, this.effectRef);
 			}
 
 			//todo: set up frame buffer(s), inputs, transforms, stencils, draw method. allow plugin to override
