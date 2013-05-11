@@ -1914,6 +1914,10 @@
 
 			if (this.effectRef.definition) {
 				this.effect = this.effectRef.definition.call(this, options);
+				/*
+				todo: copy over inputs object separately in case some are specified
+				in advance and some are specified in definition function
+				*/
 				for (key in this.effectRef) {
 					if (this.effectRef.hasOwnProperty(key) && !this.effect[key]) {
 						this.effect[key] = this.effectRef[key];
