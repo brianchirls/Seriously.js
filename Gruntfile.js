@@ -78,7 +78,8 @@ module.exports = function(grunt) {
 		qunit: {
 			all: {
 				options: {
-					urls: ['http://localhost:' + (grunt.option('port-test') || 9002) + '/test/index.html']
+					urls: ['http://localhost:' + (grunt.option('port-test') || 9002) + '/test/index.html'],
+					inject: 'test/bridge.js'
 				}
 			}
 		},
