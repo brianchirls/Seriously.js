@@ -755,12 +755,12 @@
 	/* ShaderProgram - utility class for building and accessing WebGL shaders */
 
 	function ShaderProgram(gl, vertexShaderSource, fragmentShaderSource) {
-
 		var program, vertexShader, fragmentShader,
-			programError = '', shaderError,
-			num_uniforms,
-			num_attribs,
-			i, info, name, loc, setter, getter;
+			programError = '',
+			shaderError,
+			i, l,
+			obj,
+			key;
 
 		function compileShader(source, fragment) {
 			var shader, i;
@@ -786,7 +786,6 @@
 		}
 
 		function makeShaderSetter(info, loc) {
-
 			if (info.type === gl.SAMPLER_2D) {
 				return function (value) {
 					info.glTexture = gl['TEXTURE' + value];
@@ -820,34 +819,19 @@
 
 			if (info.type === gl.FLOAT_VEC2) {
 				return function (obj) {
-					//todo: standardize this so we don't have to do this check
-					if ( Array.isArray(obj) ) {
-						gl.uniform2f(loc, obj[0], obj[1]);
-					} else {
-						gl.uniform2f(loc, obj.x, obj.y);
-					}
+					gl.uniform2f(loc, obj[0], obj[1]);
 				};
 			}
 
 			if (info.type === gl.FLOAT_VEC3) {
 				return function (obj) {
-					//todo: standardize this so we don't have to do this check
-					if ( Array.isArray(obj) ) {
-						gl.uniform3f(loc, obj[0], obj[1], obj[2]);
-					} else {
-						gl.uniform3f(loc, obj.x, obj.y, obj.z);
-					}
+					gl.uniform3f(loc, obj[0], obj[1], obj[2]);
 				};
 			}
 
 			if (info.type === gl.FLOAT_VEC4) {
 				return function (obj) {
-					//todo: standardize this so we don't have to do this check
-					if ( Array.isArray(obj) ) {
-						gl.uniform4f(loc, obj[0], obj[1], obj[2], obj[3]);
-					} else {
-						gl.uniform4f(loc, obj.x, obj.y, obj.z, obj.w);
-					}
+					gl.uniform4f(loc, obj[0], obj[1], obj[2], obj[3]);
 				};
 			}
 
@@ -864,7 +848,6 @@
 			}
 
 			throw "Unknown shader uniform type: " + info.type;
-
 		}
 
 		function makeShaderGetter(loc) {
@@ -898,35 +881,39 @@
 		}
 
 		gl.useProgram(program);
-		num_uniforms = gl.getProgramParameter(program, gl.ACTIVE_UNIFORMS);
-		this.uniforms = [];
-		for (i = 0; i < num_uniforms; ++i) {
-			info = gl.getActiveUniform(program, i);
-			name = info.name;
-			loc = gl.getUniformLocation(program, name);
-			loc.name = name;
 
-			setter = makeShaderSetter(info, loc);
-			info.set = setter;
-			this['set_' + name] = setter;
+		this.uniforms = {};
 
-			getter = makeShaderGetter(loc);
-			info.get = getter;
-			this['get_' + name] = getter;
+		l = gl.getProgramParameter(program, gl.ACTIVE_UNIFORMS);
+		for (i = 0; i < l; ++i) {
+			obj = {
+				info: gl.getActiveUniform(program, i)
+			};
 
-			info.loc = this['location_' + name] = loc;
+			obj.name = obj.info.name;
+			obj.loc = gl.getUniformLocation(program, obj.name);
+			obj.set = makeShaderSetter(obj.info, obj.loc);
+			obj.get = makeShaderGetter(obj.loc);
+			this.uniforms[obj.name] = obj;
 
-			this.uniforms.push(info);
+			if (!this[obj.name]) {
+				//for convenience
+				this[obj.name] = obj;
+			}
 		}
 
-		num_attribs = gl.getProgramParameter(program, gl.ACTIVE_ATTRIBUTES);
-		this.attributes = [];
-		for (i = 0; i < num_attribs; ++i) {
-			info = gl.getActiveAttrib(program, i);
-			name = info.name;
-			loc = gl.getAttribLocation(program, name);
-			this['location_' + name] = loc;
-			this.attributes.push(name);
+		this.attributes = {};
+		this.location = {};
+		l = gl.getProgramParameter(program, gl.ACTIVE_ATTRIBUTES);
+		for (i = 0; i < l; ++i) {
+			obj = {
+				info: gl.getActiveAttrib(program, i)
+			};
+
+			obj.name = obj.info.name;
+			obj.location = gl.getAttribLocation(program, obj.name);
+			this.attributes[obj.name] = obj;
+			this.location[obj.name] = obj.location;
 		}
 
 		this.gl = gl;
@@ -943,7 +930,6 @@
 
 			for (i in this) {
 				if (this.hasOwnProperty(i)) {
-
 					delete this[i];
 				}
 			}
@@ -954,7 +940,7 @@
 		};
 	}
 
-	ShaderProgram.prototype.useProgram = function () {
+	ShaderProgram.prototype.use = function () {
 		this.gl.useProgram(this.program);
 	};
 
@@ -1125,7 +1111,7 @@
 
 		function draw(shader, model, uniforms, frameBuffer, node, options) {
 			var numTextures = 0,
-				name, value, setter,
+				name, value, shaderUniform,
 				width, height,
 				nodeGl = (node && node.gl) || gl,
 				opts = options || {};
@@ -1142,23 +1128,23 @@
 				height = opts.height || nodeGl.canvas.height;
 			}
 
-			shader.useProgram();
+			shader.use();
 
 			nodeGl.viewport(0, 0, width, height);
 
 			nodeGl.bindFramebuffer(nodeGl.FRAMEBUFFER, frameBuffer);
 
 			/* todo: do this all only once at the beginning, since we only have one model? */
-			nodeGl.enableVertexAttribArray(shader.location_position);
-			nodeGl.enableVertexAttribArray(shader.location_texCoord);
+			nodeGl.enableVertexAttribArray(shader.location.position);
+			nodeGl.enableVertexAttribArray(shader.location.texCoord);
 
 			if (model.texCoord) {
 				nodeGl.bindBuffer(nodeGl.ARRAY_BUFFER, model.texCoord);
-				nodeGl.vertexAttribPointer(shader.location_texCoord, model.texCoord.size, nodeGl.FLOAT, false, 0, 0);
+				nodeGl.vertexAttribPointer(shader.location.texCoord, model.texCoord.size, nodeGl.FLOAT, false, 0, 0);
 			}
 
 			nodeGl.bindBuffer(nodeGl.ARRAY_BUFFER, model.vertex);
-			nodeGl.vertexAttribPointer(shader.location_position, model.vertex.size, nodeGl.FLOAT, false, 0, 0);
+			nodeGl.vertexAttribPointer(shader.location.position, model.vertex.size, nodeGl.FLOAT, false, 0, 0);
 
 			nodeGl.bindBuffer(nodeGl.ELEMENT_ARRAY_BUFFER, model.index);
 
@@ -1183,22 +1169,22 @@
 			for (name in uniforms) {
 				if (uniforms.hasOwnProperty(name)) {
 					value = uniforms[name];
-					setter = 'set_' + name;
-					if (shader[setter]) {
+					shaderUniform = shader.uniforms[name];
+					if (shaderUniform) {
 						if (value instanceof WebGLTexture) {
 							nodeGl.activeTexture(nodeGl.TEXTURE0 + numTextures);
 							nodeGl.bindTexture(nodeGl.TEXTURE_2D, value);
-							shader[setter](numTextures); //todo: make this faster
+							shaderUniform.set(numTextures);
 							numTextures++;
 						} else if (value instanceof SourceNode || value instanceof EffectNode) {
 							if (value.texture) {
 								nodeGl.activeTexture(nodeGl.TEXTURE0 + numTextures);
 								nodeGl.bindTexture(nodeGl.TEXTURE_2D, value.texture);
-								shader[setter](numTextures); //todo: make this faster
+								shaderUniform.set(numTextures); //todo: make this faster
 								numTextures++;
 							}
 						} else if(value !== undefined && value !== null) {
-							shader['set_' + name](value);
+							shaderUniform.set(value);
 						}
 					}
 				}

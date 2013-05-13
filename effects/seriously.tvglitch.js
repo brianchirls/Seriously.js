@@ -210,17 +210,17 @@
 				//render particle canvas and attach uniform
 				//todo: this is a good spot for parallel processing. ParallelArray maybe?
 				if (doParticles && (this.inputs.lineSync || this.inputs.bars)) {
-					particleShader.useProgram();
+					particleShader.use();
 					gl.viewport(0, 0, 1, this.height / 2);
 					gl.bindFramebuffer(gl.FRAMEBUFFER, particleFrameBuffer.frameBuffer);
 					gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-					gl.enableVertexAttribArray(particleShader.location_particle);
+					gl.enableVertexAttribArray(particleShader.location.particle);
 					gl.bindBuffer(gl.ARRAY_BUFFER, particleBuffer);
-					gl.vertexAttribPointer(particleShader.location_particle, particleBuffer.itemSize, gl.FLOAT, false, 0, 0);
+					gl.vertexAttribPointer(particleShader.location.particle, particleBuffer.itemSize, gl.FLOAT, false, 0, 0);
 					gl.enable(gl.BLEND);
 					gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
-					particleShader.set_time(uniforms.time);
-					particleShader.set_height(this.height);
+					particleShader.time.set(uniforms.time);
+					particleShader.height.set(this.height);
 					gl.drawArrays(gl.POINTS, 0, particleCount);
 
 					lastTime = this.inputs.time;
