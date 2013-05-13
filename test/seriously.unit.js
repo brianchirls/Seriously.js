@@ -250,10 +250,8 @@
 		Seriously.removePlugin('removeme');
 	});
 
-	asyncTest('Plugin loaded before Seriously', function () {
+	asyncTest('Plugin loaded before Seriously', 3, function () {
 		var iframe;
-
-		expect(3);
 
 		iframe = document.createElement('iframe');
 		iframe.style.display = 'none';
@@ -286,8 +284,10 @@
 				ok(typeof e === 'object' && e.id !== undefined, 'Created effect');
 
 				s.destroy();
-				document.body.removeChild(iframe);
+
 				win.Seriously.removePlugin('test');
+				document.body.removeChild(iframe);
+
 				start();
 			}, false);
 			doc.head.appendChild(script);
@@ -339,7 +339,7 @@
 	 * checkSource on cross-origin image, dirty canvas
 	*/
 
-	asyncTest('Source Types', function () {
+	asyncTest('Source Types', 11, function () {
 		var seriously, source, target,
 			sourceCanvas, targetCanvas, img,
 			ctx,
@@ -351,8 +351,6 @@
 				255, 0, 0, 255,
 				0, 255, 0, 255
 			];
-
-		expect(11);
 
 		targetCanvas = document.createElement('canvas');
 		targetCanvas.width = 2;
@@ -483,7 +481,7 @@
 	*/
 
 	module('Render');
-	asyncTest('Callbacks', function () {
+	asyncTest('Callbacks', 5, function () {
 		var seriously,
 			source, target,
 			canvas,
@@ -899,10 +897,8 @@
 
 	module('Utilities');
 
-	asyncTest('setTimeoutZero', function() {
+	asyncTest('setTimeoutZero', 2, function() {
 		var countdown = 2, startTime = Date.now();
-
-		expect(2);
 
 		Seriously.util.setTimeoutZero(function() {
 			countdown--;
@@ -916,11 +912,9 @@
 		});
 	});
 
-	asyncTest('checkSource', function() {
+	asyncTest('checkSource', 4, function() {
 		var pass, fail,
 			tests = 2;
-
-		expect(4);
 
 		function checkImagePass(img) {
 			var canvas, ctx;
