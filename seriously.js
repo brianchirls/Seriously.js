@@ -3454,7 +3454,7 @@
 				}
 
 				target = element;
-			} else if (target instanceof WebGLFramebuffer) {
+			} else if (window.WebGLFramebuffer && target instanceof WebGLFramebuffer) {
 
 				frameBuffer = target;
 
