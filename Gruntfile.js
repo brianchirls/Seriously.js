@@ -81,6 +81,36 @@ module.exports = function(grunt) {
 					urls: ['http://localhost:' + (grunt.option('port-test') || 9002) + '/test/index.html']
 				}
 			}
+		},
+		jshint: {
+			options: {
+				devel: true,
+				bitwise: true,
+				browser: true,
+				white: true,
+				nomen: true,
+				plusplus: true,
+				maxerr: 50,
+				indent: 4,
+				globals: {
+					Float32Array: true,
+					Float64Array: true,
+					Uint8Array: true,
+					Uint16Array: true,
+					WebGLTexture: true,
+					HTMLInputElement: true,
+					HTMLSelectElement: true,
+					HTMLElement: true,
+					WebGLFramebuffer: true,
+					HTMLCanvasElement: true,
+					WebGLRenderingContext: true,
+					define: true,
+					module: true
+				}
+			},
+			files: [
+				'seriously.js'
+			]
 		}
 	});
 
@@ -94,5 +124,5 @@ module.exports = function(grunt) {
 	// Default task(s).
 	grunt.registerTask('default', ['requirejs', 'uglify']);
 	grunt.registerTask('build', ['requirejs', 'uglify']);
-	grunt.registerTask('test', ['connect:qunit', 'qunit']);
+	grunt.registerTask('test', ['jshint', 'connect:qunit', 'qunit']);
 };
