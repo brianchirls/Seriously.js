@@ -1,4 +1,4 @@
-/*jslint devel: true, bitwise: true, browser: true, white: true, nomen: true, plusplus: true, maxerr: 50, indent: 4, todo: true */
+/*jslint devel: true, bitwise: true, browser: true, white: true, nomen: true, plusplus: true, maxerr: 50, indent: 4 */
 /*global Float32Array, Float64Array, Uint8Array, Uint16Array, WebGLTexture, HTMLInputElement, HTMLSelectElement, HTMLElement, WebGLFramebuffer, HTMLCanvasElement, WebGLRenderingContext, define, module */
 (function (root, factory) {
 	'use strict';
@@ -3783,7 +3783,7 @@
 
 			for (i = 0; i < targets.length; i++) {
 				if (targets[i] === target || targets[i].target === target) {
-					if (!!(options && options.renderToTexture) === !!targets[i].renderToTexture) {
+					if (Boolean(options && options.renderToTexture) === Boolean(targets[i].renderToTexture)) {
 						return targets[i].pub;
 					}
 				}

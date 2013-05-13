@@ -93,6 +93,8 @@ module.exports = function(grunt) {
 				plusplus: true,
 				maxerr: 50,
 				indent: 4,
+				immed: true,
+				forin: true,
 				globals: {
 					Float32Array: true,
 					Float64Array: true,
