@@ -19,6 +19,8 @@
 		return true;
 	}
 
+	var compatible = !Seriously.incompatible();
+
 	module('Core');
 	test('Core', function () {
 		var p, props = 0,
@@ -212,7 +214,7 @@
 			canvas,
 			target;
 
-		expect(4);
+		expect(compatible ? 4 : 2);
 
 		Seriously.plugin('removeme', function (options) {
 			var id = options.id;
@@ -339,7 +341,7 @@
 	 * checkSource on cross-origin image, dirty canvas
 	*/
 
-	asyncTest('Source Types', 11, function () {
+	asyncTest('Source Types', compatible ? 11 : 5, function () {
 		var seriously, source, target,
 			sourceCanvas, targetCanvas, img,
 			ctx,
@@ -378,8 +380,10 @@
 		img.addEventListener('load', function () {
 			source = seriously.source(img);
 			ok(source, 'Created source from image');
-			pixels = source.readPixels(0, 0, 2, 2);
-			ok(pixels && compare(pixels, comparison), 'Image source rendered accurately.');
+			if (compatible) {
+				pixels = source.readPixels(0, 0, 2, 2);
+				ok(pixels && compare(pixels, comparison), 'Image source rendered accurately.');
+			}
 			source.destroy();
 
 			asyncDone = true;
@@ -392,23 +396,29 @@
 
 		source = seriously.source(sourceCanvas);
 		ok(source, 'Created source from canvas');
-		pixels = source.readPixels(0, 0, 2, 2);
-		ok(pixels && compare(pixels, comparison), 'Canvas source rendered accurately.');
+		if (compatible) {
+			pixels = source.readPixels(0, 0, 2, 2);
+			ok(pixels && compare(pixels, comparison), 'Canvas source rendered accurately.');
+		}
 
 		ctx.fillRect(0, 0, 2, 2);
 		source.update();
-		pixels = source.readPixels(0, 0, 2, 2);
-		ok(pixels && compare(pixels, [ //image is upside down
-			255, 255, 255, 255,
-			255, 255, 255, 255,
-			255, 255, 255, 255,
-			255, 255, 255, 255
-		]), 'Canvas source updated and rendered accurately.');
+		if (compatible) {
+			pixels = source.readPixels(0, 0, 2, 2);
+			ok(pixels && compare(pixels, [ //image is upside down
+				255, 255, 255, 255,
+				255, 255, 255, 255,
+				255, 255, 255, 255,
+				255, 255, 255, 255
+			]), 'Canvas source updated and rendered accurately.');
+		}
 
 		source = seriously.source(imagedata);
 		ok(source, 'Created source from ImageData');
-		pixels = source.readPixels(0, 0, 2, 2);
-		ok(pixels && compare(pixels, comparison), 'ImageData source rendered accurately.');
+		if (compatible) {
+			pixels = source.readPixels(0, 0, 2, 2);
+			ok(pixels && compare(pixels, comparison), 'ImageData source rendered accurately.');
+		}
 		source.destroy();
 
 		source = seriously.source(new Uint8Array(comparison), {
@@ -416,8 +426,10 @@
 			height: 2
 		});
 		ok(source, 'Created source from Typed Array');
-		pixels = source.readPixels(0, 0, 2, 2);
-		ok(pixels && compare(pixels, comparison), 'Typed Array source rendered accurately.');
+		if (compatible) {
+			pixels = source.readPixels(0, 0, 2, 2);
+			ok(pixels && compare(pixels, comparison), 'Typed Array source rendered accurately.');
+		}
 		source.destroy();
 
 		source = seriously.source(comparison, {
@@ -425,8 +437,10 @@
 			height: 2
 		});
 		ok(source, 'Created source from Array');
-		pixels = source.readPixels(0, 0, 2, 2);
-		ok(pixels && compare(pixels, comparison), 'Array source rendered accurately.');
+		if (compatible) {
+			pixels = source.readPixels(0, 0, 2, 2);
+			ok(pixels && compare(pixels, comparison), 'Array source rendered accurately.');
+		}
 		source.destroy();
 
 		//todo: implement and test WebGLTexture source
@@ -751,7 +765,7 @@
 				0, 255, 0, 255
 			];
 
-		expect(4);
+		expect(compatible ? 4 : 0);
 
 		targetCanvas = document.createElement('canvas');
 		targetCanvas.width = 2;
@@ -777,45 +791,52 @@
 		target.source = source;
 
 		target.rotateZ(Math.PI / 2); //90 degrees counter-clockwise
-		target.readPixels(0, 0, 2, 2, pixels);
-		ok(compare(pixels, [
-			255, 0, 0, 255,
-			0, 0, 255, 255,
-			0, 255, 0, 255,
-			255, 255, 255, 255
-		]), 'Rotate 90 degrees counter-clockwise on Z-Axis');
+		if (compatible) {
+			target.readPixels(0, 0, 2, 2, pixels);
+			ok(compare(pixels, [
+				255, 0, 0, 255,
+				0, 0, 255, 255,
+				0, 255, 0, 255,
+				255, 255, 255, 255
+			]), 'Rotate 90 degrees counter-clockwise on Z-Axis');
+		}
 
 		target.reset();
 		target.rotateX(Math.PI); //180 degrees counter-clockwise
-		target.readPixels(0, 0, 2, 2, pixels);
-		ok(compare(pixels, [ //image is upside down
-			255, 0, 0, 255,
-			0, 255, 0, 255,
-			0, 0, 255, 255,
-			255, 255, 255, 255
-		]), 'Rotate 180 degrees on X-Axis (Flip Vertical)');
+		if (compatible) {
+			target.readPixels(0, 0, 2, 2, pixels);
+			ok(compare(pixels, [ //image is upside down
+				255, 0, 0, 255,
+				0, 255, 0, 255,
+				0, 0, 255, 255,
+				255, 255, 255, 255
+			]), 'Rotate 180 degrees on X-Axis (Flip Vertical)');
+		}
 
 		target.reset();
 		target.rotateY(Math.PI); //180 degrees counter-clockwise
-		target.readPixels(0, 0, 2, 2, pixels);
-		ok(compare(pixels, [ //image is upside down
-			255, 255, 255, 255,
-			0, 0, 255, 255,
-			0, 255, 0, 255,
-			255, 0, 0, 255
-		]), 'Rotate 180 degrees on Y-Axis (Flip Horizontal)');
+		if (compatible) {
+			target.readPixels(0, 0, 2, 2, pixels);
+			ok(compare(pixels, [ //image is upside down
+				255, 255, 255, 255,
+				0, 0, 255, 255,
+				0, 255, 0, 255,
+				255, 0, 0, 255
+			]), 'Rotate 180 degrees on Y-Axis (Flip Horizontal)');
+		}
 
 		target.reset();
 		target.translate(1, 0, 0);
 		target.render();
-		target.readPixels(0, 0, 2, 2, pixels);
-		ok(compare(pixels, [ //image is upside down
-			0, 0, 0, 0,
-			0, 0, 255, 255,
-			0, 0, 0, 0,
-			255, 0, 0, 255
-		]), 'Translate 1 unit (50%) to the right');
-
+		if (compatible) {
+			target.readPixels(0, 0, 2, 2, pixels);
+			ok(compare(pixels, [ //image is upside down
+				0, 0, 0, 0,
+				0, 0, 255, 255,
+				0, 0, 0, 0,
+				255, 0, 0, 255
+			]), 'Translate 1 unit (50%) to the right');
+		}
 
 		seriously.destroy();
 		return;
