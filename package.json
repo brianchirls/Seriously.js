@@ -1,0 +1,27 @@
+{
+    "name": "Seriously.js",
+    "version": "0.1.0",
+    "description": "A real-time, node-based video effects compositor for the web built with HTML5, Javascript and WebGL",
+
+    "author": "Brian Chirls",
+
+    "homepage": "http://seriouslyjs.org",
+    "bugs": "https://github.com/brianchirls/Seriously.js/issues",
+    "license": "MIT",
+    "licenseUrl": "http://www.opensource.org/licenses/mit-license.php",
+
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/brianchirls/Seriously.js.git"
+    },
+
+    "dependencies": {},
+    "devDependencies": {
+        "grunt": "~0.4.x",
+        "grunt-contrib-jshint": "0.3.x",
+        "grunt-contrib-uglify": "0.2.x",
+        "grunt-contrib-connect": "0.2.x",
+        "grunt-contrib-qunit": "0.2.x",
+        "grunt-contrib-concat": "0.1.x"
+    }
+}
