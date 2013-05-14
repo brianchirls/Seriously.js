@@ -112,7 +112,8 @@ module.exports = function(grunt) {
 				}
 			},
 			files: [
-				'seriously.js'
+				'seriously.js',
+				'test/seriously.unit.js'
 			]
 		}
 	});

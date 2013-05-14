@@ -1,4 +1,4 @@
-/*jslint devel: true, bitwise: true, browser: true, white: true, nomen: true, plusplus: true, maxerr: 50, indent: 4 */
+/*jslint devel: true, bitwise: true, browser: true, white: true, nomen: true, plusplus: true, maxerr: 50, indent: 4, newcap: true */
 /* global module, test, asyncTest, expect, ok, equal, start, stop, Seriously */
 (function () {
 	"use strict";
@@ -64,7 +64,7 @@
 		ok(s instanceof Seriously, 'Create Seriously instance with new');
 		s.destroy();
 
-		s = Seriously();
+		s = new Seriously();
 		ok(s instanceof Seriously, 'Create Seriously instance without new');
 		s.destroy();
 	});
@@ -76,12 +76,12 @@
 		expect(2);
 
 		Seriously.plugin('removeme', {
-			compatible: function (gl) {
+			compatible: function () {
 				return false;
 			}
 		});
 
-		s = Seriously();
+		s = new Seriously();
 
 		canvas = document.createElement('canvas');
 		if (!canvas) {
@@ -130,7 +130,7 @@
 		p = Seriously.plugin('removeme', {});
 		ok(p && p.title === 'removeme', 'First plugin loaded');
 
-		s = Seriously();
+		s = new Seriously();
 		e = s.effect('removeme');
 
 		Seriously.removePlugin('removeme');
@@ -195,7 +195,7 @@
 		ok(error1, 'Defining plugin throws error');
 
 		try {
-			s = Seriously();
+			s = new Seriously();
 			s.effect('badPlugin');
 		} catch (ee) {
 			error2 = true;
@@ -309,7 +309,7 @@
 		//todo: expects
 
 		Seriously.plugin('removeme', {});
-		seriously = Seriously();
+		seriously = new Seriously();
 		effect = seriously.effect('removeme');
 
 		ok(typeof effect.matte === 'function', 'matte method exists');
@@ -456,7 +456,7 @@
 	test('Create two Source objects on identical sources', function () {
 		var img, seriously, source1, source2;
 
-		seriously = Seriously();
+		seriously = new Seriously();
 		img = document.getElementById('colorbars');
 		source1 = seriously.source(img);
 		source2 = seriously.source('#colorbars');
@@ -477,7 +477,7 @@
 			}
 		});
 
-		seriously = Seriously();
+		seriously = new Seriously();
 		effect = seriously.effect('test');
 		effect.source = '#colorbars';
 		source1 = effect.source;
@@ -603,7 +603,7 @@
 			}
 		});
 
-		s = Seriously();
+		s = new Seriously();
 		e = s.effect('testNumberInput');
 
 		e.number = Math.PI;
@@ -653,7 +653,7 @@
 			}
 		});
 
-		s = Seriously();
+		s = new Seriously();
 		e = s.effect('testColorInput');
 
 		e.color = 'rgb(10, 20, 30)';
@@ -731,7 +731,7 @@
 			}
 		});
 
-		s = Seriously();
+		s = new Seriously();
 		e = s.effect('testEnumInput');
 
 		equal(e.input, 'foo', 'Default value');
@@ -893,7 +893,7 @@
 
 		expect(2);
 
-		seriously = Seriously();
+		seriously = new Seriously();
 		//create and destroy source twice
 		source = seriously.source('#colorbars');
 		source.destroy();
