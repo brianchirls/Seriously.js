@@ -1,5 +1,5 @@
 /*jslint devel: true, bitwise: true, browser: true, white: true, nomen: true, plusplus: true, maxerr: 50, indent: 4, todo: true */
-/*global Float32Array, Float64Array, Uint8Array, Uint16Array, WebGLTexture, HTMLInputElement, HTMLSelectElement, HTMLElement, WebGLFramebuffer, HTMLCanvasElement, WebGLRenderingContext, define, module */
+/*global Float32Array, Float64Array, Uint8Array, Uint16Array, WebGLTexture, HTMLInputElement, HTMLSelectElement, HTMLElement, WebGLFramebuffer, HTMLCanvasElement, WebGLRenderingContext, define, module, exports */
 (function (root, factory) {
 	'use strict';
 	if (typeof exports === 'object') {
@@ -33,9 +33,12 @@
 	testContext,
 	incompatibility,
 	seriousEffects = {},
+	seriousTransforms = {},
 	timeouts = [],
 	allEffectsByHook = {},
-	defaultTransform,
+	allTransformsByHook = {},
+	identity,
+	nop = function () {},
 
 	/*
 		Global reference variables
@@ -240,17 +243,17 @@
 				right = top*aspect;
 			return mat4.frustum(-right, right, -top, top, near, far, dest);
 		},
-		multiply: function (mat, mat2, dest) {
+		multiply: function (dest, mat, mat2) {
 			if (!dest) { dest = mat; }
 
 			// Cache the matrix values (makes for huge speed increases!)
-			var a00 = mat[ 0], a01 = mat[ 1], a02 = mat[ 2], a03 = mat[3],
-				a10 = mat[ 4], a11 = mat[ 5], a12 = mat[ 6], a13 = mat[7],
-				a20 = mat[ 8], a21 = mat[ 9], a22 = mat[10], a23 = mat[11],
+			var a00 = mat[0], a01 = mat[1], a02 = mat[2], a03 = mat[3],
+				a10 = mat[4], a11 = mat[5], a12 = mat[6], a13 = mat[7],
+				a20 = mat[8], a21 = mat[9], a22 = mat[10], a23 = mat[11],
 				a30 = mat[12], a31 = mat[13], a32 = mat[14], a33 = mat[15],
 
 			// Cache only the current line of the second matrix
-				b0 = mat2[0], b1 = mat2[1], b2 = mat2[2], b3 = mat2[3];
+			b0 = mat2[0], b1 = mat2[1], b2 = mat2[2], b3 = mat2[3];
 			dest[0] = b0*a00 + b1*a10 + b2*a20 + b3*a30;
 			dest[1] = b0*a01 + b1*a11 + b2*a21 + b3*a31;
 			dest[2] = b0*a02 + b1*a12 + b2*a22 + b3*a32;
@@ -303,16 +306,35 @@
 			dest[14] = 0;
 			dest[15] = 1;
 			return dest;
+		},
+		copy: function (out, a) {
+			out[0] = a[0];
+			out[1] = a[1];
+			out[2] = a[2];
+			out[3] = a[3];
+			out[4] = a[4];
+			out[5] = a[5];
+			out[6] = a[6];
+			out[7] = a[7];
+			out[8] = a[8];
+			out[9] = a[9];
+			out[10] = a[10];
+			out[11] = a[11];
+			out[12] = a[12];
+			out[13] = a[13];
+			out[14] = a[14];
+			out[15] = a[15];
+			return out;
 		}
 	},
 
 	requestAnimFrame = (function (){
 		var lastTime = 0;
-		return  window.requestAnimationFrame       ||
+		return  window.requestAnimationFrame	   ||
 				window.webkitRequestAnimationFrame ||
-				window.mozRequestAnimationFrame    ||
-				window.oRequestAnimationFrame      ||
-				window.msRequestAnimationFrame     ||
+				window.mozRequestAnimationFrame	||
+				window.oRequestAnimationFrame	  ||
+				window.msRequestAnimationFrame	 ||
 				function (callback) {
 					var currTime, timeToCall, id;
 
@@ -633,7 +655,7 @@
 			tex,
 			status;
 
-		useFloat = false && useFloat && !!gl.getExtension("OES_texture_float"); //useFloat is not ready!
+		useFloat = false;//useFloat && !!gl.getExtension("OES_texture_float"); //useFloat is not ready!
 		if (useFloat) {
 			this.type = gl.FLOAT;
 		} else {
@@ -962,6 +984,7 @@
 			nodeId = 0,
 			sources = [],
 			targets = [],
+			transforms = [],
 			effects = [],
 			aliases = {},
 			callbacks = [],
@@ -971,8 +994,8 @@
 			rectangleModel,
 			baseShader,
 			baseVertexShader, baseFragmentShader,
-			Node, SourceNode, EffectNode, TargetNode,
-			Effect, Source, Target,
+			Node, SourceNode, EffectNode, TransformNode, TargetNode,
+			Effect, Source, Transform, Target,
 			auto = false,
 			callbacksRunning = false,
 			isDestroyed = false;
@@ -1019,7 +1042,7 @@
 
 			shape.indices = new Uint16Array([
 				0, 1, 2,
-				0, 2, 3    // Front face
+				0, 2, 3	// Front face
 			]);
 
 			shape.coords = new Float32Array([
@@ -1205,9 +1228,14 @@
 
 		function findInputNode(source, options) {
 			var node, i;
-			if (source instanceof SourceNode || source instanceof EffectNode) {
+
+			if (source instanceof SourceNode ||
+					source instanceof EffectNode ||
+					source instanceof TransformNode) {
 				node = source;
-			} else if (source instanceof Effect || source instanceof Source) {
+			} else if (source instanceof Effect ||
+					source instanceof Source ||
+					source instanceof Transform) {
 				node = nodesById[source.id];
 
 				if (!node) {
@@ -1243,6 +1271,31 @@
 				setTimeoutZero(run);
 				callbacksRunning = true;
 			}
+		}
+
+		//trace back all sources to make sure we're not making a cyclical connection
+		function traceSources(node, original) {
+			var i,
+				source,
+				sources;
+
+			if (!(node instanceof EffectNode) && !(node instanceof TransformNode)) {
+				return false;
+			}
+
+			sources = node.sources;
+
+			for (i in sources) {
+				if (sources.hasOwnProperty(i)) {
+					source = sources[i];
+
+					if (source === original || traceSources(source, original)) {
+						return true;
+					}
+				}
+			}
+
+			return false;
 		}
 
 		Node = function (options) {
@@ -1358,7 +1411,7 @@
 		Node.prototype.reset = function () {
 			var i;
 			for (i = 0; i < 16; i++) {
-				this.transform[i] = defaultTransform[i];
+				this.transform[i] = identity[i];
 			}
 			this.transformed = false;
 			this.setDirty();
@@ -1380,7 +1433,6 @@
 			}
 		};
 
-
 		Node.prototype.setTransform = function (mat) {
 			var i, val, isDefault = true;
 
@@ -1399,7 +1451,7 @@
 				if (isNaN(val)) {
 					throw 'transform matrix must be array or typed array of 16 numbers.';
 				}
-				if (val !== defaultTransform[i]) {
+				if (val !== identity[i]) {
 					isDefault = false;
 				}
 				this.transform[i] = val;
@@ -1423,7 +1475,7 @@
 			} else {
 				mat4.identity(this.projection);
 				this.projection[0] = this.height / this.width;
-	//			this.projection[10] = 2/200;
+				//this.projection[10] = 2/200;
 				this.uniforms.srsSize[2] = 1;
 			}
 
@@ -1601,7 +1653,7 @@
 				if ( typeof input === 'string' && isNaN(input)) {
 					if (effectInput.type === 'enum') {
 						if (effectInput.options && effectInput.options.filter) {
-							i = ('' + input).toLowerCase();
+							i = String(input).toLowerCase();
 							value = effectInput.options.filter(function (e) {
 								return (typeof e === 'string' && e.toLowerCase() === i) ||
 									(e.length && typeof e[0] === 'string' && e[0].toLowerCase() === i);
@@ -1861,8 +1913,7 @@
 
 			this.destroy = function () {
 				var i,
-					descriptor,
-					nop = function () { };
+					descriptor;
 
 				me.destroy();
 
@@ -1885,7 +1936,7 @@
 		};
 
 		EffectNode = function (hook, options) {
-			var key;
+			var key, name, input;
 
 			Node.call(this, options);
 
@@ -1919,7 +1970,6 @@
 			//todo: set up frame buffer(s), inputs, transforms, stencils, draw method. allow plugin to override
 
 			this.inputs = {};
-			var name, input;
 			for (name in this.effect.inputs) {
 				if (this.effect.inputs.hasOwnProperty(name)) {
 					input = this.effect.inputs[name];
@@ -2096,7 +2146,7 @@
 				frameBuffer,
 				effect = this.effect,
 				that = this,
-				dirty = this.dirty || this.reusedFrameBuffer;
+				dirty = this.dirty;
 
 			if (!this.initialized) {
 				this.initialize();
@@ -2110,13 +2160,14 @@
 				for (i in this.sources) {
 					if (this.sources.hasOwnProperty(i) &&
 						(!effect.requires || effect.requires.call(this, i, this.inputs))) {
+
+						//todo: set source texture
+						//sourcetexture = this.sources[i].render() || this.sources[i].texture
 						this.sources[i].render();
 					}
 				}
 
-				if (this.reusedFrameBuffer) {
-					//todo: frameBuffer =
-				} else if (this.frameBuffer) {
+				if (this.frameBuffer) {
 					frameBuffer = this.frameBuffer.frameBuffer;
 				}
 
@@ -2136,36 +2187,11 @@
 				callback();
 			}
 
-			return this;
+			return this.texture;
 		};
 
 		EffectNode.prototype.setInput = function (name, value) {
 			var input, uniform;
-
-			//trace back all sources to make sure we're not making a cyclical connection
-			function traceSources(node, original) {
-				var i,
-					source,
-					sources;
-
-				if ( !(node instanceof EffectNode) ) {
-					return false;
-				}
-
-				sources = node.sources;
-
-				for (i in sources) {
-					if (sources.hasOwnProperty(i)) {
-						source = sources[i];
-
-						if ( source === original || traceSources(source, original) ) {
-							return true;
-						}
-					}
-				}
-
-				return false;
-			}
 
 			if (this.effect.inputs.hasOwnProperty(name)) {
 				input = this.effect.inputs[name];
@@ -2180,7 +2206,7 @@
 								this.sources[name].removeTarget(this);
 							}
 
-							if ( traceSources(value, this) ) {
+							if (traceSources(value, this)) {
 								throw 'Attempt to make cyclical connection.';
 							}
 
@@ -2727,8 +2753,7 @@
 					configurable: true,
 					get: function () {
 						return me.id;
-					},
-					set: function () {}
+					}
 				}
 			});
 
@@ -2801,8 +2826,7 @@
 
 			this.destroy = function () {
 				var i,
-					descriptor,
-					nop = function () { };
+					descriptor;
 
 				me.destroy();
 
@@ -2960,10 +2984,10 @@
 					}
 				} else if (!isNaN(height)) {
 					width = height;
-				} else {
+				}/* else {
 					//todo: guess based on dimensions of target canvas
 					//throw 'Must specify width and height when using a WebGL texture as a source';
-				}
+				}*/
 
 				this.desiredWidth = width;
 				this.desiredHeight = height;
@@ -2978,7 +3002,7 @@
 				this.initialized = true;
 
 				//todo: if WebGLTexture source is from a different context render it and copy it over
-				this.render = function () { };
+				this.render = function () {};
 			}
 
 			if (!matchedType) {
@@ -3400,8 +3424,7 @@
 
 			this.destroy = function () {
 				var i,
-					descriptor,
-					nop = function () { };
+					descriptor;
 
 				me.destroy();
 
@@ -3588,18 +3611,7 @@
 
 			//todo: what if source is null/undefined/false
 
-			if (source instanceof SourceNode || source instanceof EffectNode) {
-				newSource = source;
-			} else if (source instanceof Effect || source instanceof Source) {
-				newSource = nodesById[source.id];
-
-				if (!newSource) {
-					throw 'Cannot connect a foreign node';
-				}
-
-			} else {
-				newSource = findInputNode(source);
-			}
+			newSource = findInputNode(source);
 
 			//todo: check for cycles
 
@@ -3612,7 +3624,6 @@
 
 				this.setDirty();
 			}
-
 		};
 
 		TargetNode.prototype.setDirty = function () {
@@ -3664,6 +3675,7 @@
 				this.source.render();
 
 				this.uniforms.source = this.source.texture;
+				this.uniforms.transform = this.source.cumulativeMatrix || identity;
 				draw(baseShader, rectangleModel, this.uniforms, this.frameBuffer.frameBuffer, this);
 
 				this.dirty = false;
@@ -3744,6 +3756,320 @@
 			Node.prototype.destroy.call(this);
 		};
 
+		Transform = function (transformNode) {
+			var me = transformNode,
+				self = this,
+				key,
+				method;
+
+			function setProperty(name, def) {
+				// todo: validate value passed to 'set'
+				Object.defineProperty(self, name, {
+					configurable: true,
+					enumerable: true,
+					get: function (val) {
+						return def.get.call(me);
+					},
+					set: function (val) {
+						if (def.set.call(me, val)) {
+							me.setTransformDirty();
+						}
+					}
+				});
+			}
+
+			function makeMethod(method) {
+				return function (val) {
+					if (method(val)) {
+						me.setTransformDirty();
+					}
+				};
+			}
+
+			//priveleged accessor methods
+			Object.defineProperties(this, {
+				id: {
+					enumerable: true,
+					configurable: true,
+					get: function () {
+						return me.id;
+					}
+				},
+				source: {
+					enumerable: true,
+					configurable: true,
+					get: function () {
+						return me.source.pub;
+					},
+					set: function (source) {
+						me.setSource(source);
+					}
+				}
+			});
+
+			// attach methods
+			for (key in me.methods) {
+				if (me.methods.hasOwnProperty(key)) {
+					this[key] = makeMethod(me.methods[key].bind(me));
+				}
+			}
+
+			for (key in me.inputs) {
+				if (me.inputs.hasOwnProperty(key)) {
+					setProperty(key, me.inputs[key]);
+				}
+			}
+
+			this.update = function () {
+				me.setDirty();
+			};
+
+			this.setTransform = function (transform) {
+				me.setTransform(transform);
+				return this;
+			};
+
+			this.destroy = function () {
+				var i,
+					descriptor;
+
+				me.destroy();
+
+				for (i in this) {
+					if (this.hasOwnProperty(i) && i !== 'isDestroyed') {
+						//todo: probably can simplify this if the only setter/getter is id
+						descriptor = Object.getOwnPropertyDescriptor(this, i);
+						if (descriptor.get || descriptor.set ||
+								typeof this[i] !== 'function') {
+							delete this[i];
+						} else {
+							this[i] = nop;
+						}
+					}
+				}
+			};
+
+			this.isDestroyed = function () {
+				return me.isDestroyed;
+			};
+		};
+
+		TransformNode = function (hook, options) {
+			var width, height,
+				key,
+				input;
+
+			this.matrix = new Float32Array(16);
+			this.cumulativeMatrix = new Float32Array(16);
+
+			if (options) {
+				this.desiredWidth = parseInt(options.width, 10);
+				this.desiredHeight = parseInt(options.height, 10);
+			}
+
+			width = this.width = this.desiredWidth || 1;
+			height = this.height = this.desiredHeight || 1;
+
+			this.seriously = seriously;
+
+			this.transformRef = seriousTransforms[hook];
+			this.hook = hook;
+			this.id = nodeId;
+			nodes.push(this);
+			nodesById[nodeId] = this;
+			nodeId++;
+
+			this.options = options;
+			this.sources = null;
+			this.targets = [];
+			this.inputElements = {};
+			this.inputs = {};
+			this.methods = {};
+
+			this.dirty = true;
+			this.transformDirty = true;
+			this.isDestroyed = false;
+			this.transformed = false;
+
+			if (this.transformRef.definition) {
+				this.plugin = this.transformRef.definition.call(this, options);
+				for (key in this.transformRef) {
+					if (this.transformRef.hasOwnProperty(key) && !this.plugin[key]) {
+						this.plugin[key] = this.transformRef[key];
+					}
+				}
+
+				/*
+				todo: validate method definitions, check against reserved names
+				if (this.plugin.inputs !== this.transformRef.inputs) {
+					validateInputSpecs(this.plugin);
+				}
+				*/
+			} else {
+				this.plugin = extend({}, this.transformRef);
+			}
+
+			for (key in this.plugin.inputs) {
+				if (this.plugin.inputs.hasOwnProperty(key)) {
+					input = this.plugin.inputs[key];
+
+					if (input.method && typeof input.method === 'function') {
+						this.methods[key] = input.method;
+					} else if (typeof input.set === 'function' && typeof input.get === 'function') {
+						this.inputs[key] = input;
+					}
+				}
+			}
+
+			this.pub = new Transform(this);
+
+			transforms.push(this);
+
+			allTransformsByHook[hook].push(this);
+		};
+
+		TransformNode.prototype.setDirty = Node.prototype.setDirty;
+
+		TransformNode.prototype.setTransformDirty = function () {
+			this.transformDirty = true;
+			this.setDirty();
+		};
+
+		TransformNode.prototype.setSize = function (width, height) {
+			var i, maxWidth = 0, maxHeight = 0, dirty = false;
+
+			/*
+			todo: calculate size from source instead of targets
+			*/
+
+			if (width !== undefined) {
+				if (width <= 0) {
+					this.desiredWidth = null;
+				} else {
+					if (this.desiredWidth !== width) {
+						dirty = true;
+					}
+					this.desiredWidth = width;
+				}
+			}
+
+			if (height !== undefined) {
+				if (height <= 0) {
+					this.desiredHeight = null;
+				} else {
+					if (this.desiredHeight !== height) {
+						dirty = true;
+					}
+					this.desiredHeight = height;
+				}
+			}
+
+			if (!this.desiredWidth || !this.desiredHeight) {
+				for (i = 0; i < this.targets.length; i++) {
+					maxWidth = Math.max(maxWidth, this.targets[i].width);
+					maxHeight = Math.max(maxHeight, this.targets[i].height);
+				}
+
+				this.width = this.desiredWidth || maxWidth;
+				this.height = this.desiredHeight || maxHeight;
+
+				this.setTransformDirty();
+
+				for (i in this.sources) {
+					if (this.sources.hasOwnProperty(i) && this.sources[i].setSize) {
+						this.sources[i].setSize();
+					}
+				}
+			} else {
+				this.width = this.desiredWidth;
+				this.height = this.desiredHeight;
+
+				if (dirty) {
+					this.setTransformDirty();
+				}
+			}
+		};
+
+		TransformNode.prototype.setSource = function (source) {
+			var newSource;
+
+			//todo: what if source is null/undefined/false
+
+			newSource = findInputNode(source);
+
+			if (newSource === this.source) {
+				return;
+			}
+
+			if (traceSources(newSource, this)) {
+				throw 'Attempt to make cyclical connection.';
+			}
+
+			if (this.source) {
+				this.source.removeTarget(this);
+			}
+			this.source = newSource;
+			newSource.setTarget(this);
+
+			this.setTransformDirty();
+		};
+
+		TransformNode.prototype.setInput = function (input, value) {
+		};
+
+		TransformNode.prototype.setTarget = function (target) {
+			var i;
+			for (i = 0; i < this.targets.length; i++) {
+				if (this.targets[i] === target) {
+					return;
+				}
+			}
+
+			this.targets.push(target);
+
+			this.setSize();
+		};
+
+		TransformNode.prototype.removeTarget = function (target) {
+			var i = this.targets && this.targets.indexOf(target);
+			if (i >= 0) {
+				this.targets.splice(i, 1);
+			}
+
+			if (this.targets.length) {
+				this.setSize();
+			}
+		};
+
+		TransformNode.prototype.render = function () {
+			if (this.source) {
+				this.source.render();
+				this.texture = this.source.texture;
+			} else {
+				this.texture = null;
+			}
+
+			if (this.transformDirty) {
+				//todo: recalculate
+				if (this.transformed) {
+					//use this.matrix
+					if (this.source.cumulativeMatrix) {
+						mat4.multiply(this.cumulativeMatrix, this.matrix, this.source.cumulativeMatrix);
+					} else {
+						mat4.copy(this.cumulativeMatrix, this.matrix);
+					}
+				} else {
+					//copy source.cumulativeMatrix
+					mat4.copy(this.cumulativeMatrix, this.source.cumulativeMatrix || identity);
+				}
+
+				this.transformDirty = false;
+			}
+			this.dirty = false;
+
+			return this.texture;
+		};
+
 		/*
 		Initialize Seriously object based on options
 		*/
@@ -3757,7 +4083,6 @@
 		}
 
 		if (options.canvas) {
-
 		}
 
 		/*
@@ -3777,6 +4102,29 @@
 			//var sourceNode = new SourceNode(source, options);
 			return sourceNode.pub;
 		};
+
+		this.transform = function (hook, opts) {
+			var transformNode;
+
+			if (typeof hook !== 'string') {
+				opts = hook;
+				hook = false;
+			}
+
+			if (hook) {
+				if (!seriousTransforms[hook]) {
+					throw 'Unknown transforms: ' + hook;
+				}
+			} else {
+				hook = options && options.defaultTransform || '2d';
+				if (!seriousTransforms[hook]) {
+					throw 'No transform specified';
+				}
+			}
+
+			transformNode = new TransformNode(hook, opts);
+			return transformNode.pub;
+		}
 
 		this.target = function (target, options) {
 			var targetNode, i;
@@ -3860,8 +4208,7 @@
 		this.destroy = function () {
 			var i,
 				node,
-				descriptor,
-				nop = function () { };
+				descriptor;
 
 			while (nodes.length) {
 				node = nodes.shift();
@@ -3945,43 +4292,42 @@
 
 		//todo: load, save, find
 
-		baseVertexShader = '#ifdef GL_ES\n' +
-			'precision mediump float;\n' +
-			'#endif \n' +
-			'\n' +
-			'attribute vec4 position;\n' +
-			'attribute vec2 texCoord;\n' +
-			'\n' +
-			'uniform vec3 srsSize;\n' +
-			'uniform mat4 projection;\n' +
-			'uniform mat4 transform;\n' +
-			'\n' +
-			'varying vec2 vTexCoord;\n' +
-			'varying vec4 vPosition;\n' +
-			'\n' +
-			'void main(void) {\n' +
-			'	vec4 pos = position * vec4(srsSize.x / srsSize.y, 1.0, 1.0, 1.0);\n' +
-			'	gl_Position = transform * pos;\n' +
-			'	gl_Position.z -= srsSize.z;\n' +
-			'	gl_Position = projection * gl_Position;\n' +
-			'	gl_Position.z = 0.0;\n' + //prevent near clipping
-			'	vTexCoord = vec2(texCoord.s, texCoord.t);\n' +
-			'	vPosition = gl_Position;\n' +
-			'}\n';
+		baseVertexShader = [
+			'#ifdef GL_ES',
+			'precision mediump float;',
+			'#endif',
+			'',
+			'attribute vec4 position;',
+			'attribute vec2 texCoord;',
+			'',
+			'uniform mat4 transform;',
+			'',
+			'varying vec2 vTexCoord;',
+			'varying vec4 vPosition;',
+			'',
+			'void main(void) {',
+			'	gl_Position = position;',
+			'	vec4 tc = transform * vec4(texCoord.s, texCoord.t, 1.0, 1.0);',
+			'	vTexCoord = tc.xy / tc.w;',
+			'	vPosition = gl_Position;',
+			'}\n'
+		].join('\n');
 
-		baseFragmentShader = '#ifdef GL_ES\n\n' +
-			'precision mediump float;\n\n' +
-			'#endif\n\n' +
-			'\n' +
-			'varying vec2 vTexCoord;\n' +
-			'varying vec4 vPosition;\n' +
-			'\n' +
-			'uniform sampler2D source;\n' +
-			'\n' +
-			'void main(void) {\n' +
-			'	gl_FragColor = texture2D(source, vTexCoord);\n' +
-			'}\n';
-
+		baseFragmentShader = [
+			'#ifdef GL_ES',
+			'precision mediump float;',
+			'#endif',
+			'varying vec2 vTexCoord;',
+			'varying vec4 vPosition;',
+			'uniform sampler2D source;',
+			'void main(void) {',
+			'	if (any(lessThan(vTexCoord, vec2(0.0))) || any(greaterThan(vTexCoord, vec2(1.0)))) {',
+			'		gl_FragColor = vec4(0.0);',
+			'	} else {',
+			'		gl_FragColor = texture2D(source, vTexCoord);',
+			'	}',
+			'}'
+		].join('\n');
 	}
 
 	Seriously.incompatible = function (pluginHook) {
@@ -4082,6 +4428,73 @@
 		}
 
 		delete seriousEffects[hook];
+
+		return this;
+	};
+
+	Seriously.transform = function (hook, definition, meta) {
+		var transform;
+
+		if (seriousTransforms[hook]) {
+			console.log('Transform [' + hook + '] already loaded');
+			return;
+		}
+
+		if (meta === undefined && typeof definition === 'object') {
+			meta = definition;
+		}
+
+		if (!meta && !definition) {
+			return;
+		}
+
+		transform = extend({}, meta);
+
+		if (typeof definition === 'function') {
+			transform.definition = definition;
+		}
+
+		/*
+		todo: validate method definitions
+		if (effect.inputs) {
+			validateInputSpecs(effect);
+		}
+		*/
+
+		if (!transform.title) {
+			transform.title = hook;
+		}
+
+
+		seriousTransforms[hook] = transform;
+		allTransformsByHook[hook] = [];
+
+		return transform;
+	};
+
+	Seriously.removeTransform = function (hook) {
+		var all, transform, plugin;
+
+		if (!hook) {
+			return this;
+		}
+
+		plugin = seriousTransforms[hook];
+
+		if (!plugin) {
+			return this;
+		}
+
+		all = allTransformsByHook[hook];
+		if (all) {
+			while (all.length) {
+				transform = all[0];
+				transform.destroy();
+			}
+			delete allTransformsByHook[hook];
+		}
+
+		delete seriousTransforms[hook];
 
 		return this;
 	};
@@ -4294,14 +4707,12 @@
 	};
 
 	if (window.Float32Array) {
-		defaultTransform = new Float32Array([
+		identity = new Float32Array([
 			1, 0, 0, 0,
 			0, 1, 0, 0,
 			0, 0, 1, 0,
 			0, 0, 0, 1
 		]);
-		//todo: set scale
-	//	mat4.perspective(90, 1, 1, 100, new Float32Array(defaultTransform));
 	}
 
 	//check for plugins loaded out of order
@@ -4350,6 +4761,405 @@
 				'#endif\n'
 		}
 	};
+
+	/*
+	Default transform - 2D
+	Affine transforms
+	- translate
+	- rotate (degrees)
+	- scale
+	- skew
+
+	todo: move this to a different file when we have a build tool
+	*/
+	Seriously.transform('2d', function(options) {
+		var me = this,
+			degrees = !(options && options.radians),
+
+			centerX = 0.5,
+			centerY = 0.5,
+			scaleX = 1,
+			scaleY = 1,
+			translateX = 0,
+			translateY = 0,
+			rotation = 0,
+			skewX = 0,
+			skewY = 0;
+
+		//todo: skew order
+		//todo: invert?
+
+		function recompute() {
+			var matrix = me.matrix,
+				angle,
+				s, c;
+
+			function translate(x, y) {
+				matrix[12] = matrix[0] * x + matrix[4] * y + matrix[12];
+				matrix[13] = matrix[1] * x + matrix[5] * y + matrix[13];
+				matrix[14] = matrix[2] * x + matrix[6] * y + matrix[14];
+				matrix[15] = matrix[3] * x + matrix[7] * y + matrix[15];
+			}
+
+			if (!translateX &&
+					!translateY &&
+					!rotation &&
+					!skewX &&
+					!skewY &&
+					scaleX === 1 &&
+					scaleY === 1
+					) {
+				me.transformed = false;
+				return;
+			}
+
+			//calculate transformation matrix
+			mat4.identity(matrix);
+
+			translate(centerX - translateX, centerY - translateY);
+
+			//skew
+			if (skewX) {
+			}
+			if (skewY) {
+			}
+
+			if (rotation) {
+				//rotate
+				angle = -(degrees ? rotation * Math.PI / 180 : rotation);
+				//...rotate
+				s = Math.sin(angle);
+				c = Math.cos(angle);
+				matrix[0] = matrix[0] * c + matrix[4] * s;
+				matrix[1] = matrix[1] * c + matrix[5] * s;
+				matrix[2] = matrix[2] * c + matrix[6] * s;
+				matrix[3] = matrix[3] * c + matrix[7] * s;
+
+				matrix[0] = matrix[0] * s + matrix[4] * c;
+				matrix[1] = matrix[1] * s + matrix[5] * c;
+				matrix[2] = matrix[2] * s + matrix[6] * c;
+				matrix[3] = matrix[3] * s + matrix[7] * c;
+			}
+
+			//scale
+			if (scaleX !== 1) {
+				matrix[0] /= scaleX;
+				matrix[1] /= scaleX;
+				matrix[2] /= scaleX;
+				matrix[3] /= scaleX;
+			}
+			if (scaleY !== 1) {
+				matrix[4] /= scaleY;
+				matrix[5] /= scaleY;
+				matrix[6] /= scaleY;
+				matrix[7] /= scaleY;
+			}
+
+			translate(-centerX, -centerY);
+
+			me.transformed = true;
+		}
+
+		return {
+			inputs: {
+				reset: {
+					method: function() {
+						centerX = 0.5;
+						centerY = 0.5;
+						scaleX = 1;
+						scaleY = 1;
+						translateX = 0;
+						translateY = 0;
+						rotation = 0;
+						skewX = 0;
+						skewY = 0;
+
+						if (me.transformed) {
+							me.transformed = false;
+							return true;
+						}
+
+						return false;
+					},
+					type: [
+						'number',
+						'number'
+					]
+				},
+				translate: {
+					method: function(x, y) {
+						if (isNaN(x)) {
+							x = translateX;
+						}
+
+						if (isNaN(y)) {
+							y = translateY;
+						}
+
+						if (x === translateX && y === translateY) {
+							return false;
+						}
+
+						translateX = x;
+						translateY = y;
+
+						recompute();
+						return true;
+					},
+					type: [
+						'number',
+						'number'
+					]
+				},
+				translateX: {
+					get: function() {
+						return translateX;
+					},
+					set: function(x) {
+						if (x === translateX) {
+							return false;
+						}
+
+						translateX = x;
+
+						recompute();
+						return true;
+					},
+					type: 'number'
+				},
+				translateY: {
+					get: function() {
+						return translateY;
+					},
+					set: function(y) {
+						if (y === translateY) {
+							return false;
+						}
+
+						translateY = y;
+
+						recompute();
+						return true;
+					},
+					type: 'number'
+				},
+				rotation: {
+					get: function() {
+						return rotation;
+					},
+					set: function(angle) {
+						if (angle === rotation) {
+							return false;
+						}
+
+						//todo: fmod 360deg or Math.PI * 2 radians
+						rotation = angle;
+
+						recompute();
+						return true;
+					},
+					type: 'number'
+				},
+				center: {
+					method: function(x, y) {
+						if (isNaN(x)) {
+							x = centerX;
+						}
+
+						if (isNaN(y)) {
+							y = centerY;
+						}
+
+						if (x === centerX && y === centerY) {
+							return false;
+						}
+
+						centerX = x;
+						centerY = y;
+
+						recompute();
+						return true;
+					},
+					type: [
+						'number',
+						'number'
+					]
+				},
+				centerX: {
+					get: function() {
+						return centerX;
+					},
+					set: function(x) {
+						if (x === centerX) {
+							return false;
+						}
+
+						centerX = x;
+
+						recompute();
+						return true;
+					},
+					type: 'number'
+				},
+				centerY: {
+					get: function() {
+						return centerY;
+					},
+					set: function(y) {
+						if (y === centerY) {
+							return false;
+						}
+
+						centerY = y;
+
+						recompute();
+						return true;
+					},
+					type: 'number'
+				},
+				skew: {
+					method: function(x, y) {
+						if (isNaN(x)) {
+							x = skewX;
+						}
+
+						if (isNaN(y)) {
+							y = skewY;
+						}
+
+						if (x === skewX && y === skewY) {
+							return false;
+						}
+
+						skewX = x;
+						skewY = y;
+
+						recompute();
+						return true;
+					},
+					type: [
+						'number',
+						'number'
+					]
+				},
+				skewX: {
+					get: function() {
+						return skewX;
+					},
+					set: function(x) {
+						if (x === skewX) {
+							return false;
+						}
+
+						skewX = x;
+
+						recompute();
+						return true;
+					},
+					type: 'number'
+				},
+				skewY: {
+					get: function() {
+						return skewY;
+					},
+					set: function(y) {
+						if (y === skewY) {
+							return false;
+						}
+
+						skewY = y;
+
+						recompute();
+						return true;
+					},
+					type: 'number'
+				},
+				scale: {
+					method: function(x, y) {
+						var newX, newY;
+
+						if (isNaN(x)) {
+							newX = scaleX;
+						} else {
+							newX = x;
+						}
+
+						/*
+						if only one value is specified, set both x and y to the same scale
+						*/
+						if (isNaN(y)) {
+							if (isNaN(x)) {
+								return false;
+							}
+
+							newY = newX;
+						}
+
+						if (newX === scaleX && newY === scaleY) {
+							return false;
+						}
+
+						scaleX = newX;
+						scaleY = newY;
+
+						recompute();
+						return true;
+					},
+					type: [
+						'number',
+						'number'
+					]
+				},
+				scaleX: {
+					get: function() {
+						return scaleX;
+					},
+					set: function(x) {
+						if (x === scaleX) {
+							return false;
+						}
+
+						scaleX = x;
+
+						recompute();
+						return true;
+					},
+					type: 'number'
+				},
+				scaleY: {
+					get: function() {
+						return scaleY;
+					},
+					set: function(y) {
+						if (y === scaleY) {
+							return false;
+						}
+
+						scaleY = y;
+
+						recompute();
+						return true;
+					},
+					type: 'number'
+				}
+			}
+		}
+	}, {
+		title: '2D Transform',
+		description: 'Translate, Rotate, Scale, Skew'
+	});
+
+	/*
+	todo: additional transform node types
+	- perspective
+	- 2.5D/3D
+	- matrix
+	- flip horizontal/vertical
+	- reformat (crop to fit, letterbox/pillarbox)
+	- tile?
+	- crop? - maybe not - probably would just scale.
+	- camera shake?
+	*/
 
 	/*
 	 * simplex noise shaders
