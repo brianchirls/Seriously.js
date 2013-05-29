@@ -177,5 +177,4 @@
 		description: 'Display image as ascii text in 8-bit color.',
 		title: 'Ascii Text'
 	});
-
 }));

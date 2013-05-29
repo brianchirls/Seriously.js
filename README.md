@@ -34,6 +34,7 @@ Full documentation is in progress at the [wiki](https://github.com/brianchirls/S
 - Emboss
 - Exposure Adjust
 - Fader
+- Film Grain
 - Hex Tiles
 - Hue/Saturation Adjust
 - Invert
