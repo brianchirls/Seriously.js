@@ -1137,19 +1137,18 @@
 			var numTextures = 0,
 				name, value, shaderUniform,
 				width, height,
-				nodeGl = (node && node.gl) || gl,
-				opts = options || {};
+				nodeGl = (node && node.gl) || gl;
 
 			if (!nodeGl) {
 				return;
 			}
 
 			if (node) {
-				width = opts.width || node.width || nodeGl.canvas.width;
-				height = opts.height || node.height || nodeGl.canvas.height;
+				width = options && options.width || node.width || nodeGl.canvas.width;
+				height = options && options.height || node.height || nodeGl.canvas.height;
 			} else {
-				width = opts.width || nodeGl.canvas.width;
-				height = opts.height || nodeGl.canvas.height;
+				width = options && options.width || nodeGl.canvas.width;
+				height = options && options.height || nodeGl.canvas.height;
 			}
 
 			shader.use();
@@ -1173,14 +1172,14 @@
 			nodeGl.bindBuffer(nodeGl.ELEMENT_ARRAY_BUFFER, model.index);
 
 			//default for depth is disable
-			if (opts.depth) {
+			if (options && options.depth) {
 				gl.enable(gl.DEPTH_TEST);
 			} else {
 				gl.disable(gl.DEPTH_TEST);
 			}
 
 			//default for blend is enable
-			if (opts.blend === undefined || opts.blend) {
+			if (!options || options.blend === undefined || options.blend) {
 				gl.enable(gl.BLEND);
 				gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA,
 									gl.SRC_ALPHA, gl.DST_ALPHA);
@@ -1215,7 +1214,7 @@
 			}
 
 			//default for clear is true
-			if (opts.clear === undefined || opts.clear) {
+			if (!options || options.clear === undefined || options.clear) {
 				nodeGl.clearColor(0.0, 0.0, 0.0, 0.0);
 				nodeGl.clear(nodeGl.COLOR_BUFFER_BIT | nodeGl.DEPTH_BUFFER_BIT);
 			}
@@ -2775,56 +2774,6 @@
 				return this;
 			};
 
-			this.setTransform = function (transform) {
-				me.setTransform(transform);
-				return this;
-			};
-
-			this.perspective = function (fov) {
-				me.perspective(fov);
-				return this;
-			};
-
-			this.translate = function (x, y, z) {
-				me.translate(x, y, z);
-				return this;
-			};
-
-			this.translateX = function (amount) {
-				me.translate(amount, 0, 0);
-				return this;
-			};
-
-			this.translateY = function (amount) {
-				me.translateY(0, amount, 0);
-				return this;
-			};
-
-			this.translateZ = function (amount) {
-				me.translateZ(0, 0, amount);
-				return this;
-			};
-
-			this.scale = function (x, y) {
-				me.scale(x, y);
-				return this;
-			};
-
-			this.rotateX = function (angle) {
-				me.rotateX(angle);
-				return this;
-			};
-
-			this.rotateY = function (angle) {
-				me.rotateY(angle);
-				return this;
-			};
-
-			this.rotateZ = function (angle) {
-				me.rotateZ(angle);
-				return this;
-			};
-
 			this.destroy = function () {
 				var i,
 					descriptor;
@@ -2999,7 +2948,7 @@
 				}
 				matchedType = true;
 
-				this.sourceTexture = source;
+				this.texture = source;
 				this.initialized = true;
 
 				//todo: if WebGLTexture source is from a different context render it and copy it over
@@ -3032,7 +2981,7 @@
 		extend(SourceNode, Node);
 
 		SourceNode.prototype.initialize = function () {
-			if (!gl || this.sourceTexture) {
+			if (!gl || this.texture) {
 				return;
 			}
 
@@ -3044,7 +2993,7 @@
 			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 			gl.bindTexture(gl.TEXTURE_2D, null);
 
-			this.sourceTexture = texture;
+			this.texture = texture;
 			this.initialized = true;
 			this.allowRefresh = true;
 			this.setDirty();
@@ -3068,7 +3017,7 @@
 			}
 		};
 
-		SourceNode.prototype.renderVideo = function (callback) {
+		SourceNode.prototype.renderVideo = function () {
 			var video = this.source;
 
 			if (!gl || !video || !video.videoHeight || !video.videoWidth || video.readyState < 2) {
@@ -3087,7 +3036,7 @@
 				this.lastRenderFrame !== video.mozPresentedFrames ||
 				this.lastRenderTime !== video.currentTime) {
 
-				gl.bindTexture(gl.TEXTURE_2D, this.sourceTexture);
+				gl.bindTexture(gl.TEXTURE_2D, this.texture);
 				gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, this.flip);
 				try {
 					gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, video);
@@ -3104,28 +3053,11 @@
 				}
 				this.lastRenderFrame = video.mozPresentedFrames;
 				this.lastRenderTimeStamp = Date.now();
-			}
-
-			if (this.transformed || this.fov) {
-				if (!this.frameBuffer) {
-					this.initFrameBuffer();
-				}
-				this.texture = this.frameBuffer.texture;
-				this.uniforms.source = this.sourceTexture;
-				if (this.dirty) {
-					draw(baseShader, rectangleModel, this.uniforms, this.frameBuffer.frameBuffer, this);
-				}
-			} else {
-				this.texture = this.sourceTexture;
-			}
-
-			this.dirty = false;
-			if (callback && typeof callback === 'function') {
-				callback();
+				this.dirty = false;
 			}
 		};
 
-		SourceNode.prototype.renderImageCanvas = function (callback) {
+		SourceNode.prototype.renderImageCanvas = function () {
 			var media = this.source;
 
 			if (!gl || !media || !media.height || !media.width) {
@@ -3141,7 +3073,7 @@
 			}
 
 			if (this.dirty) {
-				gl.bindTexture(gl.TEXTURE_2D, this.sourceTexture);
+				gl.bindTexture(gl.TEXTURE_2D, this.texture);
 				gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, this.flip);
 				try {
 					gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, media);
@@ -3153,29 +3085,11 @@
 				}
 
 				this.lastRenderTime = Date.now() / 1000;
-				this.dirty = true;
-			}
-
-			if (this.transformed || this.fov) {
-				if (!this.frameBuffer) {
-					this.initFrameBuffer();
-				}
-				this.texture = this.frameBuffer.texture;
-				this.uniforms.source = this.sourceTexture;
-				if (this.dirty) {
-					draw(baseShader, rectangleModel, this.uniforms, this.frameBuffer.frameBuffer, this);
-				}
-			} else {
-				this.texture = this.sourceTexture;
-			}
-			this.dirty = false;
-
-			if (callback && typeof callback === 'function') {
-				callback();
+				this.dirty = false;
 			}
 		};
 
-		SourceNode.prototype.renderTypedArray = function (callback) {
+		SourceNode.prototype.renderTypedArray = function () {
 			var media = this.source;
 
 			if (!gl || !media || !media.length) {
@@ -3193,30 +3107,12 @@
 			}
 
 			if (this.dirty) {
-				gl.bindTexture(gl.TEXTURE_2D, this.sourceTexture);
+				gl.bindTexture(gl.TEXTURE_2D, this.texture);
 				gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, this.flip);
 				gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, this.width, this.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, media);
 
 				this.lastRenderTime = Date.now() / 1000;
-				this.dirty = true;
-			}
-
-			if (this.transformed || this.fov) {
-				if (!this.frameBuffer) {
-					this.initFrameBuffer();
-				}
-				this.texture = this.frameBuffer.texture;
-				this.uniforms.source = this.sourceTexture;
-				if (this.dirty) {
-					draw(baseShader, rectangleModel, this.uniforms, this.frameBuffer.frameBuffer, this);
-				}
-			} else {
-				this.texture = this.sourceTexture;
-			}
-			this.dirty = false;
-
-			if (callback && typeof callback === 'function') {
-				callback();
+				this.dirty = false;
 			}
 		};
 
@@ -3348,8 +3244,8 @@
 				}
 			});
 
-			this.render = function (callback) {
-				me.render(callback);
+			this.render = function () {
+				me.render();
 			};
 
 			this.readPixels = function (x, y, width, height, dest) {
@@ -3358,56 +3254,6 @@
 
 			this.reset = function () {
 				me.reset();
-				return this;
-			};
-
-			this.setTransform = function (transform) {
-				me.setTransform(transform);
-				return this;
-			};
-
-			this.perspective = function (fov) {
-				me.perspective(fov);
-				return this;
-			};
-
-			this.translate = function (x, y, z) {
-				me.translate(x, y, z);
-				return this;
-			};
-
-			this.translateX = function (amount) {
-				me.translate(amount, 0, 0);
-				return this;
-			};
-
-			this.translateY = function (amount) {
-				me.translateY(0, amount, 0);
-				return this;
-			};
-
-			this.translateZ = function (amount) {
-				me.translateZ(0, 0, amount);
-				return this;
-			};
-
-			this.scale = function (x, y) {
-				me.scale(x, y);
-				return this;
-			};
-
-			this.rotateX = function (angle) {
-				me.rotateX(angle);
-				return this;
-			};
-
-			this.rotateY = function (angle) {
-				me.rotateY(angle);
-				return this;
-			};
-
-			this.rotateZ = function (angle) {
-				me.rotateZ(angle);
 				return this;
 			};
 
@@ -3825,11 +3671,6 @@
 				me.setDirty();
 			};
 
-			this.setTransform = function (transform) {
-				me.setTransform(transform);
-				return this;
-			};
-
 			this.destroy = function () {
 				var i,
 					descriptor;
@@ -3887,6 +3728,10 @@
 			this.inputs = {};
 			this.methods = {};
 
+			this.texture = null;
+			this.frameBuffer = null;
+			this.uniforms = null;
+
 			this.dirty = true;
 			this.transformDirty = true;
 			this.isDestroyed = false;
@@ -3932,8 +3777,18 @@
 		TransformNode.prototype.setDirty = Node.prototype.setDirty;
 
 		TransformNode.prototype.setTransformDirty = function () {
+			var i,
+				target;
 			this.transformDirty = true;
-			this.setDirty();
+			this.dirty = true;
+			for (i = 0; i < this.targets.length; i++) {
+				target = this.targets[i];
+				if (target.setTransformDirty) {
+					target.setTransformDirty();
+				} else {
+					target.setDirty();
+				}
+			}
 		};
 
 		TransformNode.prototype.setSize = function (width, height) {
@@ -3989,6 +3844,9 @@
 					this.setTransformDirty();
 				}
 			}
+
+			//todo: set uniforms.resolution
+			//todo: resize framebuffer if it exists
 		};
 
 		TransformNode.prototype.setSource = function (source) {
@@ -4042,16 +3900,12 @@
 			}
 		};
 
-		TransformNode.prototype.render = function () {
+		TransformNode.prototype.render = function (renderTransform) {
 			if (this.source) {
 				this.source.render();
-				this.texture = this.source.texture;
-			} else {
-				this.texture = null;
 			}
 
 			if (this.transformDirty) {
-				//todo: recalculate
 				if (this.transformed) {
 					//use this.matrix
 					if (this.source.cumulativeMatrix) {
@@ -4066,7 +3920,34 @@
 
 				this.transformDirty = false;
 			}
-			this.dirty = false;
+
+			if (renderTransform && gl) {
+				if (this.dirty) {
+					if (!this.frameBuffer) {
+						this.uniforms = {
+							resolution: [this.width, this.height]
+						};
+						this.frameBuffer = new FrameBuffer(gl, this.width, this.height);
+					} else {
+						//todo: do this inside resize
+						this.uniforms.resolution[0] = this.width;
+						this.uniforms.resolution[1] = this.height;
+					}
+
+
+					this.uniforms.source = this.source.texture;
+					this.uniforms.transform = this.cumulativeMatrix || identity;
+					draw(baseShader, rectangleModel, this.uniforms, this.frameBuffer.frameBuffer, this);
+
+					this.dirty = false;
+				}
+				this.texture = this.frameBuffer.texture;
+			} else if (this.source) {
+				this.texture = this.source.texture;
+			} else {
+				this.texture = null;
+			}
+
 
 			return this.texture;
 		};
@@ -4125,7 +4006,7 @@
 
 			transformNode = new TransformNode(hook, opts);
 			return transformNode.pub;
-		}
+		};
 
 		this.target = function (target, options) {
 			var targetNode, i;
@@ -4297,19 +4178,26 @@
 			'#ifdef GL_ES',
 			'precision mediump float;',
 			'#endif',
-			'',
+
 			'attribute vec4 position;',
 			'attribute vec2 texCoord;',
-			'',
+
+			'uniform vec2 resolution;',
 			'uniform mat4 transform;',
-			'',
+
 			'varying vec2 vTexCoord;',
 			'varying vec4 vPosition;',
-			'',
+
 			'void main(void) {',
-			'	gl_Position = position;',
-			'	vec4 tc = transform * vec4(texCoord.s, texCoord.t, 1.0, 1.0);',
-			'	vTexCoord = tc.xy / tc.w;',
+			// first convert to screen space
+			'	vec4 screenPosition = vec4(position.xy * resolution / 2.0, position.z, position.w);',
+			'	screenPosition = transform * screenPosition;',
+
+			// convert back to OpenGL coords
+			'	gl_Position = screenPosition;',
+			'	gl_Position.xy = screenPosition.xy * 2.0 / resolution;',
+			'	gl_Position.z = screenPosition.z * 2.0 / (resolution.x / resolution.y);',
+			'	vTexCoord = texCoord;',
 			'	vPosition = gl_Position;',
 			'}\n'
 		].join('\n');
@@ -4322,11 +4210,13 @@
 			'varying vec4 vPosition;',
 			'uniform sampler2D source;',
 			'void main(void) {',
+			/*
 			'	if (any(lessThan(vTexCoord, vec2(0.0))) || any(greaterThan(vTexCoord, vec2(1.0)))) {',
 			'		gl_FragColor = vec4(0.0);',
 			'	} else {',
+			*/
 			'		gl_FragColor = texture2D(source, vTexCoord);',
-			'	}',
+			//'	}',
 			'}'
 		].join('\n');
 	}
@@ -4777,8 +4667,8 @@
 		var me = this,
 			degrees = !(options && options.radians),
 
-			centerX = 0.5,
-			centerY = 0.5,
+			centerX = 0,
+			centerY = 0,
 			scaleX = 1,
 			scaleY = 1,
 			translateX = 0,
@@ -4793,7 +4683,15 @@
 		function recompute() {
 			var matrix = me.matrix,
 				angle,
-				s, c;
+				s, c,
+				m00,
+				m01,
+				m02,
+				m03,
+				m10,
+				m11,
+				m12,
+				m13;
 
 			function translate(x, y) {
 				matrix[12] = matrix[0] * x + matrix[4] * y + matrix[12];
@@ -4817,43 +4715,53 @@
 			//calculate transformation matrix
 			mat4.identity(matrix);
 
-			translate(centerX - translateX, centerY - translateY);
+			translate(translateX + centerX, translateY + centerY);
 
 			//skew
 			if (skewX) {
+				matrix[4] = skewX / me.width;
 			}
 			if (skewY) {
+				matrix[1] = skewY / me.height;
 			}
 
 			if (rotation) {
+				m00 = matrix[0];
+				m01 = matrix[1];
+				m02 = matrix[2];
+				m03 = matrix[3];
+				m10 = matrix[4];
+				m11 = matrix[5];
+				m12 = matrix[6];
+				m13 = matrix[7];
+
 				//rotate
 				angle = -(degrees ? rotation * Math.PI / 180 : rotation);
 				//...rotate
 				s = Math.sin(angle);
 				c = Math.cos(angle);
-				matrix[0] = matrix[0] * c + matrix[4] * s;
-				matrix[1] = matrix[1] * c + matrix[5] * s;
-				matrix[2] = matrix[2] * c + matrix[6] * s;
-				matrix[3] = matrix[3] * c + matrix[7] * s;
-
-				matrix[0] = matrix[0] * s + matrix[4] * c;
-				matrix[1] = matrix[1] * s + matrix[5] * c;
-				matrix[2] = matrix[2] * s + matrix[6] * c;
-				matrix[3] = matrix[3] * s + matrix[7] * c;
+				matrix[0] = m00 * c + m10 * s;
+				matrix[1] = m01 * c + m11 * s;
+				matrix[2] = m02 * c + m12 * s;
+				matrix[3] = m03 * c + m13 * s;
+				matrix[4] = m10 * c - m00 * s;
+				matrix[5] = m11 * c - m01 * s;
+				matrix[6] = m12 * c - m02 * s;
+				matrix[7] = m13 * c - m03 * s;
 			}
 
 			//scale
 			if (scaleX !== 1) {
-				matrix[0] /= scaleX;
-				matrix[1] /= scaleX;
-				matrix[2] /= scaleX;
-				matrix[3] /= scaleX;
+				matrix[0] *= scaleX;
+				matrix[1] *= scaleX;
+				matrix[2] *= scaleX;
+				matrix[3] *= scaleX;
 			}
 			if (scaleY !== 1) {
-				matrix[4] /= scaleY;
-				matrix[5] /= scaleY;
-				matrix[6] /= scaleY;
-				matrix[7] /= scaleY;
+				matrix[4] *= scaleY;
+				matrix[5] *= scaleY;
+				matrix[6] *= scaleY;
+				matrix[7] *= scaleY;
 			}
 
 			translate(-centerX, -centerY);
@@ -4865,8 +4773,8 @@
 			inputs: {
 				reset: {
 					method: function() {
-						centerX = 0.5;
-						centerY = 0.5;
+						centerX = 0;
+						centerY = 0;
 						scaleX = 1;
 						scaleY = 1;
 						translateX = 0;
@@ -5144,10 +5052,71 @@
 					type: 'number'
 				}
 			}
-		}
+		};
 	}, {
 		title: '2D Transform',
 		description: 'Translate, Rotate, Scale, Skew'
+	});
+
+	/*
+	todo: move this to a different file when we have a build tool
+	*/
+	Seriously.transform('flip', function(options) {
+		var me = this,
+			horizontal = true;
+
+		function recompute() {
+			var matrix = me.matrix;
+
+			//calculate transformation matrix
+			//mat4.identity(matrix);
+
+			//scale
+			if (horizontal) {
+				matrix[0] = -1;
+				matrix[5] = 1;
+			} else {
+				matrix[0] = 1;
+				matrix[5] = -1;
+			}
+		}
+
+		mat4.identity(me.matrix);
+		recompute();
+
+		me.transformDirty = true;
+
+		me.transformed = true;
+
+		return {
+			inputs: {
+				direction: {
+					get: function() {
+						return horizontal ? 'horizontal' : 'vertical';
+					},
+					set: function(d) {
+						var horiz;
+						if (d === 'vertical') {
+							horiz = false;
+						} else {
+							horiz = true;
+						}
+
+						if (horiz === horizontal) {
+							return false;
+						}
+
+						horizontal = horiz;
+						recompute();
+						return true;
+					},
+					type: 'string'
+				}
+			}
+		};
+	}, {
+		title: 'Flip',
+		description: 'Flip Horizontal/Vertical'
 	});
 
 	/*
@@ -5157,7 +5126,6 @@
 	- matrix
 	- flip horizontal/vertical
 	- reformat (crop to fit, letterbox/pillarbox)
-	- tile?
 	- crop? - maybe not - probably would just scale.
 	- camera shake?
 	*/
