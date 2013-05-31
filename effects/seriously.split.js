@@ -20,81 +20,86 @@
 	Seriously.plugin('split', function () {
 		var baseShader;
 		return {
-			initialize: function (parent) {
-				parent();
-			},
 			shader: function (inputs, shaderSource) {
 				baseShader = new Seriously.util.ShaderProgram(this.gl, shaderSource.vertex, shaderSource.fragment);
 
-				shaderSource.vertex = '#ifdef GL_ES\n' +
-					'precision mediump float;\n' +
-					'#endif \n' +
-					'\n' +
-					'attribute vec4 position;\n' +
-					'attribute vec2 texCoord;\n' +
-					'\n' +
-					'uniform vec3 srsSize;\n' +
-					'uniform mat4 projection;\n' +
-					'uniform mat4 transform;\n' +
-					'\n' +
-					'varying vec2 vTexCoord;\n' +
-					'varying vec4 vPosition;\n' +
-					'\n' +
-					'uniform float angle;\n' +
-					'varying float c;\n' +
-					'varying float s;\n' +
-					'varying float t;\n' +
-					'\n' +
-					'void main(void) {\n' +
-					'   c = cos(angle);\n' +
-					'   s = sin(angle);\n' +
-					'	t = abs(c + s);\n' +
-					'\n' +
-					'	vec4 pos = position * vec4(srsSize.x / srsSize.y, 1.0, 1.0, 1.0);\n' +
-					'	gl_Position = transform * pos;\n' +
-					'	gl_Position.z -= srsSize.z;\n' +
-					'	gl_Position = projection * gl_Position;\n' +
-					'	gl_Position.z = 0.0;\n' + //prevent near clipping
-					'	vTexCoord = vec2(texCoord.s, texCoord.t);\n' +
-					'}\n';
-				shaderSource.fragment = '#ifdef GL_ES\n\n' +
-					'precision mediump float;\n\n' +
-					'#endif\n\n' +
-					'\n' +
-					'varying vec2 vTexCoord;\n' +
-					'varying vec4 vPosition;\n' +
-					'\n' +
-					'varying float c;\n' +
-					'varying float s;\n' +
-					'varying float t;\n' +
-					'\n' +
-					'uniform sampler2D sourceA;\n' +
-					'uniform sampler2D sourceB;\n' +
-					'uniform float split;\n' +
-					'uniform float angle;\n' +
-					'uniform float fuzzy;\n' +
-					'\n' +
-					'void main(void) {\n' +
-					'	float mn = (split - fuzzy * (1.0 - split));\n' +
-					'	float mx = (split + fuzzy * split);;\n' +
-					'	vec2 coords = vTexCoord - vec2(0.5);\n' +
-					'	coords = vec2(coords.x * c - coords.y * s, coords.x * s + coords.y * c);\n' +
-					'	float scale = max(abs(c - s), abs(s + c));\n' +
-					'	coords /= scale;\n' +
-					'	coords += vec2(0.5);\n' +
-					'	float x = coords.x;;\n' +
-					'	if (x <= mn) {\n' +
-					'		gl_FragColor = texture2D(sourceB, vTexCoord);\n' +
-					'		return;\n' +
-					'	}\n' +
-					'	if (x >= mx) {\n' +
-					'		gl_FragColor = texture2D(sourceA, vTexCoord);\n' +
-					'		return;\n' +
-					'	}\n' +
-					'	vec4 pixel1 = texture2D(sourceA, vTexCoord);\n' +
-					'	vec4 pixel2 = texture2D(sourceB, vTexCoord);\n' +
-					'	gl_FragColor = mix(pixel2, pixel1, smoothstep(mn, mx, x));\n' +
-					'}\n';
+				shaderSource.vertex = [
+					'#ifdef GL_ES',
+					'precision mediump float;',
+					'#endif ',
+
+					'attribute vec4 position;',
+					'attribute vec2 texCoord;',
+
+					'uniform vec2 resolution;',
+					'uniform mat4 projection;',
+					'uniform mat4 transform;',
+
+					'varying vec2 vTexCoord;',
+					'varying vec4 vPosition;',
+
+					'uniform float angle;',
+					'varying float c;',
+					'varying float s;',
+					'varying float t;',
+
+					'void main(void) {',
+					'   c = cos(angle);',
+					'   s = sin(angle);',
+					'	t = abs(c + s);',
+
+					// first convert to screen space
+					'	vec4 screenPosition = vec4(position.xy * resolution / 2.0, position.z, position.w);',
+					'	screenPosition = transform * screenPosition;',
+
+					// convert back to OpenGL coords
+					'	gl_Position = screenPosition;',
+					'	gl_Position.xy = screenPosition.xy * 2.0 / resolution;',
+					'	gl_Position.z = screenPosition.z * 2.0 / (resolution.x / resolution.y);',
+					'	vTexCoord = texCoord;',
+					'	vPosition = gl_Position;',
+					'}'
+				].join('\n');
+				shaderSource.fragment = [
+					'#ifdef GL_ES\n',
+					'precision mediump float;\n',
+					'#endif\n',
+
+					'varying vec2 vTexCoord;',
+					'varying vec4 vPosition;',
+
+					'varying float c;',
+					'varying float s;',
+					'varying float t;',
+
+					'uniform sampler2D sourceA;',
+					'uniform sampler2D sourceB;',
+					'uniform float split;',
+					'uniform float angle;',
+					'uniform float fuzzy;',
+
+					'void main(void) {',
+					'	float mn = (split - fuzzy * (1.0 - split));',
+					'	float mx = (split + fuzzy * split);;',
+					'	vec2 coords = vTexCoord - vec2(0.5);',
+					'	coords = vec2(coords.x * c - coords.y * s, coords.x * s + coords.y * c);',
+					'	float scale = max(abs(c - s), abs(s + c));',
+					'	coords /= scale;',
+					'	coords += vec2(0.5);',
+					'	float x = coords.x;;',
+					'	if (x <= mn) {',
+					'		gl_FragColor = texture2D(sourceB, vTexCoord);',
+					'		return;',
+					'	}',
+					'	if (x >= mx) {',
+					'		gl_FragColor = texture2D(sourceA, vTexCoord);',
+					'		return;',
+					'	}',
+					'	vec4 pixel1 = texture2D(sourceA, vTexCoord);',
+					'	vec4 pixel2 = texture2D(sourceB, vTexCoord);',
+					'	gl_FragColor = mix(pixel2, pixel1, smoothstep(mn, mx, x));',
+					'}'
+				].join('\n');
 
 				return shaderSource;
 			},

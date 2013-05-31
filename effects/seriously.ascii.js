@@ -82,6 +82,10 @@
 				gl.bindTexture(gl.TEXTURE_2D, this.texture || this.frameBuffer && this.frameBuffer.texture);
 				gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
 				gl.bindTexture(gl.TEXTURE_2D, null);
+
+				scaledBuffer = new Seriously.util.FrameBuffer(gl, 1, 1);
+
+				this.uniforms.transform = identity;
 			},
 			shader: function (inputs, shaderSource) {
 				baseShader = new Seriously.util.ShaderProgram(this.gl, shaderSource.vertex, shaderSource.fragment);
@@ -96,13 +100,13 @@
 					'uniform sampler2D source;\n' +
 					'uniform sampler2D letters;\n' +
 					'uniform vec4 background;\n' +
-					'uniform vec3 srsSize;\n' +
+					'uniform vec2 resolution;\n' +
 					'\n' +
 					'const vec3 lumcoeff = vec3(0.2125,0.7154,0.0721);\n' +
 					'const vec2 fontSize = vec2(8.0, 8.0);\n' +
 					'\n' +
 					'vec4 lookup(float ascii) {\n' +
-					'	vec2 pos = mod(vTexCoord * srsSize.xy, fontSize) / vec2(752.0, fontSize.x) + vec2(ascii, 0.0);\n' +
+					'	vec2 pos = mod(vTexCoord * resolution, fontSize) / vec2(752.0, fontSize.x) + vec2(ascii, 0.0);\n' +
 					'	return texture2D(letters, pos);\n' +
 					'}\n' +
 					'\n' +
@@ -124,25 +128,14 @@
 					scaledWidth = Math.ceil(width / 8);
 					scaledHeight = Math.ceil(height / 8);
 
-					//todo: calculate projection based on width/height
-					//mat4.perspective(this.fov, this.width / this.height, 1, 100, this.projection);
-					//uniforms.projection = identity;
-					uniforms.transform = identity;
+					unif.resolution = uniforms.resolution;
+					unif.transform = identity;
 
-					unif.srsSize = uniforms.srsSize;
-					unif.projection = this.projection;
-					unif.transform = this.transform;
-
-					if (scaledBuffer) {
-						scaledBuffer.destroy();
-					}
-
-					scaledBuffer = new Seriously.util.FrameBuffer(gl, scaledWidth, scaledHeight);
+					scaledBuffer.resize(scaledWidth, scaledHeight);
 
 					//so it stays blocky
 					gl.bindTexture(gl.TEXTURE_2D, scaledBuffer.texture);
 					gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-
 				}
 
 
@@ -152,11 +145,18 @@
 					blend: false
 				});
 
-				unif.transform = this.transform;
 				unif.source = scaledBuffer.texture;
 				unif.background = uniforms.background;
 
 				parent(shader, model, unif, frameBuffer);
+			},
+			destroy: function () {
+				if (scaledBuffer) {
+					scaledBuffer.destroy();
+				}
+				if (gl && lettersTexture) {
+					gl.deleteTexture(lettersTexture);
+				}
 			}
 		};
 	},

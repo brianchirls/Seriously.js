@@ -31,12 +31,13 @@
 				'varying vec4 vPosition;\n' +
 				'\n' +
 				'uniform sampler2D source;\n' +
-				'uniform float resolution;\n' +
+				'uniform vec2 resolution;\n' +
 				'\n' +
-				'float n0 = 97.0 / resolution;\n' +
-				'float n1 = 15.0 / resolution;\n' +
-				'float n2 = 97.0 / resolution;\n' +
-				'float n3 = 9.7 / resolution;\n' +
+				'float res = resolution.x;\n' +
+				'float n0 = 97.0 / res;\n' +
+				'float n1 = 15.0 / res;\n' +
+				'float n2 = 97.0 / res;\n' +
+				'float n3 = 9.7 / res;\n' +
 				'float total = n2 + ( 4.0 * n0 ) + ( 4.0 * n1 );\n' +
 				'const vec3 div3 = vec3(1.0 / 3.0);\n' +
 				'\n' +
@@ -72,7 +73,7 @@
 				'}\n';
 			return shaderSource;
 		},
-		inPlace: true,
+		inPlace: false,
 		inputs: {
 			source: {
 				type: 'image',
@@ -81,7 +82,7 @@
 			},
 			resolution: {
 				type: 'number',
-				uniform: 'resolution',
+				uniform: 'res',
 				min: 1,
 				defaultValue: 640
 			}

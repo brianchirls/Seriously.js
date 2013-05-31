@@ -54,7 +54,6 @@
 			uniforms.dim[1] = this.height;
 			parent(shader, model, uniforms, frameBuffer);
 		},
-		inPlace: true,
 		inputs: {
 			source: {
 				type: 'image',

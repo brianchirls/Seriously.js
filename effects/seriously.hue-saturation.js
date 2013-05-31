@@ -21,73 +21,81 @@
 
 	Seriously.plugin('hue-saturation', {
 		shader: function (inputs, shaderSource) {
-			shaderSource.vertex =  '#ifdef GL_ES\n' +
-				'precision mediump float;\n' +
-				'#endif \n' +
-				'\n' +
-				'attribute vec4 position;\n' +
-				'attribute vec2 texCoord;\n' +
-				'\n' +
-				'uniform vec3 srsSize;\n' +
-				'uniform mat4 projection;\n' +
-				'uniform mat4 transform;\n' +
-				'\n' +
-				'uniform float hue;\n' +
-				'uniform float saturation;\n' +
-				'\n' +
-				'varying vec2 vTexCoord;\n' +
-				'varying vec4 vPosition;\n' +
-				'\n' +
-				'varying vec3 weights;\n' +
-				'\n' +
-				'void main(void) {\n' +
-				'	float angle = hue * 3.14159265358979323846264;\n' +
-				'	float s = sin(angle);\n' +
-				'	float c = cos(angle);\n' +
-				'	weights = (vec3(2.0 * c, -sqrt(3.0) * s - c, sqrt(3.0) * s - c) + 1.0) / 3.0;\n' +
-				'\n' +
-				'	vec4 pos = position * vec4(srsSize.x / srsSize.y, 1.0, 1.0, 1.0);\n' +
-				'	gl_Position = transform * pos;\n' +
-				'	gl_Position.z -= srsSize.z;\n' +
-				'	gl_Position = projection * gl_Position;\n' +
-				'	gl_Position.z = 0.0;\n' + //prevent near clipping
-				'	vTexCoord = vec2(texCoord.s, texCoord.t);\n' +
-				'}\n';
-			shaderSource.fragment = '#ifdef GL_ES\n\n' +
-				'precision mediump float;\n\n' +
-				'#endif\n\n' +
-				'\n' +
-				'varying vec2 vTexCoord;\n' +
-				'varying vec4 vPosition;\n' +
-				'\n' +
-				'varying vec3 weights;\n' +
-				'\n' +
-				'uniform sampler2D source;\n' +
-				'uniform float hue;\n' +
-				'uniform float saturation;\n' +
-				'\n' +
-				'void main(void) {\n' +
-				'	vec4 color = texture2D(source, vTexCoord);\n' +
+			shaderSource.vertex = [
+				'#ifdef GL_ES',
+				'precision mediump float;',
+				'#endif ',
+
+				'attribute vec4 position;',
+				'attribute vec2 texCoord;',
+
+				'uniform vec2 resolution;',
+				'uniform mat4 projection;',
+				'uniform mat4 transform;',
+
+				'uniform float hue;',
+				'uniform float saturation;',
+
+				'varying vec2 vTexCoord;',
+				'varying vec4 vPosition;',
+
+				'varying vec3 weights;',
+
+				'void main(void) {',
+				'	float angle = hue * 3.14159265358979323846264;',
+				'	float s = sin(angle);',
+				'	float c = cos(angle);',
+				'	weights = (vec3(2.0 * c, -sqrt(3.0) * s - c, sqrt(3.0) * s - c) + 1.0) / 3.0;',
+
+				// first convert to screen space
+				'	vec4 screenPosition = vec4(position.xy * resolution / 2.0, position.z, position.w);',
+				'	screenPosition = transform * screenPosition;',
+
+				// convert back to OpenGL coords
+				'	gl_Position = screenPosition;',
+				'	gl_Position.xy = screenPosition.xy * 2.0 / resolution;',
+				'	gl_Position.z = screenPosition.z * 2.0 / (resolution.x / resolution.y);',
+				'	vTexCoord = texCoord;',
+				'	vPosition = gl_Position;',
+				'}'
+			].join('\n');
+			shaderSource.fragment = [
+				'#ifdef GL_ES\n',
+				'precision mediump float;\n',
+				'#endif\n',
+
+				'varying vec2 vTexCoord;',
+				'varying vec4 vPosition;',
+
+				'varying vec3 weights;',
+
+				'uniform sampler2D source;',
+				'uniform float hue;',
+				'uniform float saturation;',
+
+				'void main(void) {',
+				'	vec4 color = texture2D(source, vTexCoord);',
 
 				//adjust hue
-				'	float len = length(color.rgb);\n' +
+				'	float len = length(color.rgb);',
 				'	color.rgb = vec3(' +
 						'dot(color.rgb, weights.xyz), ' +
 						'dot(color.rgb, weights.zxy), ' +
 						'dot(color.rgb, weights.yzx) ' +
-				');\n' +
+				');',
 
 				//adjust saturation
-				'	vec3 adjustment = (color.r + color.g + color.b) / 3.0 - color.rgb;\n' +
-				'	if (saturation > 0.0) {\n' +
-				'		adjustment *= (1.0 - 1.0 / (1.0 - saturation));\n' +
-				'	} else {\n' +
-				'		adjustment *= (-saturation);\n' +
-				'	}\n' +
-				'	color.rgb += adjustment;\n' +
+				'	vec3 adjustment = (color.r + color.g + color.b) / 3.0 - color.rgb;',
+				'	if (saturation > 0.0) {',
+				'		adjustment *= (1.0 - 1.0 / (1.0 - saturation));',
+				'	} else {',
+				'		adjustment *= (-saturation);',
+				'	}',
+				'	color.rgb += adjustment;',
 
-				'	gl_FragColor = color;\n' +
-				'}\n';
+				'	gl_FragColor = color;',
+				'}'
+			].join('\n');
 			return shaderSource;
 		},
 		inPlace: true,

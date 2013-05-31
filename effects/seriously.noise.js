@@ -19,8 +19,7 @@
 
 	Seriously.plugin('noise', {
 		shader: function (inputs, shaderSource, utilities) {
-			var frag;
-			frag = '#ifdef GL_ES\n\n' +
+			var frag = '#ifdef GL_ES\n\n' +
 				'precision mediump float;\n\n' +
 				'#endif\n\n' +
 				'\n' +
@@ -32,7 +31,7 @@
 				'\n' +
 				'uniform sampler2D source;\n' +
 				'\n' +
-				'uniform vec3 srsSize;\n' +
+				'uniform vec2 resolution;\n' +
 				'uniform float amount;\n' +
 				'uniform float timer;\n' +
 
