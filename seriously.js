@@ -330,11 +330,11 @@
 
 	requestAnimFrame = (function (){
 		var lastTime = 0;
-		return  window.requestAnimationFrame	   ||
+		return  window.requestAnimationFrame ||
 				window.webkitRequestAnimationFrame ||
-				window.mozRequestAnimationFrame	||
-				window.oRequestAnimationFrame	  ||
-				window.msRequestAnimationFrame	 ||
+				window.mozRequestAnimationFrame ||
+				window.oRequestAnimationFrame ||
+				window.msRequestAnimationFrame ||
 				function (callback) {
 					var currTime, timeToCall, id;
 
@@ -508,6 +508,7 @@
 	function checkSource(source) {
 		var element, canvas, ctx, texture;
 
+		//todo: don't need to create a new array every time we do this
 		element = getElement(source, ['img', 'canvas', 'video']);
 		if (!element) {
 			return false;
@@ -551,7 +552,6 @@
 				return false;
 			}
 		}
-
 
 		// This method will return a false positive for resources that aren't
 		// actually images or haven't loaded yet
@@ -1199,11 +1199,13 @@
 							nodeGl.bindTexture(nodeGl.TEXTURE_2D, value);
 							shaderUniform.set(numTextures);
 							numTextures++;
-						} else if (value instanceof SourceNode || value instanceof EffectNode) {
+						} else if (value instanceof SourceNode ||
+								value instanceof EffectNode ||
+								value instanceof TransformNode) {
 							if (value.texture) {
 								nodeGl.activeTexture(nodeGl.TEXTURE0 + numTextures);
 								nodeGl.bindTexture(nodeGl.TEXTURE_2D, value.texture);
-								shaderUniform.set(numTextures); //todo: make this faster
+								shaderUniform.set(numTextures);
 								numTextures++;
 							}
 						} else if(value !== undefined && value !== null) {
@@ -1300,42 +1302,26 @@
 
 		Node = function (options) {
 			var width, height, depth;
-			this.transform = new Float32Array(16);
-			this.projection = new Float32Array(16);
 
 			if (options) {
 				this.desiredWidth = parseInt(options.width, 10);
 				this.desiredHeight = parseInt(options.height, 10);
-				this.fov = parseInt(options.fov, 10);
-			}
-			if (isNaN(this.fov)) {
-				this.fov = 0;
 			}
 
 			width = this.width = this.desiredWidth || 1;
 			height = this.height = this.desiredHeight || 1;
-			//depth = Math.sin(Math.PI / 4) / Math.sin(this.fov * Math.PI / 360); // 1 / sin(angle/2)
-			if (this.fov) {
-				depth = 1 / Math.tan(this.fov * Math.PI / 360.0);
-			} else {
-				depth = 1;
-			}
 
 			this.gl = gl;
 
 			this.reset();
 
 			this.uniforms = {
-				transform: this.transform,
-				srsSize: [width, height, depth],
-				projection: this.projection
+				resolution: [width, height],
+				transform: null
 			};
-
-			this.perspective(this.fov);
 
 			this.dirty = true;
 			this.isDestroyed = false;
-			this.transformed = false;
 
 			this.seriously = seriously;
 
@@ -1409,11 +1395,6 @@
 		};
 
 		Node.prototype.reset = function () {
-			var i;
-			for (i = 0; i < 16; i++) {
-				this.transform[i] = identity[i];
-			}
-			this.transformed = false;
 			this.setDirty();
 		};
 
@@ -1424,177 +1405,12 @@
 			this.width = width;
 			this.height = height;
 
-			this.perspective(this.fov);
-			this.uniforms.srsSize[0] = width;
-			this.uniforms.srsSize[1] = height;
+			this.uniforms.resolution[0] = width;
+			this.uniforms.resolution[1] = height;
 
-			if (this.framebuffer) {
-				this.framebuffer.resize(width, height);
+			if (this.frameBuffer && this.frameBuffer.resize) {
+				this.frameBuffer.resize(width, height);
 			}
-		};
-
-		Node.prototype.setTransform = function (mat) {
-			var i, val, isDefault = true;
-
-			if (!mat ||
-				!Array.isArray(mat) && !(mat instanceof Float32Array) && !(mat instanceof Float64Array)) {
-				this.reset();
-				return;
-			}
-
-			if (mat.length < 16) {
-				throw 'transform matrix must be array or typed array of 16 numbers.';
-			}
-
-			for (i = 0; i < 16; i++) {
-				val = mat[i];
-				if (isNaN(val)) {
-					throw 'transform matrix must be array or typed array of 16 numbers.';
-				}
-				if (val !== identity[i]) {
-					isDefault = false;
-				}
-				this.transform[i] = val;
-			}
-
-			this.transformed = !isDefault;
-			this.setDirty();
-		};
-
-		Node.prototype.perspective = function (fov) {
-			fov = parseFloat(fov);
-			if (isNaN(fov)) {
-				this.fov = 0;
-			} else {
-				this.fov = fov;
-			}
-
-			if (this.fov) {
-				mat4.perspective(this.fov, this.width / this.height, 1, 100, this.projection);
-				this.uniforms.srsSize[2] = 1 / Math.tan(this.fov * Math.PI / 360.0);
-			} else {
-				mat4.identity(this.projection);
-				this.projection[0] = this.height / this.width;
-				//this.projection[10] = 2/200;
-				this.uniforms.srsSize[2] = 1;
-			}
-
-			this.setDirty();
-		};
-
-		//matrix code inspired by glMatrix
-		Node.prototype.translate = function (x, y, z) {
-			var mat = this.transform;
-
-			if (isNaN(x)) {
-				x = 0;
-			}
-
-			if (isNaN(y)) {
-				y = 0;
-			}
-			y *= this.width / this.height;
-
-			if (isNaN(z)) {
-				z = 0;
-			}
-
-			mat[12] = mat[0]*x + mat[4]*y + mat[8]*z + mat[12];
-			mat[13] = mat[1]*x + mat[5]*y + mat[9]*z + mat[13];
-			mat[14] = mat[2]*x + mat[6]*y + mat[10]*z + mat[14];
-			mat[15] = mat[3]*x + mat[7]*y + mat[11]*z + mat[15];
-
-			this.transformed = true;
-			this.setDirty();
-		};
-
-		//todo: only 2D for now, so z is always 1.  allow 3D later.
-		Node.prototype.scale = function (x, y) {
-			if (y === undefined) {
-				y = x;
-			}
-
-			var mat = this.transform;
-			mat[0] *= x;
-			mat[1] *= x;
-			mat[2] *= x;
-			mat[3] *= x;
-			mat[4] *= y;
-			mat[5] *= y;
-			mat[6] *= y;
-			mat[7] *= y;
-
-			this.transformed = true;
-			this.setDirty();
-		};
-
-		Node.prototype.rotateX = function (angle) {
-			var mat = this.transform,
-				sin = Math.sin(angle),
-				cos = Math.cos(angle),
-
-			// Cache the matrix values (faster!)
-				a10 = mat[4], a11 = mat[5], a12 = mat[6], a13 = mat[7],
-				a20 = mat[8], a21 = mat[9], a22 = mat[10], a23 = mat[11];
-
-			// Perform axis-specific matrix multiplication
-			mat[4] = a10*cos + a20*-sin;
-			mat[5] = a11*cos + a21*-sin;
-			mat[6] = a12*cos + a22*-sin;
-			mat[7] = a13*cos + a23*-sin;
-
-			mat[8] = a10*sin + a20*cos;
-			mat[9] = a11*sin + a21*cos;
-			mat[10] = a12*sin + a22*cos;
-			mat[11] = a13*sin + a23*cos;
-			this.transformed = true;
-			this.setDirty();
-		};
-
-		Node.prototype.rotateY = function (angle) {
-			var mat = this.transform,
-				sin = Math.sin(angle),
-				cos = Math.cos(angle),
-
-			// Cache the matrix values (faster!)
-				a00 = mat[0], a01 = mat[1], a02 = mat[2], a03 = mat[3],
-				a20 = mat[8], a21 = mat[9], a22 = mat[10], a23 = mat[11];
-
-			// Perform axis-specific matrix multiplication
-			mat[0] = a00*cos + a20*-sin;
-			mat[1] = a01*cos + a21*-sin;
-			mat[2] = a02*cos + a22*-sin;
-			mat[3] = a03*cos + a23*-sin;
-
-			mat[8] = a00*sin + a20*cos;
-			mat[9] = a01*sin + a21*cos;
-			mat[10] = a02*sin + a22*cos;
-			mat[11] = a03*sin + a23*cos;
-			this.transformed = true;
-			this.setDirty();
-		};
-
-		Node.prototype.rotateZ = function (angle) {
-			var mat = this.transform,
-				sin = Math.sin(angle),
-				cos = Math.cos(angle),
-
-			// Cache the matrix values (makes for huge speed increases!)
-				a00 = mat[0], a01 = mat[1], a02 = mat[2], a03 = mat[3],
-				a10 = mat[4], a11 = mat[5], a12 = mat[6], a13 = mat[7];
-
-			// Perform axis-specific matrix multiplication
-			mat[0] = a00*cos + a10*sin;
-			mat[1] = a01*cos + a11*sin;
-			mat[2] = a02*cos + a12*sin;
-			mat[3] = a03*cos + a13*sin;
-
-			mat[4] = a00*-sin + a10*cos;
-			mat[5] = a01*-sin + a11*cos;
-			mat[6] = a02*-sin + a12*cos;
-			mat[7] = a03*-sin + a13*cos;
-			this.transformed = true;
-			this.setDirty();
 		};
 
 		Node.prototype.destroy = function () {
@@ -1838,8 +1654,8 @@
 				}
 			});
 
-			this.render = function (callback) {
-				me.render(callback);
+			this.render = function () {
+				me.render();
 				return this;
 			};
 
@@ -1854,56 +1670,6 @@
 
 			this.reset = function () {
 				me.reset();
-				return this;
-			};
-
-			this.setTransform = function (transform) {
-				me.setTransform(transform);
-				return this;
-			};
-
-			this.perspective = function (fov) {
-				me.perspective(fov);
-				return this;
-			};
-
-			this.translate = function (x, y, z) {
-				me.translate(x, y, z);
-				return this;
-			};
-
-			this.translateX = function (amount) {
-				me.translate(amount, 0, 0);
-				return this;
-			};
-
-			this.translateY = function (amount) {
-				me.translateY(0, amount, 0);
-				return this;
-			};
-
-			this.translateZ = function (amount) {
-				me.translateZ(0, 0, amount);
-				return this;
-			};
-
-			this.scale = function (x, y) {
-				me.scale(x, y);
-				return this;
-			};
-
-			this.rotateX = function (angle) {
-				me.rotateX(angle);
-				return this;
-			};
-
-			this.rotateY = function (angle) {
-				me.rotateY(angle);
-				return this;
-			};
-
-			this.rotateZ = function (angle) {
-				me.rotateZ(angle);
 				return this;
 			};
 
@@ -1948,6 +1714,7 @@
 			this.shaderDirty = true;
 			this.hook = hook;
 			this.options = options;
+			this.transform = null;
 
 			if (this.effectRef.definition) {
 				this.effect = this.effectRef.definition.call(this, options);
@@ -1984,6 +1751,8 @@
 			if (gl) {
 				this.buildShader();
 			}
+
+			this.inPlace = this.effect.inPlace;
 
 			this.pub = new Effect(this);
 
@@ -2070,8 +1839,6 @@
 				}
 			}
 
-			//this.uniforms.srsSize[0] = this.width;
-			//this.uniforms.srsSize[1] = this.height;
 			Node.prototype.setSize.call(this, this.width, this.height);
 		};
 
@@ -2141,12 +1908,16 @@
 			}
 		};
 
-		EffectNode.prototype.render = function (callback) {
+		EffectNode.prototype.render = function () {
 			var i,
 				frameBuffer,
 				effect = this.effect,
 				that = this,
 				dirty = this.dirty;
+
+			function drawFn(shader, model, uniforms, frameBuffer, node, options) {
+				draw(shader, model, uniforms, frameBuffer, node || that, options);
+			}
 
 			if (!this.initialized) {
 				this.initialize();
@@ -2163,7 +1934,7 @@
 
 						//todo: set source texture
 						//sourcetexture = this.sources[i].render() || this.sources[i].texture
-						this.sources[i].render();
+						this.sources[i].render(!this.inPlace);
 					}
 				}
 
@@ -2172,10 +1943,7 @@
 				}
 
 				if (typeof effect.draw === 'function') {
-					effect.draw.call(this, this.shader, this.model, this.uniforms, frameBuffer,
-						function (shader, model, uniforms, frameBuffer, node, options) {
-							draw(shader, model, uniforms, frameBuffer, node || that, options);
-						});
+					effect.draw.call(this, this.shader, this.model, this.uniforms, frameBuffer, drawFn);
 				} else if (frameBuffer) {
 					draw(this.shader, this.model, this.uniforms, frameBuffer, this);
 				}
@@ -2183,15 +1951,13 @@
 				this.dirty = false;
 			}
 
-			if (callback && typeof callback === 'function') {
-				callback();
-			}
-
 			return this.texture;
 		};
 
 		EffectNode.prototype.setInput = function (name, value) {
-			var input, uniform;
+			var input, uniform,
+				sourceKeys,
+				source;
 
 			if (this.effect.inputs.hasOwnProperty(name)) {
 				input = this.effect.inputs[name];
@@ -2214,10 +1980,19 @@
 							value.setTarget(this);
 						}
 					} else {
+						delete this.sources[name];
 						value = false;
 					}
 
 					uniform = this.sources[name];
+
+					sourceKeys = Object.keys(this.sources);
+					if (this.inPlace && sourceKeys.length === 1) {
+						source = this.sources[sourceKeys[0]];
+						this.uniforms.transform = source.cumulativeMatrix || identity;
+					} else {
+						this.uniforms.transform = identity;
+					}
 				} else {
 					value = input.validate.call(this, value, input, name);
 					uniform = value;
@@ -2757,8 +2532,8 @@
 				}
 			});
 
-			this.render = function (callback) {
-				me.render(callback);
+			this.render = function () {
+				me.render();
 			};
 
 			this.update = function () {
