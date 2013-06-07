@@ -62,7 +62,7 @@
 				type: 'vector',
 				uniform: 'center',
 				dimensions: 2,
-				defaultValue: { x: 0.5, y: 0.5 }
+				defaultValue: [0.5, 0.5]
 			}
 		},
 		title: 'Ripple Distortion',
