@@ -8,11 +8,10 @@
 		// AMD. Register as an anonymous module.
 		root.define(['seriously'], factory);
 	} else {
-		var Seriously = root.Seriously;
-		if (!Seriously) {
-			Seriously = { plugin: function (name, opt) { this[name] = opt; } };
+		if (!root.Seriously) {
+			root.Seriously = { plugin: function (name, opt) { this[name] = opt; } };
 		}
-		factory(Seriously);
+		factory(root.Seriously);
 	}
 }(this, function (Seriously, undefined) {
 	'use strict';
@@ -63,7 +62,7 @@
 				type: 'vector',
 				uniform: 'center',
 				dimensions: 2,
-				defaultValue: { x: 0.5, y: 0.5 }
+				defaultValue: [0.5, 0.5]
 			}
 		},
 		title: 'Ripple Distortion',
