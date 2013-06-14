@@ -84,17 +84,18 @@
 				'	vec4 color = texture2D(source, vTexCoord);\n' +
 				
 				//No change, skip the rest
-				'if (cbtype == 0.0) {\n' +
-				'	gl_FragColor = color;\n' +
-				'	return;\n' +
-				'}\n' +
+				'	if (cbtype == 0.0) {\n' +
+				'		gl_FragColor = color;\n' +
+				'		return;\n' +
+				'	}\n' +
 				
 				// RGB to LMS matrix conversion
-				'   vec3 LMS = vec3( ' +
-				'		(17.8824 * color.r) + (43.5161 * color.g) + (4.11935 * color.b),' +
-				'		(3.45565 * color.r) + (27.1554 * color.g) + (3.86714 * color.b),' +
-				'		(0.0299566 * color.r) + (0.184309 * color.g) + (1.46709 * color.b)' +
+				'	const mat3 RGBLMS = mat3( ' +
+				'   	17.8824, 43.5161, 4.11935,' +
+				'		3.45565, 27.1554, 3.86714,' +
+				'		0.0299566, 0.184309, 1.46709' +
 				'	);\n' +
+				'	vec3 LMS = color.rgb * RGBLMS;\n' +
 				
 				'	vec3 lms = vec3(0.0,0.0,0.0);\n' +
 				//Protanope
@@ -123,11 +124,14 @@
 				'	}\n' +
 				
 				// LMS to RGB matrix operation
-				'   vec3 RGB = vec3(	' +
-				'		(0.0809444479 * lms.r) + (-0.130504409 * lms.g) + (0.116721066 * lms.b),' +
-				'		(-0.0102485335 * lms.r) + (0.0540193266 * lms.g) + (-0.113614708 * lms.b),' +
-				'		(-0.000365296938 * lms.r) + (-0.00412161469 * lms.g) + (0.693511405 * lms.b)' +
+				'	const mat3 LMSRGB = mat3(    ' +
+				'		0.0809444479, -0.130504409, 0.116721066,' +
+				'		-0.0102485335, 0.0540193266, -0.113614708,' +
+				'		-0.000365296938, -0.00412161469, 0.693511405' +
 				'	);\n' +
+
+				'	vec3 RGB = lms * LMSRGB;\n' +
+
 				
 				// Colour shift
 				// values may go over 1.0 but will get automatically clamped on output	
@@ -148,18 +152,18 @@
 				type: 'image',
 				uniform: 'source'
 			},
-			Type: {
-					type: 'enum',
-					uniform: 'cbtype',
-					defaultValue: '0.0',
-					options: [
-						['0.0', 'Off'],
-						['0.2', 'Protanope'],
-						['0.6', 'Deuteranope'],
-						['0.8', 'Tritanope']
-					]
+			type: {
+				title: 'Type',
+				type: 'enum',
+				uniform: 'cbtype',
+				defaultValue: '0.0',
+				options: [
+					['0.0', 'Off'],
+					['0.2', 'Protanope'],
+					['0.6', 'Deuteranope'],
+					['0.8', 'Tritanope']
+				]
 			}
-		
 		},
 		title: 'Daltonize',
 		description: 'Add contrast to colours to assist CVD (colour-blind) users.'
