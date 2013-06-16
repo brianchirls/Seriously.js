@@ -53,6 +53,10 @@
 		'reflect': 'BlendReflect',
 		'glow': 'BlendGlow',
 		'phoenix': 'BlendPhoenix'
+	},
+	nativeBlendModes = {
+		normal: ['FUNC_ADD', 'SRC_ALPHA', 'ONE_MINUS_SRC_ALPHA', 'SRC_ALPHA', 'DST_ALPHA'],
+		add: ['FUNC_ADD', 'SRC_ALPHA', 'ONE_MINUS_SRC_ALPHA', 'SRC_ALPHA', 'DST_ALPHA']
 	};
 
 	Seriously.plugin('blend', {
@@ -119,7 +123,7 @@
 				'#define BlendGlow(base, blend)			BlendReflect(blend, base)\n' +
 				'#define BlendPhoenix(base, blend)		(min(base, blend) - max(base, blend) + vec3(1.0))\n' +
 				//'#define BlendOpacity(base, blend, F, O)	(F(base, blend) * O + blend * (1.0 - O))\n' +
-				'#define BlendOpacity(base, blend, F, O, A)	((F(base.rgb * blend.a * O, blend.rgb * blend.a * O) + base.rgb * base.a * (1.0 - blend.a * O)) / A)\n' +
+				'#define BlendOpacity(base, blend, BlendFn, Opacity, Alpha)	((BlendFn(base.rgb * blend.a * Opacity, blend.rgb * blend.a * Opacity) + base.rgb * base.a * (1.0 - blend.a * Opacity)) / Alpha)\n' +
 				'\n' +
 				'varying vec2 vTexCoord;\n' +
 				'varying vec4 vPosition;\n' +
@@ -134,8 +138,7 @@
 				'	vec3 color;\n' +
 				'	vec4 topPixel = texture2D(top, vTexCoord);\n' +
 				'	vec4 bottomPixel = texture2D(bottom, vTexCoord);\n' +
-				//'	topPixel.a *= opacity;\n' +
-				//'	float alpha = 1.0 - (1.0 - topPixel.a) * (1.0 - bottomPixel.a);\n' +
+
 				'	float alpha = topPixel.a + bottomPixel.a * (1.0 - topPixel.a);\n' +
 				'	if (alpha == 0.0) {\n' +
 				'		color = vec3(0.0);\n' +

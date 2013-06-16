@@ -782,8 +782,7 @@
 			programError = '',
 			shaderError,
 			i, l,
-			obj,
-			key;
+			obj;
 
 		function compileShader(source, fragment) {
 			var shader, i;
@@ -1300,23 +1299,14 @@
 			return false;
 		}
 
-		Node = function (options) {
-			var width, height, depth;
-
-			if (options) {
-				this.desiredWidth = parseInt(options.width, 10);
-				this.desiredHeight = parseInt(options.height, 10);
-			}
-
-			width = this.width = this.desiredWidth || 1;
-			height = this.height = this.desiredHeight || 1;
+		Node = function () {
+			this.width = 1;
+			this.height = 1;
 
 			this.gl = gl;
 
-			this.reset();
-
 			this.uniforms = {
-				resolution: [width, height],
+				resolution: [this.width, this.height],
 				transform: null
 			};
 
@@ -1398,15 +1388,32 @@
 			this.setDirty();
 		};
 
-		Node.prototype.setSize = function (width, height) {
-			if (!width || !height) {
-				return;
-			}
-			this.width = width;
-			this.height = height;
+		Node.prototype.setSize = function () {
+			var width,
+				height;
 
-			this.uniforms.resolution[0] = width;
-			this.uniforms.resolution[1] = height;
+			if (this.source) {
+				width = this.source.width;
+				height = this.source.height;
+			} else if (this.sources && this.sources.source) {
+				width = this.sources.source.width;
+				height = this.sources.source.height;
+			} else {
+				//this node will be responsible for calculating its own size
+				width = 1;
+				height = 1;
+			}
+
+			if (this.width !== width || this.height !== height) {
+				this.width = width;
+				this.height = height;
+				this.setDirty();
+			}
+
+			if (this.uniforms && this.uniforms.resolution) {
+				this.uniforms.resolution[0] = width;
+				this.uniforms.resolution[1] = height;
+			}
 
 			if (this.frameBuffer && this.frameBuffer.resize) {
 				this.frameBuffer.resize(width, height);
@@ -1789,57 +1796,14 @@
 			}
 		};
 
-		EffectNode.prototype.setSize = function (width, height) {
-			var i, maxWidth = 0, maxHeight = 0, dirty = false;
+		EffectNode.prototype.setSize = function () {
+			var i;
 
-			if (width !== undefined) {
-				if (width <= 0) {
-					this.desiredWidth = null;
-				} else {
-					if (this.desiredWidth !== width) {
-						dirty = true;
-					}
-					this.desiredWidth = width;
-				}
+			Node.prototype.setSize.call(this);
+
+			for (i = 0; i < this.targets.length; i++) {
+				this.targets[i].setSize();
 			}
-
-			if (height !== undefined) {
-				if (height <= 0) {
-					this.desiredHeight = null;
-				} else {
-					if (this.desiredHeight !== height) {
-						dirty = true;
-					}
-					this.desiredHeight = height;
-				}
-			}
-
-			if (!this.desiredWidth || !this.desiredHeight) {
-				for (i = 0; i < this.targets.length; i++) {
-					maxWidth = Math.max(maxWidth, this.targets[i].width);
-					maxHeight = Math.max(maxHeight, this.targets[i].height);
-				}
-
-				this.width = this.desiredWidth || maxWidth;
-				this.height = this.desiredHeight || maxHeight;
-
-				this.setDirty();
-
-				for (i in this.sources) {
-					if (this.sources.hasOwnProperty(i) && this.sources[i].setSize) {
-						this.sources[i].setSize();
-					}
-				}
-			} else {
-				this.width = this.desiredWidth;
-				this.height = this.desiredHeight;
-
-				if (dirty) {
-					this.setDirty();
-				}
-			}
-
-			Node.prototype.setSize.call(this, this.width, this.height);
 		};
 
 		EffectNode.prototype.setTarget = function (target) {
@@ -1993,6 +1957,8 @@
 					} else {
 						this.uniforms.transform = identity;
 					}
+
+					this.setSize();
 				} else {
 					value = input.validate.call(this, value, input, name);
 					uniform = value;
@@ -2584,9 +2550,7 @@
 				that = this,
 				matchedType = false;
 
-			Node.call(this, opts);
-			width = this.width;
-			height = this.height;
+			Node.call(this);
 
 			if ( typeof source === 'string' && isNaN(source) ) {
 				source = getElement(source, ['canvas', 'img', 'video']);
@@ -2594,32 +2558,30 @@
 
 			if (source instanceof HTMLElement) {
 				if (source.tagName === 'CANVAS') {
-					this.desiredWidth = width = source.width;
-					this.desiredHeight = height = source.height;
+					this.width = source.width;
+					this.height = source.height;
 
 					this.render = this.renderImageCanvas;
-					this.setSize(width, height);
+					this.setSize();
 				} else if (source.tagName === 'IMG') {
-					width = source.naturalWidth;
-					height = source.naturalHeight;
+					this.width = source.naturalWidth || 1;
+					this.height = source.naturalHeight || 1;
 
 					if (!source.complete) {
 						deferTexture = true;
 
 						source.addEventListener('load', function () {
-							that.desiredWidth = source.naturalWidth;
-							that.desiredHeight = source.naturalHeight;
-							that.setSize(source.naturalWidth, source.naturalHeight);
+							that.width = source.naturalWidth;
+							that.height = source.naturalHeight;
+							that.setSize();
 							that.initialize();
 						}, true);
-					} else {
-						that.setSize(source.naturalWidth, source.naturalHeight);
 					}
 
 					this.render = this.renderImageCanvas;
 				} else if (source.tagName === 'VIDEO') {
-					that.desiredWidth = width = source.videoWidth;
-					that.desiredHeight = height = source.videoHeight;
+					this.width = source.videoWidth || 1;
+					this.height = source.videoHeight || 1;
 
 					if (!source.readyState) {
 						deferTexture = true;
@@ -2630,10 +2592,6 @@
 							that.setSize(source.videoWidth, source.videoHeight);
 							that.initialize();
 						}, true);
-					} else {
-						that.desiredWidth = source.videoWidth;
-						that.desiredHeight = source.videoHeight;
-						that.setSize(source.videoWidth, source.videoHeight);
 					}
 
 					this.render = this.renderVideo;
@@ -2650,9 +2608,8 @@
 				//Because of this bug, Firefox doesn't recognize ImageData, so we have to duck type
 				//https://bugzilla.mozilla.org/show_bug.cgi?id=637077
 
-				this.desiredWidth = width = source.width;
-				this.desiredHeight = height = source.height;
-				this.setSize(width, height);
+				this.width = source.width;
+				this.height = source.height;
 				matchedType = true;
 
 				this.render = this.renderImageCanvas;
@@ -2665,9 +2622,8 @@
 					throw 'Array length must be height x width x 4.';
 				}
 
-				this.desiredWidth = width;
-				this.desiredHeight = height;
-				this.setSize(width, height);
+				this.width = width;
+				this.height = height;
 
 				matchedType = true;
 
@@ -2686,9 +2642,8 @@
 					throw 'Typed array length must be height x width x 4.';
 				}
 
-				this.desiredWidth = width;
-				this.desiredHeight = height;
-				this.setSize(width, height);
+				this.width = width;
+				this.height = height;
 
 				matchedType = true;
 
@@ -2714,9 +2669,8 @@
 					//throw 'Must specify width and height when using a WebGL texture as a source';
 				}*/
 
-				this.desiredWidth = width;
-				this.desiredHeight = height;
-				this.setSize(width, height);
+				this.width = width;
+				this.height = height;
 
 				if (opts.flip === undefined) {
 					flip = false;
@@ -2740,8 +2694,6 @@
 
 			this.source = source;
 			this.flip = flip;
-			this.width = width;
-			this.height = height;
 
 			this.targets = [];
 			this.pub = new Source(this);
@@ -2789,6 +2741,14 @@
 			var i = this.targets && this.targets.indexOf(target);
 			if (i >= 0) {
 				this.targets.splice(i, 1);
+			}
+		};
+
+		SourceNode.prototype.setSize = function () {
+			var i;
+
+			for (i = 0; i < this.targets.length; i++) {
+				this.targets.setSize();
 			}
 		};
 
@@ -3207,12 +3167,12 @@
 			}
 
 			this.target = target;
+			this.transform = null;
+			this.transformDirty = true;
 			this.flip = flip;
 			this.width = width;
 			this.height = height;
 			this.callbacks = [];
-
-			this.setSize(width, height);
 
 			if (opts.auto !== undefined) {
 				this.auto = opts.auto;
@@ -3270,6 +3230,27 @@
 			}
 		};
 
+		TargetNode.prototype.setSize = function () {
+			//if target is a canvas, reset size to canvas size
+			if (this.target instanceof HTMLCanvasElement &&
+					(this.width !== this.target.width || this.height !== this.target.height)) {
+				this.width = this.target.width;
+				this.height = this.target.height;
+			}
+
+			if (this.source &&
+				(this.source.width !== this.width || this.source.height !== this.height)) {
+				if (!this.transform) {
+					this.transform = new Float32Array(16);
+				}
+			}
+		};
+
+		TargetNode.prototype.setTransformDirty = function () {
+			this.transformDirty = true;
+			this.setDirty();
+		};
+
 		TargetNode.prototype.go = function (options) {
 			if (options) {
 				if (typeof options === 'function') {
@@ -3289,15 +3270,38 @@
 		};
 
 		TargetNode.prototype.renderWebGL = function (callback) {
+			var matrix, x, y;
+
 			if (this.dirty) {
 				if (!this.source) {
 					return;
 				}
 
+				this.setSize();
+
 				this.source.render();
 
 				this.uniforms.source = this.source.texture;
-				this.uniforms.transform = this.source.cumulativeMatrix || identity;
+
+				if (this.source.width === this.width && this.source.height === this.height) {
+					this.uniforms.transform = this.source.cumulativeMatrix || identity;
+				} else if (this.transformDirty) {
+					matrix = this.transform;
+					mat4.copy(matrix, this.source.cumulativeMatrix || identity);
+					x = this.source.width / this.width;
+					y = this.source.height / this.height;
+					matrix[0] *= x;
+					matrix[1] *= x;
+					matrix[2] *= x;
+					matrix[3] *= x;
+					matrix[4] *= y;
+					matrix[5] *= y;
+					matrix[6] *= y;
+					matrix[7] *= y;
+					this.uniforms.transform = matrix;
+					this.transformDirty = false;
+				}
+
 				draw(baseShader, rectangleModel, this.uniforms, this.frameBuffer.frameBuffer, this);
 
 				this.dirty = false;
@@ -3381,15 +3385,14 @@
 		Transform = function (transformNode) {
 			var me = transformNode,
 				self = this,
-				key,
-				method;
+				key;
 
 			function setProperty(name, def) {
 				// todo: validate value passed to 'set'
 				Object.defineProperty(self, name, {
 					configurable: true,
 					enumerable: true,
-					get: function (val) {
+					get: function () {
 						return def.get.call(me);
 					},
 					set: function (val) {
@@ -3472,20 +3475,14 @@
 		};
 
 		TransformNode = function (hook, options) {
-			var width, height,
-				key,
+			var key,
 				input;
 
 			this.matrix = new Float32Array(16);
 			this.cumulativeMatrix = new Float32Array(16);
 
-			if (options) {
-				this.desiredWidth = parseInt(options.width, 10);
-				this.desiredHeight = parseInt(options.height, 10);
-			}
-
-			width = this.width = this.desiredWidth || 1;
-			height = this.height = this.desiredHeight || 1;
+			this.width = 1;
+			this.height = 1;
 
 			this.seriously = seriously;
 
@@ -3566,62 +3563,16 @@
 			}
 		};
 
-		TransformNode.prototype.setSize = function (width, height) {
-			var i, maxWidth = 0, maxHeight = 0, dirty = false;
+		TransformNode.prototype.setSize = function () {
+			var i;
 
-			/*
-			todo: calculate size from source instead of targets
-			*/
+			Node.prototype.setSize.call(this);
 
-			if (width !== undefined) {
-				if (width <= 0) {
-					this.desiredWidth = null;
-				} else {
-					if (this.desiredWidth !== width) {
-						dirty = true;
-					}
-					this.desiredWidth = width;
-				}
+			for (i = 0; i < this.targets.length; i++) {
+				this.targets[i].setSize();
 			}
 
-			if (height !== undefined) {
-				if (height <= 0) {
-					this.desiredHeight = null;
-				} else {
-					if (this.desiredHeight !== height) {
-						dirty = true;
-					}
-					this.desiredHeight = height;
-				}
-			}
-
-			if (!this.desiredWidth || !this.desiredHeight) {
-				for (i = 0; i < this.targets.length; i++) {
-					maxWidth = Math.max(maxWidth, this.targets[i].width);
-					maxHeight = Math.max(maxHeight, this.targets[i].height);
-				}
-
-				this.width = this.desiredWidth || maxWidth;
-				this.height = this.desiredHeight || maxHeight;
-
-				this.setTransformDirty();
-
-				for (i in this.sources) {
-					if (this.sources.hasOwnProperty(i) && this.sources[i].setSize) {
-						this.sources[i].setSize();
-					}
-				}
-			} else {
-				this.width = this.desiredWidth;
-				this.height = this.desiredHeight;
-
-				if (dirty) {
-					this.setTransformDirty();
-				}
-			}
-
-			//todo: set uniforms.resolution
-			//todo: resize framebuffer if it exists
+			this.setTransformDirty();
 		};
 
 		TransformNode.prototype.setSource = function (source) {
@@ -3645,10 +3596,7 @@
 			this.source = newSource;
 			newSource.setTarget(this);
 
-			this.setTransformDirty();
-		};
-
-		TransformNode.prototype.setInput = function (input, value) {
+			this.setSize();
 		};
 
 		TransformNode.prototype.setTarget = function (target) {
@@ -3660,8 +3608,6 @@
 			}
 
 			this.targets.push(target);
-
-			this.setSize();
 		};
 
 		TransformNode.prototype.removeTarget = function (target) {
@@ -3703,12 +3649,7 @@
 							resolution: [this.width, this.height]
 						};
 						this.frameBuffer = new FrameBuffer(gl, this.width, this.height);
-					} else {
-						//todo: do this inside resize
-						this.uniforms.resolution[0] = this.width;
-						this.uniforms.resolution[1] = this.height;
 					}
-
 
 					this.uniforms.source = this.source.texture;
 					this.uniforms.transform = this.cumulativeMatrix || identity;
@@ -4836,7 +4777,7 @@
 	/*
 	todo: move this to a different file when we have a build tool
 	*/
-	Seriously.transform('flip', function(options) {
+	Seriously.transform('flip', function() {
 		var me = this,
 			horizontal = true;
 
