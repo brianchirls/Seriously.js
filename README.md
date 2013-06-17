@@ -30,6 +30,7 @@ Full documentation is in progress at the [wiki](https://github.com/brianchirls/S
 - Chroma Key
 - Color generator
 - [Color Cube](http://www.youtube.com/watch?v=rfQ8rKGTVlg&t=24m30s)
+- [Daltonize](http://www.daltonize.org/p/about.html)
 - Edge Detect
 - Emboss
 - Exposure Adjust
