@@ -30,6 +30,7 @@ Full documentation is in progress at the [wiki](https://github.com/brianchirls/S
 - Chroma Key
 - Color generator
 - [Color Cube](http://www.youtube.com/watch?v=rfQ8rKGTVlg&t=24m30s)
+- [Daltonize](http://www.daltonize.org/p/about.html)
 - Edge Detect
 - Emboss
 - Exposure Adjust
@@ -57,7 +58,7 @@ Seriously.js requires a browser that supports [WebGL](http://en.wikipedia.org/wi
 Development is targeted to and tested in Firefox (4.0+) and Google Chrome (9+). Safari
 and Opera are [expected to support WebGL](http://caniuse.com/#search=webgl)
 in the near future. There are no public plans for Internet Explorer to
-support WebGL, though it may be available using the Chrome Frame plugin.
+support WebGL.
 
 Even though a browser may support WebGL, the ability to run it depends
 on the system's graphics card. Serioulsy.js is heavily optimized, so most
