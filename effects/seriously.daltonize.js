@@ -51,9 +51,9 @@
 * 
 	*/
 	Seriously.plugin('daltonize', {
-		shader: function(inputs, shaderSource, utilities) {
+		shader: function (inputs, shaderSource) {
 			//Vertex shader
-			shaderSource.vertex =  '#ifdef GL_ES\n' +
+			shaderSource.vertex = '#ifdef GL_ES\n' +
 				'precision mediump float;\n' +
 				'#endif \n' +
 				'\n' +
@@ -82,25 +82,25 @@
 				'\n' +
 				'void main(void) {\n' +
 				'	vec4 color = texture2D(source, vTexCoord);\n' +
-				
+
 				//No change, skip the rest
 				'	if (cbtype == 0.0) {\n' +
 				'		gl_FragColor = color;\n' +
 				'		return;\n' +
 				'	}\n' +
-				
+
 				// RGB to LMS matrix conversion
 				'	const mat3 RGBLMS = mat3( ' +
-				'   	17.8824, 43.5161, 4.11935,' +
+				'		17.8824, 43.5161, 4.11935,' +
 				'		3.45565, 27.1554, 3.86714,' +
 				'		0.0299566, 0.184309, 1.46709' +
 				'	);\n' +
 				'	vec3 LMS = color.rgb * RGBLMS;\n' +
-				
+
 				'	vec3 lms = vec3(0.0,0.0,0.0);\n' +
 				//Protanope
 				'	if (cbtype < 0.33) {\n' +
-				'	   lms = vec3(	' +
+				'		lms = vec3(	' +
 				'			(2.02344 * LMS.g) + (-2.52581 * LMS.b),' +
 				'			LMS.g,' +
 				'			LMS.b' +
@@ -108,7 +108,7 @@
 				'	}\n' +
 				//Deuteranope
 				'	if (cbtype > 0.33 && cbtype < 0.66) {\n' +
-				'	   lms = vec3(	' +
+				'		lms = vec3(	' +
 				'			LMS.r,' +
 				'			(0.494207 * LMS.r) + (1.24827 * LMS.b),' +
 				'			LMS.b' +
@@ -116,13 +116,13 @@
 				'	}\n' +
 				//Tritanope
 				'	if (cbtype > 0.66) {\n' +
-				'	   lms = vec3(	' +
+				'		lms = vec3(	' +
 				'			LMS.r,' +
 				'			LMS.g,' +
 				'			(-0.395913 * LMS.r) + (0.801109 * LMS.g)' +
 				'		);\n' +
 				'	}\n' +
-				
+
 				// LMS to RGB matrix operation
 				'	const mat3 LMSRGB = mat3(    ' +
 				'		0.0809444479, -0.130504409, 0.116721066,' +
@@ -132,17 +132,16 @@
 
 				'	vec3 RGB = lms * LMSRGB;\n' +
 
-				
 				// Colour shift
 				// values may go over 1.0 but will get automatically clamped on output	
 				'	RGB.rgb = color.rgb - RGB.rgb;\n' +
 				'	RGB.g = 0.7*RGB.r + RGB.g;\n' +
 				'	RGB.b = 0.7*RGB.r + RGB.b;\n' +
 				'	color.rgb = color.rgb + RGB.rgb;\n' +
-				
+
 				//Output
-				'gl_FragColor = color;\n' +
-				
+				'	gl_FragColor = color;\n' +
+
 				'}\n';
 			return shaderSource;
 		},
