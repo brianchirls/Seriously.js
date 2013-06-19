@@ -826,9 +826,9 @@
 
 	module('Destroy');
 	test('Destroy things', function() {
-		var seriously, source, target, effect, canvas;
+		var seriously, source, target, effect, transform, canvas;
 
-		expect(12);
+		expect(15);
 
 		Seriously.plugin('test', {});
 
@@ -837,23 +837,28 @@
 		seriously = new Seriously();
 		source = seriously.source('#colorbars');
 		effect = seriously.effect('test');
+		transform = seriously.transform('2d');
 		target = seriously.target(canvas);
 
 		ok(!seriously.isDestroyed(), 'New Seriously instance is not destroyed');
 		ok(!source.isDestroyed(), 'New source is not destroyed');
 		ok(!effect.isDestroyed(), 'New effect is not destroyed');
+		ok(!transform.isDestroyed(), 'New transform is not destroyed');
 		ok(!target.isDestroyed(), 'New target is not destroyed');
 
 		source.destroy();
 		effect.destroy();
+		transform.destroy();
 		target.destroy();
 
 		ok(source.isDestroyed(), 'Destroyed source is destroyed');
 		ok(effect.isDestroyed(), 'Destroyed effect is destroyed');
+		ok(transform.isDestroyed(), 'Destroyed transform is destroyed');
 		ok(target.isDestroyed(), 'Destroyed target is destroyed');
 
 		source = seriously.source('#colorbars');
 		effect = seriously.effect('test');
+		transform = seriously.transform('2d');
 		target = seriously.target(canvas);
 
 		seriously.destroy();
@@ -861,6 +866,7 @@
 
 		ok(source.isDestroyed(), 'Destroy Seriously instance destroys source');
 		ok(effect.isDestroyed(), 'Destroy Seriously instance destroys effect');
+		ok(transform.isDestroyed(), 'Destroy Seriously instance destroys transform');
 		ok(target.isDestroyed(), 'Destroy Seriously instance destroys target');
 
 		ok(seriously.effect() === undefined, 'Attempt to create effect with destroyed Seriously does nothing');
