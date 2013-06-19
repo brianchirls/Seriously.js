@@ -332,6 +332,34 @@
 		Seriously.removePlugin('removeme');
 	});
 
+	test('Effect alias', function () {
+		var seriously,
+			effect;
+
+		expect(2);
+
+		Seriously.plugin('removeme', {
+			inputs: {
+				input: {
+					type: 'number'
+				}
+			}
+		});
+		seriously = new Seriously();
+		effect = seriously.effect('removeme');
+
+		effect.alias('input', 'input');
+		seriously.input = 5;
+		equal(effect.input, 5, 'Effect alias sets value');
+
+		effect.destroy();
+		ok(!seriously.hasOwnProperty('input'), 'Effect alias removed');
+
+		seriously.destroy();
+		Seriously.removePlugin('removeme');
+	});
+
+
 	module('Source');
 	/*
 	 * create source: all different types
@@ -743,6 +771,8 @@
 	module('Transform');
 	test('Basic Transformations', function () {
 		var seriously, source, target,
+			transform,
+			flip,
 			sourceCanvas, targetCanvas,
 			ctx,
 			pixels = new Uint8Array(16);
@@ -770,39 +800,44 @@
 		seriously = new Seriously();
 		source = seriously.source(sourceCanvas);
 		target = seriously.target(targetCanvas);
-		target.source = source;
+		transform = seriously.transform();
+		flip = seriously.transform('flip');
+		transform.source = source;
+		flip.source = source;
+		target.source = transform;
 
-		target.rotateZ(Math.PI / 2); //90 degrees counter-clockwise
+		transform.rotation = -90; //90 degrees counter-clockwise
 		target.readPixels(0, 0, 2, 2, pixels);
 		ok(compare(pixels, [
 			255, 0, 0, 255,
 			0, 0, 255, 255,
 			0, 255, 0, 255,
 			255, 255, 255, 255
-		]), 'Rotate 90 degrees counter-clockwise on Z-Axis');
+		]), 'Rotate 90 degrees counter-clockwise');
+		transform.reset();
 
-		target.reset();
-		target.rotateX(Math.PI); //180 degrees counter-clockwise
+		target.source = flip;
+		flip.direction = 'vertical';
 		target.readPixels(0, 0, 2, 2, pixels);
 		ok(compare(pixels, [ //image is upside down
 			255, 0, 0, 255,
 			0, 255, 0, 255,
 			0, 0, 255, 255,
 			255, 255, 255, 255
-		]), 'Rotate 180 degrees on X-Axis (Flip Vertical)');
+		]), 'Flip Vertical');
 
-		target.reset();
-		target.rotateY(Math.PI); //180 degrees counter-clockwise
+		target.source = flip;
+		flip.direction = 'horizontal';
 		target.readPixels(0, 0, 2, 2, pixels);
 		ok(compare(pixels, [ //image is upside down
 			255, 255, 255, 255,
 			0, 0, 255, 255,
 			0, 255, 0, 255,
 			255, 0, 0, 255
-		]), 'Rotate 180 degrees on Y-Axis (Flip Horizontal)');
+		]), 'Flip Horizontal');
 
-		target.reset();
-		target.translate(1, 0, 0);
+		target.source = transform;
+		transform.translate(1, 0);
 		target.render();
 		target.readPixels(0, 0, 2, 2, pixels);
 		ok(compare(pixels, [ //image is upside down
@@ -810,19 +845,109 @@
 			0, 0, 255, 255,
 			0, 0, 0, 0,
 			255, 0, 0, 255
-		]), 'Translate 1 unit (50%) to the right');
-
+		]), 'Translate 1 pixel to the right');
 
 		seriously.destroy();
 		return;
 	});
 
+	test('Transform definition function', function () {
+		var seriously,
+			transform1,
+			transform2,
+			canvas,
+			target;
+
+		expect(5);
+
+		Seriously.transform('removeme', function (options) {
+			var id = options.id,
+				prop = 0;
+
+			ok(!!seriously, 'Definition function runs after seriously created #' + id);
+
+			return {
+				inputs: {
+					property: {
+						get: function() {
+							return prop;
+						},
+						set: function(x) {
+							prop = x;
+							equal(prop, id, "Transform setter runs successfully #" + id);
+							return true;
+						}
+					},
+					method: {
+						method: function(x) {
+							prop = x;
+							equal(prop, id, "Transform method runs successfully #" + id);
+							return true;
+						}
+					}
+				},
+				title: 'removeme' + id
+			};
+		},
+		{
+			title: 'removeme'
+		});
+
+		seriously = new Seriously();
+		transform1 = seriously.transform('removeme', {
+			id: 1
+		});
+		transform2 = seriously.transform('removeme', {
+			id: 2
+		});
+
+		transform1.property = 1;
+		transform2.method(2);
+		equal(transform2.property, 2, "Transform getter runs successfully");
+
+		canvas = document.createElement('canvas');
+		target = seriously.target(canvas);
+
+		//render makes sure transforms don't crash without a source
+		target.source = transform1;
+		target.render();
+		target.source = transform2;
+		target.render();
+
+		seriously.destroy();
+		Seriously.removePlugin('removeme');
+	});
+
+	test('Transform alias', function () {
+		var seriously,
+			transform;
+
+		expect(5);
+
+		seriously = new Seriously();
+		transform = seriously.transform('2d');
+
+		transform.alias('translateX', 'translateX');
+		seriously.translateX = 5;
+		equal(transform.translateX, 5, 'Transform alias works for property');
+
+		transform.alias('scale', 'scale');
+		seriously.scale(3, 4);
+		equal(transform.scaleX, 3, 'Transform alias works for method');
+		equal(transform.scaleY, 4, 'Transform alias works for method, second parameter');
+
+		transform.destroy();
+		ok(!seriously.hasOwnProperty('translateX'), 'Transform property alias removed');
+		ok(!seriously.hasOwnProperty('scale'), 'Transform method alias removed');
+
+		seriously.destroy();
+	});
 
 	module('Destroy');
 	test('Destroy things', function() {
-		var seriously, source, target, effect, canvas;
+		var seriously, source, target, effect, transform, canvas;
 
-		expect(12);
+		expect(15);
 
 		Seriously.plugin('test', {});
 
@@ -831,23 +956,28 @@
 		seriously = new Seriously();
 		source = seriously.source('#colorbars');
 		effect = seriously.effect('test');
+		transform = seriously.transform('2d');
 		target = seriously.target(canvas);
 
 		ok(!seriously.isDestroyed(), 'New Seriously instance is not destroyed');
 		ok(!source.isDestroyed(), 'New source is not destroyed');
 		ok(!effect.isDestroyed(), 'New effect is not destroyed');
+		ok(!transform.isDestroyed(), 'New transform is not destroyed');
 		ok(!target.isDestroyed(), 'New target is not destroyed');
 
 		source.destroy();
 		effect.destroy();
+		transform.destroy();
 		target.destroy();
 
 		ok(source.isDestroyed(), 'Destroyed source is destroyed');
 		ok(effect.isDestroyed(), 'Destroyed effect is destroyed');
+		ok(transform.isDestroyed(), 'Destroyed transform is destroyed');
 		ok(target.isDestroyed(), 'Destroyed target is destroyed');
 
 		source = seriously.source('#colorbars');
 		effect = seriously.effect('test');
+		transform = seriously.transform('2d');
 		target = seriously.target(canvas);
 
 		seriously.destroy();
@@ -855,6 +985,7 @@
 
 		ok(source.isDestroyed(), 'Destroy Seriously instance destroys source');
 		ok(effect.isDestroyed(), 'Destroy Seriously instance destroys effect');
+		ok(transform.isDestroyed(), 'Destroy Seriously instance destroys transform');
 		ok(target.isDestroyed(), 'Destroy Seriously instance destroys target');
 
 		ok(seriously.effect() === undefined, 'Attempt to create effect with destroyed Seriously does nothing');
