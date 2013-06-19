@@ -2752,7 +2752,7 @@
 			}
 
 			for (i = 0; i < this.targets.length; i++) {
-				this.targets.resize();
+				this.targets[i].resize();
 			}
 		};
 
