@@ -1813,10 +1813,6 @@
 			if (i >= 0) {
 				this.targets.splice(i, 1);
 			}
-
-			if (this.targets.length) {
-				this.resize();
-			}
 		};
 
 		EffectNode.prototype.removeSource = function (source) {
@@ -3191,6 +3187,9 @@
 			this.height = height;
 			this.callbacks = [];
 
+			this.uniforms.resolution[0] = this.width;
+			this.uniforms.resolution[1] = this.height;
+
 			if (opts.auto !== undefined) {
 				this.auto = opts.auto;
 			} else {
@@ -3253,6 +3252,8 @@
 					(this.width !== this.target.width || this.height !== this.target.height)) {
 				this.width = this.target.width;
 				this.height = this.target.height;
+				this.uniforms.resolution[0] = this.width;
+				this.uniforms.resolution[1] = this.height;
 			}
 
 			if (this.source &&
