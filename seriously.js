@@ -1407,6 +1407,7 @@
 			if (this.width !== width || this.height !== height) {
 				this.width = width;
 				this.height = height;
+
 				this.setDirty();
 			}
 
@@ -1815,8 +1816,6 @@
 			}
 
 			this.targets.push(target);
-
-			this.setSize();
 		};
 
 		EffectNode.prototype.removeTarget = function (target) {
@@ -1877,7 +1876,7 @@
 				frameBuffer,
 				effect = this.effect,
 				that = this,
-				dirty = this.dirty;
+				inPlace;
 
 			function drawFn(shader, model, uniforms, frameBuffer, node, options) {
 				draw(shader, model, uniforms, frameBuffer, node || that, options);
@@ -1891,14 +1890,16 @@
 				this.buildShader();
 			}
 
-			if (dirty) {
+			if (this.dirty) {
 				for (i in this.sources) {
 					if (this.sources.hasOwnProperty(i) &&
 						(!effect.requires || effect.requires.call(this, i, this.inputs))) {
 
 						//todo: set source texture
 						//sourcetexture = this.sources[i].render() || this.sources[i].texture
-						this.sources[i].render(!this.inPlace);
+
+						inPlace = typeof this.inPlace === 'function' ? this.inPlace(i) : this.inPlace;
+						this.sources[i].render(!inPlace);
 					}
 				}
 
@@ -1951,7 +1952,7 @@
 					uniform = this.sources[name];
 
 					sourceKeys = Object.keys(this.sources);
-					if (this.inPlace && sourceKeys.length === 1) {
+					if (this.inPlace === true && sourceKeys.length === 1) {
 						source = this.sources[sourceKeys[0]];
 						this.uniforms.transform = source.cumulativeMatrix || identity;
 					} else {
@@ -1962,6 +1963,10 @@
 				} else {
 					value = input.validate.call(this, value, input, name);
 					uniform = value;
+				}
+
+				if (this.inputs[name] === value) {
+					return;
 				}
 
 				this.inputs[name] = value;
@@ -1975,6 +1980,10 @@
 				}
 
 				this.setDirty();
+
+				if (input.update) {
+					input.update.call(this, value);
+				}
 
 				return value;
 			}
@@ -3506,6 +3515,7 @@
 
 			this.dirty = true;
 			this.transformDirty = true;
+			this.renderDirty = false;
 			this.isDestroyed = false;
 			this.transformed = false;
 
@@ -3546,13 +3556,17 @@
 			allTransformsByHook[hook].push(this);
 		};
 
-		TransformNode.prototype.setDirty = Node.prototype.setDirty;
+		TransformNode.prototype.setDirty = function () {
+			this.renderDirty = true;
+			Node.prototype.setDirty.call(this);
+		};
 
 		TransformNode.prototype.setTransformDirty = function () {
 			var i,
 				target;
 			this.transformDirty = true;
 			this.dirty = true;
+			this.renderDirty = true;
 			for (i = 0; i < this.targets.length; i++) {
 				target = this.targets[i];
 				if (target.setTransformDirty) {
@@ -3643,7 +3657,7 @@
 			}
 
 			if (renderTransform && gl) {
-				if (this.dirty) {
+				if (this.renderDirty) {
 					if (!this.frameBuffer) {
 						this.uniforms = {
 							resolution: [this.width, this.height]
@@ -3655,7 +3669,7 @@
 					this.uniforms.transform = this.cumulativeMatrix || identity;
 					draw(baseShader, rectangleModel, this.uniforms, this.frameBuffer.frameBuffer, this);
 
-					this.dirty = false;
+					this.renderDirty = false;
 				}
 				this.texture = this.frameBuffer.texture;
 			} else if (this.source) {
@@ -3664,6 +3678,7 @@
 				this.texture = null;
 			}
 
+			this.dirty = false;
 
 			return this.texture;
 		};
