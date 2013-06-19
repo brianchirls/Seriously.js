@@ -743,6 +743,8 @@
 	module('Transform');
 	test('Basic Transformations', function () {
 		var seriously, source, target,
+			transform,
+			flip,
 			sourceCanvas, targetCanvas,
 			ctx,
 			pixels = new Uint8Array(16);
@@ -770,39 +772,44 @@
 		seriously = new Seriously();
 		source = seriously.source(sourceCanvas);
 		target = seriously.target(targetCanvas);
-		target.source = source;
+		transform = seriously.transform();
+		flip = seriously.transform('flip');
+		transform.source = source;
+		flip.source = source;
+		target.source = transform;
 
-		target.rotateZ(Math.PI / 2); //90 degrees counter-clockwise
+		transform.rotation = -90; //90 degrees counter-clockwise
 		target.readPixels(0, 0, 2, 2, pixels);
 		ok(compare(pixels, [
 			255, 0, 0, 255,
 			0, 0, 255, 255,
 			0, 255, 0, 255,
 			255, 255, 255, 255
-		]), 'Rotate 90 degrees counter-clockwise on Z-Axis');
+		]), 'Rotate 90 degrees counter-clockwise');
+		transform.reset();
 
-		target.reset();
-		target.rotateX(Math.PI); //180 degrees counter-clockwise
+		target.source = flip;
+		flip.direction = 'vertical';
 		target.readPixels(0, 0, 2, 2, pixels);
 		ok(compare(pixels, [ //image is upside down
 			255, 0, 0, 255,
 			0, 255, 0, 255,
 			0, 0, 255, 255,
 			255, 255, 255, 255
-		]), 'Rotate 180 degrees on X-Axis (Flip Vertical)');
+		]), 'Flip Vertical');
 
-		target.reset();
-		target.rotateY(Math.PI); //180 degrees counter-clockwise
+		target.source = flip;
+		flip.direction = 'horizontal';
 		target.readPixels(0, 0, 2, 2, pixels);
 		ok(compare(pixels, [ //image is upside down
 			255, 255, 255, 255,
 			0, 0, 255, 255,
 			0, 255, 0, 255,
 			255, 0, 0, 255
-		]), 'Rotate 180 degrees on Y-Axis (Flip Horizontal)');
+		]), 'Flip Horizontal');
 
-		target.reset();
-		target.translate(1, 0, 0);
+		target.source = transform;
+		transform.translate(1, 0);
 		target.render();
 		target.readPixels(0, 0, 2, 2, pixels);
 		ok(compare(pixels, [ //image is upside down
@@ -810,8 +817,7 @@
 			0, 0, 255, 255,
 			0, 0, 0, 0,
 			255, 0, 0, 255
-		]), 'Translate 1 unit (50%) to the right');
-
+		]), 'Translate 1 pixel to the right');
 
 		seriously.destroy();
 		return;
