@@ -1638,9 +1638,6 @@
 					configurable: true,
 					get: function () {
 						return me.width;
-					},
-					set: function (value) {
-						me.setSize(value);
 					}
 				},
 				height: {
@@ -1648,9 +1645,6 @@
 					configurable: true,
 					get: function () {
 						return me.height;
-					},
-					set: function (value) {
-						me.setSize(undefined, value);
 					}
 				},
 				id: {
@@ -2596,9 +2590,9 @@
 						deferTexture = true;
 
 						source.addEventListener('loadedmetadata', function () {
-							that.desiredWidth = source.videoWidth;
-							that.desiredHeight = source.videoHeight;
-							that.setSize(source.videoWidth, source.videoHeight);
+							that.width = source.videoWidth;
+							that.height = source.videoHeight;
+							that.setSize();
 							that.initialize();
 						}, true);
 					}
