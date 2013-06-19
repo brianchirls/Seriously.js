@@ -823,6 +823,72 @@
 		return;
 	});
 
+	test('Transform definition function', function () {
+		var seriously,
+			transform1,
+			transform2,
+			canvas,
+			target;
+
+		expect(5);
+
+		Seriously.transform('removeme', function (options) {
+			var id = options.id,
+				prop = 0;
+
+			ok(!!seriously, 'Definition function runs after seriously created #' + id);
+
+			return {
+				inputs: {
+					property: {
+						get: function() {
+							return prop;
+						},
+						set: function(x) {
+							prop = x;
+							equal(prop, id, "Transform setter runs successfully #" + id);
+							return true;
+						}
+					},
+					method: {
+						method: function(x) {
+							prop = x;
+							equal(prop, id, "Transform method runs successfully #" + id);
+							return true;
+						}
+					}
+				},
+				title: 'removeme' + id
+			};
+		},
+		{
+			title: 'removeme'
+		});
+
+		seriously = new Seriously();
+		transform1 = seriously.transform('removeme', {
+			id: 1
+		});
+		transform2 = seriously.transform('removeme', {
+			id: 2
+		});
+
+		transform1.property = 1;
+		transform2.method(2);
+		equal(transform2.property, 2, "Transform getter runs successfully");
+
+		canvas = document.createElement('canvas');
+		target = seriously.target(canvas);
+
+		//render makes sure transforms don't crash without a source
+		target.source = transform1;
+		target.render();
+		target.source = transform2;
+		target.render();
+
+		seriously.destroy();
+		Seriously.removePlugin('removeme');
+	});
 
 	module('Destroy');
 	test('Destroy things', function() {
