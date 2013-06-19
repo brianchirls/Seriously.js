@@ -3691,6 +3691,67 @@
 			return this.texture;
 		};
 
+		TransformNode.prototype.destroy = function () {
+			var i, item, hook = this.hook;
+
+			//let effect destroy itself
+			if (this.plugin.destroy && typeof this.plugin.destroy === 'function') {
+				this.plugin.destroy.call(this);
+			}
+			delete this.effect;
+
+			//stop watching any input elements
+			for (i in this.inputElements) {
+				if (this.inputElements.hasOwnProperty(i)) {
+					item = this.inputElements[i];
+					item.element.removeEventListener('change', item.listener, true);
+					item.element.removeEventListener('input', item.listener, true);
+				}
+			}
+
+			//sources
+			if (this.source) {
+				this.source.removeTarget(this);
+			}
+
+			//targets
+			while (this.targets.length) {
+				item = this.targets.shift();
+				if (item && item.removeSource) {
+					item.removeSource(this);
+				}
+			}
+
+			for (i in this) {
+				if (this.hasOwnProperty(i) && i !== 'id') {
+					delete this[i];
+				}
+			}
+
+			//remove any aliases
+			for (i in aliases) {
+				if (aliases.hasOwnProperty(i)) {
+					item = aliases[i];
+					if (item.node === this) {
+						seriously.removeAlias(i);
+					}
+				}
+			}
+
+			//remove self from master list of effects
+			i = transforms.indexOf(this);
+			if (i >= 0) {
+				transforms.splice(i, 1);
+			}
+
+			i = allTransformsByHook[hook].indexOf(this);
+			if (i >= 0) {
+				allTransformsByHook[hook].splice(i, 1);
+			}
+
+			Node.prototype.destroy.call(this);
+		};
+
 		/*
 		Initialize Seriously object based on options
 		*/
