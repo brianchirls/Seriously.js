@@ -348,7 +348,12 @@
 					lastTime = currTime + timeToCall;
 					return id;
 				};
-	}());
+	}()),
+
+	reservedNames = ['source', 'target', 'effect', 'effects', 'benchmark', 'incompatible',
+		'util', 'ShaderProgram', 'inputValidators', 'save', 'load',
+		'plugin', 'removePlugin', 'alias', 'removeAlias', 'stop', 'go',
+		'destroy', 'isDestroyed'];
 
 	function getElement(input, tags) {
 		var element,
@@ -1971,11 +1976,7 @@
 		};
 
 		EffectNode.prototype.alias = function (inputName, aliasName) {
-			var that = this,
-				reservedNames = ['source', 'target', 'effect', 'effects', 'benchmark', 'incompatible',
-					'util', 'ShaderProgram', 'inputValidators', 'save', 'load',
-					'plugin', 'removePlugin', 'alias', 'removeAlias', 'stop', 'go',
-					'destroy', 'isDestroyed'];
+			var that = this;
 
 			if (reservedNames.indexOf(aliasName) >= 0) {
 				throw aliasName + ' is a reserved name and cannot be used as an alias.';
@@ -3456,6 +3457,11 @@
 				me.setDirty();
 			};
 
+			this.alias = function (inputName, aliasName) {
+				me.alias(inputName, aliasName);
+				return this;
+			};
+
 			this.destroy = function () {
 				var i,
 					descriptor;
@@ -3631,6 +3637,60 @@
 			if (this.targets.length) {
 				this.resize();
 			}
+		};
+
+		TransformNode.prototype.alias = function (inputName, aliasName) {
+			var me = this,
+				input,
+				def;
+
+			if (reservedNames.indexOf(aliasName) >= 0) {
+				throw aliasName + ' is a reserved name and cannot be used as an alias.';
+			}
+
+			if (this.plugin.inputs.hasOwnProperty(inputName)) {
+				if (!aliasName) {
+					aliasName = inputName;
+				}
+
+				seriously.removeAlias(aliasName);
+
+				input = this.inputs[inputName];
+				if (input) {
+					def = me.inputs[inputName];
+					Object.defineProperty(seriously, aliasName, {
+						configurable: true,
+						enumerable: true,
+						get: function () {
+							return def.get.call(me);
+						},
+						set: function (val) {
+							if (def.set.call(me, val)) {
+								me.setTransformDirty();
+							}
+						}
+					});
+				} else {
+					input = this.methods[inputName];
+					if (input) {
+						def = input;
+						seriously[aliasName] = function () {
+							if (def.apply(me, arguments)) {
+								me.setTransformDirty();
+							}
+						};
+					}
+				}
+
+				if (input) {
+					aliases[aliasName] = {
+						node: this,
+						input: inputName
+					};
+				}
+			}
+
+			return this;
 		};
 
 		TransformNode.prototype.render = function (renderTransform) {

@@ -890,6 +890,31 @@
 		Seriously.removePlugin('removeme');
 	});
 
+	test('Transform alias', function () {
+		var seriously,
+			transform;
+
+		expect(5);
+
+		seriously = new Seriously();
+		transform = seriously.transform('2d');
+
+		transform.alias('translateX', 'translateX');
+		seriously.translateX = 5;
+		equal(transform.translateX, 5, 'Transform alias works for property');
+
+		transform.alias('scale', 'scale');
+		seriously.scale(3, 4);
+		equal(transform.scaleX, 3, 'Transform alias works for method');
+		equal(transform.scaleY, 4, 'Transform alias works for method, second parameter');
+
+		transform.destroy();
+		ok(!seriously.hasOwnProperty('translateX'), 'Transform property alias removed');
+		ok(!seriously.hasOwnProperty('scale'), 'Transform method alias removed');
+
+		seriously.destroy();
+	});
+
 	module('Destroy');
 	test('Destroy things', function() {
 		var seriously, source, target, effect, transform, canvas;
