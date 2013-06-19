@@ -1380,10 +1380,6 @@
 			return dest;
 		};
 
-		Node.prototype.reset = function () {
-			this.setDirty();
-		};
-
 		Node.prototype.resize = function () {
 			var width,
 				height;
@@ -1663,11 +1659,6 @@
 
 			this.alias = function (inputName, aliasName) {
 				me.alias(inputName, aliasName);
-				return this;
-			};
-
-			this.reset = function () {
-				me.reset();
 				return this;
 			};
 
@@ -2509,11 +2500,6 @@
 				return me.readPixels(x, y, width, height, dest);
 			};
 
-			this.reset = function () {
-				me.reset();
-				return this;
-			};
-
 			this.destroy = function () {
 				var i,
 					descriptor;
@@ -3001,16 +2987,11 @@
 			});
 
 			this.render = function (callback) {
-				me.render();
+				me.render(callback);
 			};
 
 			this.readPixels = function (x, y, width, height, dest) {
 				return me.readPixels(x, y, width, height, dest);
-			};
-
-			this.reset = function () {
-				me.reset();
-				return this;
 			};
 
 			this.go = function (options) {
