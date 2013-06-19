@@ -1388,7 +1388,7 @@
 			this.setDirty();
 		};
 
-		Node.prototype.setSize = function () {
+		Node.prototype.resize = function () {
 			var width,
 				height;
 
@@ -1791,13 +1791,13 @@
 			}
 		};
 
-		EffectNode.prototype.setSize = function () {
+		EffectNode.prototype.resize = function () {
 			var i;
 
-			Node.prototype.setSize.call(this);
+			Node.prototype.resize.call(this);
 
 			for (i = 0; i < this.targets.length; i++) {
-				this.targets[i].setSize();
+				this.targets[i].resize();
 			}
 		};
 
@@ -1819,7 +1819,7 @@
 			}
 
 			if (this.targets.length) {
-				this.setSize();
+				this.resize();
 			}
 		};
 
@@ -1953,7 +1953,7 @@
 						this.uniforms.transform = identity;
 					}
 
-					this.setSize();
+					this.resize();
 				} else {
 					value = input.validate.call(this, value, input, name);
 					uniform = value;
@@ -2565,7 +2565,7 @@
 					this.height = source.height;
 
 					this.render = this.renderImageCanvas;
-					this.setSize();
+					this.resize();
 				} else if (source.tagName === 'IMG') {
 					this.width = source.naturalWidth || 1;
 					this.height = source.naturalHeight || 1;
@@ -2576,7 +2576,7 @@
 						source.addEventListener('load', function () {
 							that.width = source.naturalWidth;
 							that.height = source.naturalHeight;
-							that.setSize();
+							that.resize();
 							that.initialize();
 						}, true);
 					}
@@ -2592,7 +2592,7 @@
 						source.addEventListener('loadedmetadata', function () {
 							that.width = source.videoWidth;
 							that.height = source.videoHeight;
-							that.setSize();
+							that.resize();
 							that.initialize();
 						}, true);
 					}
@@ -2747,11 +2747,11 @@
 			}
 		};
 
-		SourceNode.prototype.setSize = function () {
+		SourceNode.prototype.resize = function () {
 			var i;
 
 			for (i = 0; i < this.targets.length; i++) {
-				this.targets.setSize();
+				this.targets.resize();
 			}
 		};
 
@@ -2935,8 +2935,8 @@
 
 							me.setDirty();
 							/*
-							if (this.source && this.source.setSize) {
-								this.source.setSize(value);
+							if (this.source && this.source.resize) {
+								this.source.resize(value);
 
 								//todo: for secondary webgl nodes, we need a new array
 								//if ( this.pixels && this.pixels.length !== (this.width * this.height * 4) ) {
@@ -2961,8 +2961,8 @@
 							me.setDirty();
 
 							/*
-							if (this.source && this.source.setSize) {
-								this.source.setSize(undefined, value);
+							if (this.source && this.source.resize) {
+								this.source.resize(undefined, value);
 
 								//for secondary webgl nodes, we need a new array
 								//if ( this.pixels && this.pixels.length !== (this.width * this.height * 4) ) {
@@ -3233,7 +3233,7 @@
 			}
 		};
 
-		TargetNode.prototype.setSize = function () {
+		TargetNode.prototype.resize = function () {
 			//if target is a canvas, reset size to canvas size
 			if (this.target instanceof HTMLCanvasElement &&
 					(this.width !== this.target.width || this.height !== this.target.height)) {
@@ -3280,7 +3280,7 @@
 					return;
 				}
 
-				this.setSize();
+				this.resize();
 
 				this.source.render();
 
@@ -3571,13 +3571,13 @@
 			}
 		};
 
-		TransformNode.prototype.setSize = function () {
+		TransformNode.prototype.resize = function () {
 			var i;
 
-			Node.prototype.setSize.call(this);
+			Node.prototype.resize.call(this);
 
 			for (i = 0; i < this.targets.length; i++) {
-				this.targets[i].setSize();
+				this.targets[i].resize();
 			}
 
 			this.setTransformDirty();
@@ -3604,7 +3604,7 @@
 			this.source = newSource;
 			newSource.setTarget(this);
 
-			this.setSize();
+			this.resize();
 		};
 
 		TransformNode.prototype.setTarget = function (target) {
@@ -3625,7 +3625,7 @@
 			}
 
 			if (this.targets.length) {
-				this.setSize();
+				this.resize();
 			}
 		};
 
