@@ -33,7 +33,7 @@
 					'\n' +
 					'void main(void) {\n' +
 					'	vec4 pixel = texture2D(source, vTexCoord);\n' +
-					'	float darken = 2.0 * abs( fract(vTexCoord.y * lines) - 0.5);\n' +
+					'	float darken = 2.0 * abs( fract(vPosition.y * lines / 2.0) - 0.5);\n' +
 					'	darken = clamp(darken - width + 0.5, 0.0, 1.0);\n' +
 					'	darken = 1.0 - ((1.0 - darken) * intensity);\n' +
 					'	gl_FragColor = vec4(pixel.rgb * darken, 1.0);\n' +

@@ -38,7 +38,7 @@ Modified to preserve alpha
 				'varying vec4 vPosition;',
 
 				'uniform sampler2D source;',
-				'uniform vec3 srsSize;',
+				'uniform vec2 resolution;',
 				'uniform float time;',
 				'uniform float amount;',
 				'uniform bool colored;',
@@ -117,10 +117,10 @@ Modified to preserve alpha
 				'void main(void) {',
 				'	timer = mod(time, 10000.0);',
 				'	vec4 pixel = texture2D(source, vTexCoord);',
-				'	vec3 noise = vec3(pnoise3D(vec3(vTexCoord * srsSize.xy, 0.0)));',
+				'	vec3 noise = vec3(pnoise3D(vec3(vTexCoord * resolution, 0.0)));',
 				'	if (colored) {',
-				'		noise.g = pnoise3D(vec3(vTexCoord * srsSize.xy, 1.0));',
-				'		noise.b = pnoise3D(vec3(vTexCoord * srsSize.xy, 2.0));',
+				'		noise.g = pnoise3D(vec3(vTexCoord * resolution, 1.0));',
+				'		noise.b = pnoise3D(vec3(vTexCoord * resolution, 2.0));',
 				'	}',
 				'	gl_FragColor = vec4(pixel.rgb + noise * amount, pixel.a);',
 				'}'

@@ -39,7 +39,7 @@ http://v002.info/plugins/v002-blurs/
 			loopUniforms = {
 				amount: 0,
 				angle: 0,
-				srsSize: [0, 0, 1],
+				resolution: [0, 0],
 				transform: identity,
 				projection: new Float32Array([
 					1, 0, 0, 0,
@@ -69,87 +69,95 @@ http://v002.info/plugins/v002-blurs/
 			shader: function (inputs, shaderSource) {
 				baseShader = new Seriously.util.ShaderProgram(this.gl, shaderSource.vertex, shaderSource.fragment);
 
-				shaderSource.vertex = '#ifdef GL_ES\n' +
-					'precision mediump float;\n' +
-					'#endif \n' +
-					'\n' +
-					'attribute vec4 position;\n' +
-					'attribute vec2 texCoord;\n' +
-					'\n' +
-					'uniform vec3 srsSize;\n' +
-					'uniform mat4 projection;\n' +
-					'uniform mat4 transform;\n' +
-					'\n' +
-					'varying vec2 vTexCoord;\n' +
-					'varying vec4 vPosition;\n' +
-					'\n' +
-					'uniform float angle;\n' +
-					'uniform float amount;\n' +
-					'varying vec2 vTexCoord1;\n' +
-					'varying vec2 vTexCoord2;\n' +
-					'varying vec2 vTexCoord3;\n' +
-					'varying vec2 vTexCoord4;\n' +
-					'varying vec2 vTexCoord5;\n' +
-					'varying vec2 vTexCoord6;\n' +
-					'varying vec2 vTexCoord7;\n' +
-					'varying vec2 vTexCoord8;\n' +
-					'\n' +
-					'void main(void) {\n' +
-					'	vec4 pos = position * vec4(srsSize.x / srsSize.y, 1.0, 1.0, 1.0);\n' +
-					'	gl_Position = transform * pos;\n' +
-					'	gl_Position.z -= srsSize.z;\n' +
-					'	gl_Position = projection * gl_Position;\n' +
-					'	gl_Position.z = 0.0;\n' + //prevent near clipping
+				shaderSource.vertex = [
+					'#ifdef GL_ES',
+					'precision mediump float;',
+					'#endif ',
 
-					'	vec2 size = srsSize.xy;\n' +
-					'	vec2 amount1 = vec2(cos(angle), sin(angle)) * amount * 5.0 / size;\n' +
-					'	vec2 amount2 = amount1 * 3.0;\n' +
-					'	vec2 amount3 = amount1 * 6.0;\n' +
-					'	vec2 amount4 = amount1 * 9.0;\n' +
-					'	vec2 amount5 = -amount1;\n' +
-					'	vec2 amount6 = amount5 * 3.0;\n' +
-					'	vec2 amount7 = amount5 * 6.0;\n' +
-					'	vec2 amount8 = amount5 * 9.0;\n' +
-					'	vTexCoord = vec2(texCoord.s, texCoord.t);\n' +
-					'	vTexCoord1 = vTexCoord + amount1;\n' +
-					'	vTexCoord2 = vTexCoord + amount2;\n' +
-					'	vTexCoord3 = vTexCoord + amount3;\n' +
-					'	vTexCoord4 = vTexCoord + amount4;\n' +
-					'	vTexCoord5 = vTexCoord + amount5;\n' +
-					'	vTexCoord6 = vTexCoord + amount6;\n' +
-					'	vTexCoord7 = vTexCoord + amount7;\n' +
-					'	vTexCoord8 = vTexCoord + amount8;\n' +
-					'}\n';
-				shaderSource.fragment = '#ifdef GL_ES\n\n' +
-					'precision mediump float;\n\n' +
-					'#endif\n\n' +
-					'\n' +
-					'varying vec2 vTexCoord;\n' +
-					'varying vec4 vPosition;\n' +
-					'\n' +
-					'uniform sampler2D source;\n' +
-					'uniform float angle;\n' +
-					'uniform float amount;\n' +
-					'varying vec2 vTexCoord1;\n' +
-					'varying vec2 vTexCoord2;\n' +
-					'varying vec2 vTexCoord3;\n' +
-					'varying vec2 vTexCoord4;\n' +
-					'varying vec2 vTexCoord5;\n' +
-					'varying vec2 vTexCoord6;\n' +
-					'varying vec2 vTexCoord7;\n' +
-					'varying vec2 vTexCoord8;\n' +
-					'\n' +
-					'void main(void) {\n' +
-					'	gl_FragColor = texture2D(source, vTexCoord) / 9.0;\n' +
-					'	gl_FragColor += texture2D(source, vTexCoord1) / 9.0;\n' +
-					'	gl_FragColor += texture2D(source, vTexCoord2) / 9.0;\n' +
-					'	gl_FragColor += texture2D(source, vTexCoord3) / 9.0;\n' +
-					'	gl_FragColor += texture2D(source, vTexCoord4) / 9.0;\n' +
-					'	gl_FragColor += texture2D(source, vTexCoord5) / 9.0;\n' +
-					'	gl_FragColor += texture2D(source, vTexCoord6) / 9.0;\n' +
-					'	gl_FragColor += texture2D(source, vTexCoord7) / 9.0;\n' +
-					'	gl_FragColor += texture2D(source, vTexCoord8) / 9.0;\n' +
-					'}\n';
+					'attribute vec4 position;',
+					'attribute vec2 texCoord;',
+
+					'uniform vec2 resolution;',
+					'uniform mat4 projection;',
+					'uniform mat4 transform;',
+
+					'varying vec2 vTexCoord;',
+					'varying vec4 vPosition;',
+
+					'uniform float angle;',
+					'uniform float amount;',
+					'varying vec2 vTexCoord1;',
+					'varying vec2 vTexCoord2;',
+					'varying vec2 vTexCoord3;',
+					'varying vec2 vTexCoord4;',
+					'varying vec2 vTexCoord5;',
+					'varying vec2 vTexCoord6;',
+					'varying vec2 vTexCoord7;',
+					'varying vec2 vTexCoord8;',
+
+					'void main(void) {',
+					// first convert to screen space
+					'	vec4 screenPosition = vec4(position.xy * resolution / 2.0, position.z, position.w);',
+					'	screenPosition = transform * screenPosition;',
+
+					// convert back to OpenGL coords
+					'	gl_Position = screenPosition;',
+					'	gl_Position.xy = screenPosition.xy * 2.0 / resolution;',
+					'	gl_Position.z = screenPosition.z * 2.0 / (resolution.x / resolution.y);',
+					'	vTexCoord = texCoord;',
+					'	vPosition = gl_Position;',
+
+					'	vec2 amount1 = vec2(cos(angle), sin(angle)) * amount * 5.0 / resolution;',
+					'	vec2 amount2 = amount1 * 3.0;',
+					'	vec2 amount3 = amount1 * 6.0;',
+					'	vec2 amount4 = amount1 * 9.0;',
+					'	vec2 amount5 = -amount1;',
+					'	vec2 amount6 = amount5 * 3.0;',
+					'	vec2 amount7 = amount5 * 6.0;',
+					'	vec2 amount8 = amount5 * 9.0;',
+					'	vTexCoord = vec2(texCoord.s, texCoord.t);',
+					'	vTexCoord1 = vTexCoord + amount1;',
+					'	vTexCoord2 = vTexCoord + amount2;',
+					'	vTexCoord3 = vTexCoord + amount3;',
+					'	vTexCoord4 = vTexCoord + amount4;',
+					'	vTexCoord5 = vTexCoord + amount5;',
+					'	vTexCoord6 = vTexCoord + amount6;',
+					'	vTexCoord7 = vTexCoord + amount7;',
+					'	vTexCoord8 = vTexCoord + amount8;',
+					'}'
+				].join('\n');
+				shaderSource.fragment = [
+					'#ifdef GL_ES\n',
+					'precision mediump float;\n',
+					'#endif\n',
+
+					'varying vec2 vTexCoord;',
+					'varying vec4 vPosition;',
+
+					'uniform sampler2D source;',
+					'uniform float angle;',
+					'uniform float amount;',
+					'varying vec2 vTexCoord1;',
+					'varying vec2 vTexCoord2;',
+					'varying vec2 vTexCoord3;',
+					'varying vec2 vTexCoord4;',
+					'varying vec2 vTexCoord5;',
+					'varying vec2 vTexCoord6;',
+					'varying vec2 vTexCoord7;',
+					'varying vec2 vTexCoord8;',
+
+					'void main(void) {',
+					'	gl_FragColor = texture2D(source, vTexCoord) / 9.0;',
+					'	gl_FragColor += texture2D(source, vTexCoord1) / 9.0;',
+					'	gl_FragColor += texture2D(source, vTexCoord2) / 9.0;',
+					'	gl_FragColor += texture2D(source, vTexCoord3) / 9.0;',
+					'	gl_FragColor += texture2D(source, vTexCoord4) / 9.0;',
+					'	gl_FragColor += texture2D(source, vTexCoord5) / 9.0;',
+					'	gl_FragColor += texture2D(source, vTexCoord6) / 9.0;',
+					'	gl_FragColor += texture2D(source, vTexCoord7) / 9.0;',
+					'	gl_FragColor += texture2D(source, vTexCoord8) / 9.0;',
+					'}'
+				].join('\n');
 
 				return shaderSource;
 			},
@@ -187,8 +195,8 @@ http://v002.info/plugins/v002-blurs/
 					height = Math.floor(pass * this.height);
 
 					loopUniforms.source = fb ? fb.texture : this.inputs.source.texture;
-					loopUniforms.srsSize[0] = width;
-					loopUniforms.srsSize[1] = height;
+					loopUniforms.resolution[0] = width;
+					loopUniforms.resolution[1] = height;
 					opts.width = width;
 					opts.height = height;
 
@@ -198,8 +206,8 @@ http://v002.info/plugins/v002-blurs/
 				}
 
 				loopUniforms.source = fb.texture;
-				loopUniforms.srsSize[0] = this.width;
-				loopUniforms.srsSize[1] = this.height;
+				loopUniforms.resolution[0] = this.width;
+				loopUniforms.resolution[1] = this.height;
 				parent(shader, model, loopUniforms, frameBuffer);
 			},
 			destroy: function () {
