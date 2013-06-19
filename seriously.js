@@ -3652,10 +3652,19 @@
 			}
 		};
 
-		TransformNode.prototype.render = function (renderTransform, callback) {
-			if (this.source) {
-				this.source.render();
+		TransformNode.prototype.render = function (renderTransform) {
+			if (!this.source) {
+				if (this.transformDirty) {
+					mat4.identity(this.cumulativeMatrix);
+					this.transformDirty = false;
+				}
+				this.texture = null;
+				this.dirty = false;
+
+				return;
 			}
+
+			this.source.render();
 
 			if (this.transformDirty) {
 				if (this.transformed) {
