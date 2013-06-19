@@ -79,7 +79,9 @@
 				mode = this.inputs.sizeMode,
 				node,
 				fn,
-				i;
+				i,
+				bottom = this.inputs.bottom,
+				top = this.inputs.top;
 
 			if (mode === 'bottom' || mode === 'top') {
 				node = this.inputs[mode];
@@ -91,18 +93,18 @@
 					height = 1;
 				}
 			} else {
-				if (this.inputs.bottom) {
-					if (this.inputs.top) {
+				if (bottom) {
+					if (top) {
 						fn = (mode === 'union' ? Math.max : Math.min);
-						width = fn(this.inputs.bottom.width, this.inputs.top.width);
-						height = fn(this.inputs.bottom.height, this.inputs.top.height);
+						width = fn(bottom.width, top.width);
+						height = fn(bottom.height, top.height);
 					} else {
-						width = this.inputs.bottom.width;
-						height = this.inputs.bottom.height;
+						width = bottom.width;
+						height = bottom.height;
 					}
-				} else if (this.inputs.top) {
-					width = this.inputs.top.width;
-					height = this.inputs.top.height;
+				} else if (top) {
+					width = top.width;
+					height = top.height;
 				} else {
 					width = 1;
 					height = 1;
@@ -119,6 +121,17 @@
 				this.setDirty();
 			}
 
+			if (topUniforms) {
+				if (bottom) {
+					bottomUniforms.resolution[0] = bottom.width;
+					bottomUniforms.resolution[1] = bottom.height;
+				}
+				if (top) {
+					topUniforms.resolution[0] = top.width;
+					topUniforms.resolution[1] = top.height;
+				}
+			}
+
 			for (i = 0; i < this.targets.length; i++) {
 				this.targets[i].resize();
 			}
@@ -129,30 +142,68 @@
 				parent();
 			},
 			shader: function (inputs, shaderSource) {
-				var mode = inputs.mode || 'normal';
+				var mode = inputs.mode || 'normal',
+					node;
 				mode = mode.toLowerCase();
 
 				if (nativeBlendModes[mode]) {
 					//todo: move this to an 'update' event for 'mode' input
 					if (!topUniforms) {
+						node = this.inputs.top;
 						topUniforms = {
-							resolution: this.uniforms.resolution,
-							source: null,
-							transform: null,
+							resolution: [
+								node && node.width || 1,
+								node && node.height || 1
+							],
+							targetRes: this.uniforms.resolution,
+							source: node,
+							transform: node && node.cumulativeMatrix || identity,
 							opacity: 1
 						};
+
+						node = this.inputs.bottom;
 						bottomUniforms = {
-							resolution: this.uniforms.resolution,
-							source: null,
-							transform: null,
+							resolution: [
+								node && node.width || 1,
+								node && node.height || 1
+							],
+							targetRes: this.uniforms.resolution,
+							source: node,
+							transform: node && node.cumulativeMatrix || identity,
 							opacity: 1
 						};
 					}
 
-					shaderSource.fragment = [
-						'#ifdef GL_ES',
+					shaderSource.vertex = [
 						'precision mediump float;',
-						'#endif',
+
+						'attribute vec4 position;',
+						'attribute vec2 texCoord;',
+
+						'uniform vec2 resolution;',
+						'uniform vec2 targetRes;',
+						'uniform mat4 transform;',
+
+						'varying vec2 vTexCoord;',
+						'varying vec4 vPosition;',
+
+						'void main(void) {',
+						// first convert to screen space
+						'	vec4 screenPosition = vec4(position.xy * resolution / 2.0, position.z, position.w);',
+						'	screenPosition = transform * screenPosition;',
+
+						// convert back to OpenGL coords
+						'	gl_Position = screenPosition;',
+						'	gl_Position.xy = screenPosition.xy * 2.0 / resolution;',
+						'	gl_Position.z = screenPosition.z * 2.0 / (resolution.x / resolution.y);',
+						'	gl_Position.xy *= resolution / targetRes;',
+						'	vTexCoord = texCoord;',
+						'	vPosition = gl_Position;',
+						'}\n'
+					].join('\n');
+
+					shaderSource.fragment = [
+						'precision mediump float;',
 						'varying vec2 vTexCoord;',
 						'varying vec4 vPosition;',
 						'uniform sampler2D source;',
@@ -254,13 +305,13 @@
 			},
 			draw: function (shader, model, uniforms, frameBuffer, draw) {
 				if (nativeBlendModes[this.inputs.mode]) {
-					bottomUniforms.source = this.inputs.bottom;
-					bottomUniforms.transform = this.inputs.bottom.cumulativeMatrix || identity;
-					draw(shader, model, bottomUniforms, frameBuffer);
+					if (this.inputs.bottom) {
+						draw(shader, model, bottomUniforms, frameBuffer);
+					}
 
-					topUniforms.source = this.inputs.top;
-					topUniforms.transform = this.inputs.top.cumulativeMatrix || identity;
-					draw(shader, model, topUniforms, frameBuffer, null, topOpts);
+					if (this.inputs.top) {
+						draw(shader, model, topUniforms, frameBuffer, null, topOpts);
+					}
 				} else {
 					draw(shader, model, uniforms, frameBuffer);
 				}
@@ -270,6 +321,10 @@
 					type: 'image',
 					uniform: 'top',
 					update: function () {
+						if (topUniforms) {
+							topUniforms.source = this.inputs.top;
+							topUniforms.transform = this.inputs.top.cumulativeMatrix || identity;
+						}
 						this.resize();
 					}
 				},
@@ -277,6 +332,10 @@
 					type: 'image',
 					uniform: 'bottom',
 					update: function () {
+						if (bottomUniforms) {
+							bottomUniforms.source = this.inputs.bottom;
+							bottomUniforms.transform = this.inputs.bottom.cumulativeMatrix || identity;
+						}
 						this.resize();
 					}
 				},
