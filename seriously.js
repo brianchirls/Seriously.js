@@ -649,11 +649,12 @@
 		helper Classes
 	*/
 
-	function FrameBuffer(gl, width, height, useFloat) {
+	function FrameBuffer(gl, width, height, options) {
 		var frameBuffer,
 			renderBuffer,
 			tex,
-			status;
+			status,
+			useFloat = options === true ? options : (options && options.useFloat);
 
 		useFloat = false;//useFloat && !!gl.getExtension("OES_texture_float"); //useFloat is not ready!
 		if (useFloat) {
@@ -665,12 +666,19 @@
 		frameBuffer = gl.createFramebuffer();
 		gl.bindFramebuffer(gl.FRAMEBUFFER, frameBuffer);
 
-		this.texture = gl.createTexture();
-		gl.bindTexture(gl.TEXTURE_2D, this.texture);
-		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+		if (options && options.texture) {
+			this.texture = options.texture;
+			gl.bindTexture(gl.TEXTURE_2D, this.texture);
+			this.ownTexture = false;
+		} else {
+			this.texture = gl.createTexture();
+			gl.bindTexture(gl.TEXTURE_2D, this.texture);
+			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+			this.ownTexture = true;
+		}
 
 		try {
 			if (this.type === gl.FLOAT) {
@@ -766,7 +774,9 @@
 		if (gl) {
 			gl.deleteFramebuffer(this.frameBuffer);
 			gl.deleteRenderbuffer(this.renderBuffer);
-			gl.deleteTexture(this.texture);
+			if (this.ownTexture) {
+				gl.deleteTexture(this.texture);
+			}
 		}
 
 		delete this.frameBuffer;
@@ -1337,14 +1347,6 @@
 
 		Node.prototype.initFrameBuffer = function (useFloat) {
 			if (gl) {
-				if (!this.width) {
-					this.width = this.desiredWidth || glCanvas.width;
-				}
-
-				if (!this.height) {
-					this.height = this.desiredHeight || glCanvas.height;
-				}
-
 				this.frameBuffer = new FrameBuffer(gl, this.width, this.height, useFloat);
 			}
 		};
@@ -1364,12 +1366,6 @@
 
 			//todo: should we render here?
 			this.render();
-
-			if (this instanceof SourceNode) {
-				//todo: move this to SourceNode.render so it only runs when it changes
-				this.uniforms.source = this.texture;
-				draw(baseShader, rectangleModel, this.uniforms, this.frameBuffer.frameBuffer, this);
-			}
 
 			//todo: figure out formats and types
 			if (dest === undefined) {
@@ -2731,6 +2727,15 @@
 			this.setDirty();
 		};
 
+		SourceNode.prototype.initFrameBuffer = function (useFloat) {
+			if (gl) {
+				this.frameBuffer = new FrameBuffer(gl, this.width, this.height, {
+					texture: this.texture,
+					useFloat: useFloat
+				});
+			}
+		};
+
 		SourceNode.prototype.setTarget = function (target) {
 			var i;
 			for (i = 0; i < this.targets.length; i++) {
@@ -2754,6 +2759,10 @@
 
 			this.uniforms.resolution[0] = this.width;
 			this.uniforms.resolution[1] = this.height;
+
+			if (this.framebuffer) {
+				this.framebuffer.resize(this.width, this.height);
+			}
 
 			for (i = 0; i < this.targets.length; i++) {
 				this.targets.resize();
