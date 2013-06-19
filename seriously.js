@@ -2752,6 +2752,9 @@
 		SourceNode.prototype.resize = function () {
 			var i;
 
+			this.uniforms.resolution[0] = this.width;
+			this.uniforms.resolution[1] = this.height;
+
 			for (i = 0; i < this.targets.length; i++) {
 				this.targets.resize();
 			}
