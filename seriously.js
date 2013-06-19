@@ -1652,8 +1652,8 @@
 				}
 			});
 
-			this.render = function () {
-				me.render();
+			this.render = function (callback) {
+				me.render(callback);
 				return this;
 			};
 
@@ -1857,7 +1857,7 @@
 			}
 		};
 
-		EffectNode.prototype.render = function () {
+		EffectNode.prototype.render = function (callback) {
 			var i,
 				frameBuffer,
 				effect = this.effect,
@@ -1900,6 +1900,10 @@
 				}
 
 				this.dirty = false;
+			}
+
+			if (callback && typeof callback === 'function') {
+				callback();
 			}
 
 			return this.texture;
@@ -2493,8 +2497,8 @@
 				}
 			});
 
-			this.render = function () {
-				me.render();
+			this.render = function (callback) {
+				me.render(callback);
 			};
 
 			this.update = function () {
@@ -2837,7 +2841,7 @@
 			}
 		};
 
-		SourceNode.prototype.renderTypedArray = function () {
+		SourceNode.prototype.renderTypedArray = function (callback) {
 			var media = this.source;
 
 			if (!gl || !media || !media.length) {
@@ -2861,6 +2865,10 @@
 
 				this.lastRenderTime = Date.now() / 1000;
 				this.dirty = false;
+			}
+
+			if (callback && typeof callback === 'function') {
+				callback();
 			}
 		};
 
@@ -2992,7 +3000,7 @@
 				}
 			});
 
-			this.render = function () {
+			this.render = function (callback) {
 				me.render();
 			};
 
@@ -3644,7 +3652,7 @@
 			}
 		};
 
-		TransformNode.prototype.render = function (renderTransform) {
+		TransformNode.prototype.render = function (renderTransform, callback) {
 			if (this.source) {
 				this.source.render();
 			}
