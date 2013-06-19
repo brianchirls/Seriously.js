@@ -2548,7 +2548,8 @@
 		SourceNode = function (source, options) {
 			var opts = options || {},
 				flip = opts.flip === undefined ? true : opts.flip,
-				width, height,
+				width = opts.width,
+				height = opts.height,
 				deferTexture = false,
 				that = this,
 				matchedType = false;
@@ -2565,7 +2566,6 @@
 					this.height = source.height;
 
 					this.render = this.renderImageCanvas;
-					this.resize();
 				} else if (source.tagName === 'IMG') {
 					this.width = source.naturalWidth || 1;
 					this.height = source.naturalHeight || 1;
@@ -2691,14 +2691,16 @@
 				throw 'Unknown source type';
 			}
 
-			if (!deferTexture) {
-				this.initialize();
-			}
-
 			this.source = source;
 			this.flip = flip;
 
 			this.targets = [];
+
+			if (!deferTexture) {
+				this.resize();
+				this.initialize();
+			}
+
 			this.pub = new Source(this);
 
 			sources.push(this);
