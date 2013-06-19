@@ -4801,6 +4801,8 @@
 							}
 
 							newY = newX;
+						} else {
+							newY = y;
 						}
 
 						if (newX === scaleX && newY === scaleY) {
