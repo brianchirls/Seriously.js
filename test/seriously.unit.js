@@ -332,6 +332,34 @@
 		Seriously.removePlugin('removeme');
 	});
 
+	test('Effect alias', function () {
+		var seriously,
+			effect;
+
+		expect(2);
+
+		Seriously.plugin('removeme', {
+			inputs: {
+				input: {
+					type: 'number'
+				}
+			}
+		});
+		seriously = new Seriously();
+		effect = seriously.effect('removeme');
+
+		effect.alias('input', 'input');
+		seriously.input = 5;
+		equal(effect.input, 5, 'Effect alias sets value');
+
+		effect.destroy();
+		ok(!seriously.hasOwnProperty('input'), 'Effect alias removed');
+
+		seriously.destroy();
+		Seriously.removePlugin('removeme');
+	});
+
+
 	module('Source');
 	/*
 	 * create source: all different types

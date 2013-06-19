@@ -1994,7 +1994,7 @@
 					input: inputName
 				};
 
-				Object.defineProperty(this, aliasName, {
+				Object.defineProperty(seriously, aliasName, {
 					configurable: true,
 					enumerable: true,
 					get: function () {
