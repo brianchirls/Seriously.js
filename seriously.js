@@ -200,6 +200,11 @@
 		utility functions
 	*/
 
+	/*
+	mat4 matrix functions borrowed from gl-matrix by toji
+	https://github.com/toji/gl-matrix
+	License: https://github.com/toji/gl-matrix/blob/master/LICENSE.md
+	*/
 	mat4 = {
 		/*
 		 * mat4.frustum
@@ -4487,6 +4492,7 @@
 
 	//expose Seriously to the global object
 	Seriously.util = {
+		mat4: mat4,
 		checkSource: checkSource,
 		hslToRgb: hslToRgb,
 		colors: colorNames,
