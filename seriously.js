@@ -3412,8 +3412,8 @@
 			}
 
 			function makeMethod(method) {
-				return function (val) {
-					if (method(val)) {
+				return function () {
+					if (method.apply(me, arguments)) {
 						me.setTransformDirty();
 					}
 				};
