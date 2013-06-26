@@ -568,10 +568,7 @@
 	}
 
 	function validateInputSpecs(effect) {
-		var reserved = ['render', 'initialize', 'original', 'width', 'height',
-			'transform', 'translate', 'translateX', 'translateY', 'translateZ',
-			'rotate', 'rotateX', 'rotateY', 'rotateZ', 'scale', 'scaleX', 'scaleY',
-			'scaleZ', 'benchmark', 'plugin', 'alias', 'reset',
+		var reserved = ['render', 'initialize', 'original', 'plugin', 'alias',
 			'prototype', 'destroy', 'isDestroyed'],
 			input,
 			name;
