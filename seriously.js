@@ -249,8 +249,6 @@
 			return mat4.frustum(-right, right, -top, top, near, far, dest);
 		},
 		multiply: function (dest, mat, mat2) {
-			if (!dest) { dest = mat; }
-
 			// Cache the matrix values (makes for huge speed increases!)
 			var a00 = mat[0], a01 = mat[1], a02 = mat[2], a03 = mat[3],
 				a10 = mat[4], a11 = mat[5], a12 = mat[6], a13 = mat[7],
