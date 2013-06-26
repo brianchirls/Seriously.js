@@ -3696,7 +3696,7 @@
 		TransformNode.prototype.render = function (renderTransform) {
 			if (!this.source) {
 				if (this.transformDirty) {
-					mat4.identity(this.cumulativeMatrix);
+					mat4.copy(this.cumulativeMatrix, this.matrix);
 					this.transformDirty = false;
 				}
 				this.texture = null;
