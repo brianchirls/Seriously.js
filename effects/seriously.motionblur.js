@@ -67,12 +67,15 @@ http://v002.info/plugins/v002-blurs/
 				];
 			},
 			shader: function (inputs, shaderSource) {
-				baseShader = new Seriously.util.ShaderProgram(this.gl, shaderSource.vertex, shaderSource.fragment);
+				var gl = this.gl,
+					maxVaryings = gl.getParameter(gl.MAX_VARYING_VECTORS),
+					defineVaryings = (maxVaryings >= 10 ? '#define USE_VARYINGS' : '');
+
+				baseShader = new Seriously.util.ShaderProgram(gl, shaderSource.vertex, shaderSource.fragment);
 
 				shaderSource.vertex = [
-					'#ifdef GL_ES',
+					defineVaryings,
 					'precision mediump float;',
-					'#endif ',
 
 					'attribute vec4 position;',
 					'attribute vec2 texCoord;',
@@ -86,6 +89,8 @@ http://v002.info/plugins/v002-blurs/
 
 					'uniform float angle;',
 					'uniform float amount;',
+
+					'#ifdef USE_VARYINGS',
 					'varying vec2 vTexCoord1;',
 					'varying vec2 vTexCoord2;',
 					'varying vec2 vTexCoord3;',
@@ -94,6 +99,9 @@ http://v002.info/plugins/v002-blurs/
 					'varying vec2 vTexCoord6;',
 					'varying vec2 vTexCoord7;',
 					'varying vec2 vTexCoord8;',
+					'#else',
+					'varying vec2 amount1;',
+					'#endif',
 
 					'void main(void) {',
 					// first convert to screen space
@@ -107,6 +115,8 @@ http://v002.info/plugins/v002-blurs/
 					'	vTexCoord = texCoord;',
 					'	vPosition = gl_Position;',
 
+					'	vTexCoord = vec2(texCoord.s, texCoord.t);',
+					'#ifdef USE_VARYINGS',
 					'	vec2 amount1 = vec2(cos(angle), sin(angle)) * amount * 5.0 / resolution;',
 					'	vec2 amount2 = amount1 * 3.0;',
 					'	vec2 amount3 = amount1 * 6.0;',
@@ -115,7 +125,6 @@ http://v002.info/plugins/v002-blurs/
 					'	vec2 amount6 = amount5 * 3.0;',
 					'	vec2 amount7 = amount5 * 6.0;',
 					'	vec2 amount8 = amount5 * 9.0;',
-					'	vTexCoord = vec2(texCoord.s, texCoord.t);',
 					'	vTexCoord1 = vTexCoord + amount1;',
 					'	vTexCoord2 = vTexCoord + amount2;',
 					'	vTexCoord3 = vTexCoord + amount3;',
@@ -124,12 +133,15 @@ http://v002.info/plugins/v002-blurs/
 					'	vTexCoord6 = vTexCoord + amount6;',
 					'	vTexCoord7 = vTexCoord + amount7;',
 					'	vTexCoord8 = vTexCoord + amount8;',
+					'#else',
+					'	amount1 = vec2(cos(angle), sin(angle)) * amount * 5.0 / resolution;',
+					'#endif',
 					'}'
 				].join('\n');
 				shaderSource.fragment = [
-					'#ifdef GL_ES\n',
+					defineVaryings,
+
 					'precision mediump float;\n',
-					'#endif\n',
 
 					'varying vec2 vTexCoord;',
 					'varying vec4 vPosition;',
@@ -137,6 +149,8 @@ http://v002.info/plugins/v002-blurs/
 					'uniform sampler2D source;',
 					'uniform float angle;',
 					'uniform float amount;',
+
+					'#ifdef USE_VARYINGS',
 					'varying vec2 vTexCoord1;',
 					'varying vec2 vTexCoord2;',
 					'varying vec2 vTexCoord3;',
@@ -145,8 +159,21 @@ http://v002.info/plugins/v002-blurs/
 					'varying vec2 vTexCoord6;',
 					'varying vec2 vTexCoord7;',
 					'varying vec2 vTexCoord8;',
+					'#else',
+					'varying vec2 amount1;',
+					'#endif',
 
 					'void main(void) {',
+					'#ifndef USE_VARYINGS',
+					'	vec2 vTexCoord1 = vTexCoord + amount1;',
+					'	vec2 vTexCoord2 = vTexCoord + amount1 * 3.0;',
+					'	vec2 vTexCoord3 = vTexCoord + amount1 * 6.0;',
+					'	vec2 vTexCoord4 = vTexCoord + amount1 * 9.0;',
+					'	vec2 vTexCoord5 = vTexCoord - amount1;',
+					'	vec2 vTexCoord6 = vTexCoord - amount1 * 3.0;',
+					'	vec2 vTexCoord7 = vTexCoord - amount1 * 6.0;',
+					'	vec2 vTexCoord8 = vTexCoord - amount1 * 9.0;',
+					'#endif',
 					'	gl_FragColor = texture2D(source, vTexCoord) / 9.0;',
 					'	gl_FragColor += texture2D(source, vTexCoord1) / 9.0;',
 					'	gl_FragColor += texture2D(source, vTexCoord2) / 9.0;',
