@@ -286,8 +286,8 @@
 				ok(typeof e === 'object' && e.id !== undefined, 'Created effect');
 
 				s.destroy();
-				document.body.removeChild(iframe);
 				win.Seriously.removePlugin('test');
+				document.body.removeChild(iframe);
 				start();
 			}, false);
 			doc.head.appendChild(script);
