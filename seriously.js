@@ -707,10 +707,6 @@
 
 		gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.texture, 0);
 
-		if (!gl.isFramebuffer(frameBuffer)) {
-			throw('Invalid framebuffer');
-		}
-
 		status = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
 
 		if (status === gl.FRAMEBUFFER_INCOMPLETE_ATTACHMENT) {
