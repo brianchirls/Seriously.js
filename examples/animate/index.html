@@ -26,13 +26,26 @@
 			var seriously, // the main object that holds the entire composition
 				split, // a split effect
 				target, // a wrapper object for our target canvas
-				PI2 = Math.PI * 2; 
+				scaleRobot,
+				scalePencils,
+				PI2 = Math.PI * 2;
 
 			seriously = new Seriously();
 			target = seriously.target('#canvas');
 			split = seriously.effect('split');
-			split.sourceA = seriously.source('#pencils');
-			split.sourceB = seriously.source('#robot');
+
+			scaleRobot = seriously.transform('2d');
+			scaleRobot.source = seriously.source('#robot');
+			scaleRobot.scale(640/989);
+
+			scalePencils = seriously.transform('reformat');
+			scalePencils.source = seriously.source('#pencils');
+			scalePencils.width = 640;
+			scalePencils.height = 619;
+			//scalePencils.mode = 'width';
+
+			split.sourceA = scalePencils;
+			split.sourceB = scaleRobot;
 
 			split.fuzzy = 0.25;
 
