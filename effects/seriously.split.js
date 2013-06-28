@@ -17,8 +17,79 @@
 	'use strict';
 
 	Seriously.plugin('split', function () {
-		var baseShader;
+		var baseShader,
+			resolutionA = [1, 1],
+			resolutionB = [1, 1];
+
+		// custom resize method
+		this.resize = function () {
+			var width,
+				height,
+				mode = this.inputs.sizeMode,
+				node,
+				fn,
+				i,
+				sourceA = this.inputs.sourceA,
+				sourceB = this.inputs.sourceB;
+
+			if (mode === 'a' || mode === 'b') {
+				node = mode === 'a' ? sourceA : sourceB;
+				if (node) {
+					width = node.width;
+					height = node.height;
+				} else {
+					width = 1;
+					height = 1;
+				}
+			} else {
+				if (sourceA) {
+					if (sourceB) {
+						fn = (mode === 'union' ? Math.max : Math.min);
+						width = fn(sourceA.width, sourceB.width);
+						height = fn(sourceA.height, sourceB.height);
+					} else {
+						width = sourceA.width;
+						height = sourceA.height;
+					}
+				} else if (sourceB) {
+					width = sourceB.width;
+					height = sourceB.height;
+				} else {
+					width = 1;
+					height = 1;
+				}
+			}
+
+			if (this.width !== width || this.height !== height) {
+				this.width = width;
+				this.height = height;
+
+				this.uniforms.resolution[0] = width;
+				this.uniforms.resolution[1] = height;
+
+				this.setDirty();
+			}
+
+			if (sourceA) {
+				resolutionA[0] = sourceA.width;
+				resolutionA[1] = sourceA.height;
+			}
+			if (sourceB) {
+				resolutionB[0] = sourceB.width;
+				resolutionB[1] = sourceB.height;
+			}
+
+			for (i = 0; i < this.targets.length; i++) {
+				this.targets[i].resize();
+			}
+		};
+
 		return {
+			initialize: function (initialize) {
+				initialize();
+				this.uniforms.resolutionA = resolutionA;
+				this.uniforms.resolutionB = resolutionB;
+			},
 			shader: function (inputs, shaderSource) {
 				baseShader = new Seriously.util.ShaderProgram(this.gl, shaderSource.vertex, shaderSource.fragment);
 
@@ -31,10 +102,14 @@
 					'attribute vec2 texCoord;',
 
 					'uniform vec2 resolution;',
+					'uniform vec2 resolutionA;',
+					'uniform vec2 resolutionB;',
 					'uniform mat4 projection;',
-					'uniform mat4 transform;',
+					//'uniform mat4 transform;',
 
 					'varying vec2 vTexCoord;',
+					'varying vec2 vTexCoordA;',
+					'varying vec2 vTexCoordB;',
 					'varying vec4 vPosition;',
 
 					'uniform float angle;',
@@ -49,13 +124,18 @@
 
 					// first convert to screen space
 					'	vec4 screenPosition = vec4(position.xy * resolution / 2.0, position.z, position.w);',
-					'	screenPosition = transform * screenPosition;',
+					//'	screenPosition = transform * screenPosition;',
 
 					// convert back to OpenGL coords
-					'	gl_Position = screenPosition;',
 					'	gl_Position.xy = screenPosition.xy * 2.0 / resolution;',
 					'	gl_Position.z = screenPosition.z * 2.0 / (resolution.x / resolution.y);',
+					'	gl_Position.w = screenPosition.w;',
+
+					'	vec2 adjustedTexCoord = (texCoord - 0.5) * resolution;',
+					'	vTexCoordA = adjustedTexCoord / resolutionA + 0.5;',
+					'	vTexCoordB = adjustedTexCoord / resolutionB + 0.5;',
 					'	vTexCoord = texCoord;',
+
 					'	vPosition = gl_Position;',
 					'}'
 				].join('\n');
@@ -65,6 +145,8 @@
 					'#endif\n',
 
 					'varying vec2 vTexCoord;',
+					'varying vec2 vTexCoordA;',
+					'varying vec2 vTexCoordB;',
 					'varying vec4 vPosition;',
 
 					'varying float c;',
@@ -77,6 +159,14 @@
 					'uniform float angle;',
 					'uniform float fuzzy;',
 
+					'vec4 textureLookup(sampler2D tex, vec2 texCoord) {',
+					'	if (any(lessThan(texCoord, vec2(0.0))) || any(greaterThan(texCoord, vec2(1.0)))) {',
+					'		return vec4(0.0);',
+					'	} else {',
+					'		return texture2D(tex, texCoord);',
+					'	}',
+					'}',
+
 					'void main(void) {',
 					'	float mn = (split - fuzzy * (1.0 - split));',
 					'	float mx = (split + fuzzy * split);;',
@@ -87,15 +177,15 @@
 					'	coords += vec2(0.5);',
 					'	float x = coords.x;;',
 					'	if (x <= mn) {',
-					'		gl_FragColor = texture2D(sourceB, vTexCoord);',
+					'		gl_FragColor = textureLookup(sourceB, vTexCoordB);',
 					'		return;',
 					'	}',
 					'	if (x >= mx) {',
-					'		gl_FragColor = texture2D(sourceA, vTexCoord);',
+					'		gl_FragColor = textureLookup(sourceA, vTexCoordA);',
 					'		return;',
 					'	}',
-					'	vec4 pixel1 = texture2D(sourceA, vTexCoord);',
-					'	vec4 pixel2 = texture2D(sourceB, vTexCoord);',
+					'	vec4 pixel1 = textureLookup(sourceA, vTexCoordA);',
+					'	vec4 pixel2 = textureLookup(sourceB, vTexCoordB);',
 					'	gl_FragColor = mix(pixel2, pixel1, smoothstep(mn, mx, x));',
 					'}'
 				].join('\n');
@@ -136,12 +226,31 @@
 			sourceA: {
 				type: 'image',
 				uniform: 'sourceA',
-				shaderDirty: false
+				shaderDirty: false,
+				update: function () {
+					this.resize();
+				}
 			},
 			sourceB: {
 				type: 'image',
 				uniform: 'sourceB',
-				shaderDirty: false
+				shaderDirty: false,
+				update: function () {
+					this.resize();
+				}
+			},
+			sizeMode: {
+				type: 'enum',
+				defaultValue: 'a',
+				options: [
+					'a',
+					'b',
+					'union',
+					'intersection'
+				],
+				update: function () {
+					this.resize();
+				}
 			},
 			split: {
 				type: 'number',

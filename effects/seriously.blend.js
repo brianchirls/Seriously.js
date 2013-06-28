@@ -138,9 +138,6 @@
 		};
 
 		return {
-			initialize: function (parent) {
-				parent();
-			},
 			shader: function (inputs, shaderSource) {
 				var mode = inputs.mode || 'normal',
 					node;
@@ -193,10 +190,10 @@
 						'	screenPosition = transform * screenPosition;',
 
 						// convert back to OpenGL coords
-						'	gl_Position = screenPosition;',
 						'	gl_Position.xy = screenPosition.xy * 2.0 / resolution;',
 						'	gl_Position.z = screenPosition.z * 2.0 / (resolution.x / resolution.y);',
 						'	gl_Position.xy *= resolution / targetRes;',
+						'	gl_Position.w = screenPosition.w;',
 						'	vTexCoord = texCoord;',
 						'	vPosition = gl_Position;',
 						'}\n'
