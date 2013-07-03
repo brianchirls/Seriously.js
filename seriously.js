@@ -496,7 +496,7 @@
 		canvas = document.createElement('canvas');
 		try {
 			testContext = canvas.getContext('experimental-webgl');
-			canvas.addEventListener('webglcontextlost', function(event) {
+			canvas.addEventListener('webglcontextlost', function (event) {
 				/*
 				If/When context is lost, just clear testContext and create
 				a new one the next time it's needed
@@ -4520,7 +4520,7 @@
 
 	todo: move this to a different file when we have a build tool
 	*/
-	Seriously.transform('2d', function(options) {
+	Seriously.transform('2d', function (options) {
 		var me = this,
 			degrees = !(options && options.radians),
 
@@ -4629,7 +4629,7 @@
 		return {
 			inputs: {
 				reset: {
-					method: function() {
+					method: function () {
 						centerX = 0;
 						centerY = 0;
 						scaleX = 1;
@@ -4653,7 +4653,7 @@
 					]
 				},
 				translate: {
-					method: function(x, y) {
+					method: function (x, y) {
 						if (isNaN(x)) {
 							x = translateX;
 						}
@@ -4678,10 +4678,10 @@
 					]
 				},
 				translateX: {
-					get: function() {
+					get: function () {
 						return translateX;
 					},
-					set: function(x) {
+					set: function (x) {
 						if (x === translateX) {
 							return false;
 						}
@@ -4694,10 +4694,10 @@
 					type: 'number'
 				},
 				translateY: {
-					get: function() {
+					get: function () {
 						return translateY;
 					},
-					set: function(y) {
+					set: function (y) {
 						if (y === translateY) {
 							return false;
 						}
@@ -4710,10 +4710,10 @@
 					type: 'number'
 				},
 				rotation: {
-					get: function() {
+					get: function () {
 						return rotation;
 					},
-					set: function(angle) {
+					set: function (angle) {
 						if (angle === rotation) {
 							return false;
 						}
@@ -4727,7 +4727,7 @@
 					type: 'number'
 				},
 				center: {
-					method: function(x, y) {
+					method: function (x, y) {
 						if (isNaN(x)) {
 							x = centerX;
 						}
@@ -4752,10 +4752,10 @@
 					]
 				},
 				centerX: {
-					get: function() {
+					get: function () {
 						return centerX;
 					},
-					set: function(x) {
+					set: function (x) {
 						if (x === centerX) {
 							return false;
 						}
@@ -4768,10 +4768,10 @@
 					type: 'number'
 				},
 				centerY: {
-					get: function() {
+					get: function () {
 						return centerY;
 					},
-					set: function(y) {
+					set: function (y) {
 						if (y === centerY) {
 							return false;
 						}
@@ -4784,7 +4784,7 @@
 					type: 'number'
 				},
 				skew: {
-					method: function(x, y) {
+					method: function (x, y) {
 						if (isNaN(x)) {
 							x = skewX;
 						}
@@ -4809,10 +4809,10 @@
 					]
 				},
 				skewX: {
-					get: function() {
+					get: function () {
 						return skewX;
 					},
-					set: function(x) {
+					set: function (x) {
 						if (x === skewX) {
 							return false;
 						}
@@ -4825,10 +4825,10 @@
 					type: 'number'
 				},
 				skewY: {
-					get: function() {
+					get: function () {
 						return skewY;
 					},
-					set: function(y) {
+					set: function (y) {
 						if (y === skewY) {
 							return false;
 						}
@@ -4841,7 +4841,7 @@
 					type: 'number'
 				},
 				scale: {
-					method: function(x, y) {
+					method: function (x, y) {
 						var newX, newY;
 
 						if (isNaN(x)) {
@@ -4879,10 +4879,10 @@
 					]
 				},
 				scaleX: {
-					get: function() {
+					get: function () {
 						return scaleX;
 					},
-					set: function(x) {
+					set: function (x) {
 						if (x === scaleX) {
 							return false;
 						}
@@ -4895,10 +4895,10 @@
 					type: 'number'
 				},
 				scaleY: {
-					get: function() {
+					get: function () {
 						return scaleY;
 					},
-					set: function(y) {
+					set: function (y) {
 						if (y === scaleY) {
 							return false;
 						}
@@ -4920,7 +4920,7 @@
 	/*
 	todo: move this to a different file when we have a build tool
 	*/
-	Seriously.transform('flip', function() {
+	Seriously.transform('flip', function () {
 		var me = this,
 			horizontal = true;
 
@@ -4950,10 +4950,10 @@
 		return {
 			inputs: {
 				direction: {
-					get: function() {
+					get: function () {
 						return horizontal ? 'horizontal' : 'vertical';
 					},
-					set: function(d) {
+					set: function (d) {
 						var horiz;
 						if (d === 'vertical') {
 							horiz = false;
@@ -4982,7 +4982,7 @@
 	Reformat
 	todo: move this to a different file when we have a build tool
 	*/
-	Seriously.transform('reformat', function(options) {
+	Seriously.transform('reformat', function (options) {
 		var me = this,
 			forceWidth,
 			forceHeight,
@@ -5090,7 +5090,7 @@
 			inputs: {
 				width: {
 					get: getWidth,
-					set: function(x) {
+					set: function (x) {
 						if (x === forceWidth) {
 							return false;
 						}
@@ -5106,7 +5106,7 @@
 				},
 				height: {
 					get: getHeight,
-					set: function(y) {
+					set: function (y) {
 						if (y === forceHeight) {
 							return false;
 						}
@@ -5121,10 +5121,10 @@
 					type: 'number'
 				},
 				mode: {
-					get: function() {
+					get: function () {
 						return mode;
 					},
-					set: function(m) {
+					set: function (m) {
 						if (m === mode) {
 							return false;
 						}
