@@ -4646,11 +4646,7 @@
 						}
 
 						return false;
-					},
-					type: [
-						'number',
-						'number'
-					]
+					}
 				},
 				translate: {
 					method: function (x, y) {

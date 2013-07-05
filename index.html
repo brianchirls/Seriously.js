@@ -5,6 +5,7 @@
 		<title>Seriously.js</title>
 		<!--<script type="text/javascript" src="lib/webgl-debug.js"></script> -->
 		<script type="text/javascript" src="seriously.js"></script>
+		<script type="text/javascript" src="transforms/seriously.transform3d.js"></script>
 		<script type="text/javascript" src="effects/seriously.ascii.js"></script>
 		<script type="text/javascript" src="effects/seriously.bleach-bypass.js"></script>
 		<script type="text/javascript" src="effects/seriously.blend.js"></script>
@@ -39,6 +40,10 @@
 		
 		img, video {
 			display: none;
+		}
+
+		canvas {
+			border: black solid 1px;
 		}
 
 		#transforms input[type=range] {
@@ -148,22 +153,17 @@
 		window.addEventListener('DOMContentLoaded', function() {
 			var s = Seriously(),
 				blend = s.effect('blend'),
-				original = s.effect('split'),
-				source = s.effect('split'),
+				source = s.transform('reformat'),
+				transform2d = s.transform('2d'),
+				transform3d = s.transform('3d'),
+				//perspective = s.transform('perspective'),
 				options = document.getElementById('options'),
 				img = document.getElementById('img'),
 				video = document.getElementById('video'),
 				select = document.getElementById('effects'),
 				active,
-				translateZ, rotateX, rotateY, rotateZ, perspective;
-
-			function updateTransforms() {
-				blend.reset();
-				blend.translate(0, 0, -translateZ.value);
-				blend.rotateX(rotateX.value * Math.PI / 180);
-				blend.rotateY(rotateY.value * Math.PI / 180);
-				blend.rotateZ(rotateZ.value * Math.PI / 180);
-			}
+				webCamStream,
+				translateZ, rotateX, rotateY, rotateZ;
 
 			function updateTimers() {
 				if (active && active.effect.timer !== undefined) {
@@ -186,40 +186,60 @@
 				}
 			}
 
-			source.sourceA = '#colorbars';
-			source.split = 0;
+			source.source = '#colorbars';
+			source.width = 720;
+			source.height = 540;
 
-			original.sourceA = '#colorbars';
-			original.split = 0;
-			original.translate(-1.3, -0.75);
-			original.scale(0.2);
+			transform2d.source = source;
+			transform2d.scale(0.2);
+			transform2d.translate(-260, -200);
+			//todo: translate to lower left corner
 
-			blend.top = original;
+			blend.top = transform2d;
 			blend.bottom = source;
 
+			transform3d.source = blend;
+
 			target = s.target('#canvas');
-			target.source = blend;
+			target.source = transform3d;
 
 			s.go();
 			updateTime();
 
 			translateZ = document.getElementById('translate-z');
-			translateZ.addEventListener('input', updateTransforms);
+			translateZ.addEventListener('input', function () {
+				transform3d.translateZ = -parseFloat(this.value);
+			});
+
 			rotateX = document.getElementById('rotate-x');
-			rotateX.addEventListener('input', updateTransforms);
+			rotateX.addEventListener('input', function () {
+				transform3d.rotationX = parseFloat(this.value);
+			});
+
 			rotateY = document.getElementById('rotate-y');
-			rotateY.addEventListener('input', updateTransforms);
+			rotateY.addEventListener('input', function () {
+				transform3d.rotationY = parseFloat(this.value);
+			});
+
 			rotateZ = document.getElementById('rotate-z');
-			rotateZ.addEventListener('input', updateTransforms);
+			rotateZ.addEventListener('input', function () {
+				transform3d.rotationZ = parseFloat(this.value);
+			});
+
+			/*
 			perspective = document.getElementById('perspective');
 			perspective.addEventListener('input', function () {
 				blend.perspective(this.value);
 			});
+			*/
 
 			document.getElementById('colorbutton').addEventListener('click', function() {
 				video.pause();
-				original.sourceA = '#colorbars';
-				source.sourceA = '#colorbars';
+				if (webCamStream && webCamStream.stop) {
+					webCamStream.stop();
+				}
+				webCamStream = null;
+				source.source = '#colorbars';
 			});
 
 			target.original.addEventListener('dragover', function(event) {
@@ -228,7 +248,6 @@
 			});
 
 			target.original.addEventListener('drop', function(event) {
-console.log('Drop!');
 				event.preventDefault();
 				var reader = new FileReader,
 					file = event.dataTransfer.files[0],
@@ -246,7 +265,7 @@ console.log('Drop!');
 						}
 						target.render();
 					}
-console.log(event.target.result);
+
 					var element;
 					if (medium === 'image') {
 						element = img;
@@ -258,14 +277,14 @@ console.log(event.target.result);
 						if (element.videoWidth) {
 							resize();
 						} else {
-							element.addEventListener('loadedmetadata', resize);						}
+							element.addEventListener('loadedmetadata', resize);
+						}
 						//element.play();
 					} else {
 						return false;
 					}
 					
-					original.sourceA = element;
-					source.sourceA = element;
+					source.source = element;
 				};
 
 				if (medium === 'image' || medium === 'video') {
@@ -286,14 +305,15 @@ console.log(event.target.result);
 					} else {
 						video.src = stream;
 					}
+
+					webCamStream = stream;
 					
 					video.play();
 					if (video.videoWidth) {
 						resize();
 					}
 					video.onloadedmetadata = video.onplay = resize;
-					original.sourceA = video;
-					source.sourceA = video;
+					source.source = video;
 				}, function() {
 					console.log('getUserMedia failed');
 				});
