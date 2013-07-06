@@ -744,7 +744,7 @@
 	FrameBuffer.prototype.resize = function (width, height) {
 		var gl = this.gl;
 
-		if (this.width === width || this.height === height) {
+		if (this.width === width && this.height === height) {
 			return;
 		}
 
@@ -3241,6 +3241,7 @@
 				this.height = this.target.height;
 				this.uniforms.resolution[0] = this.width;
 				this.uniforms.resolution[1] = this.height;
+				this.dirty = true;
 			}
 
 			if (this.source &&
@@ -3277,12 +3278,12 @@
 		TargetNode.prototype.renderWebGL = function (callback) {
 			var matrix, x, y;
 
+			this.resize();
+
 			if (this.dirty) {
 				if (!this.source) {
 					return;
 				}
-
-				this.resize();
 
 				this.source.render();
 

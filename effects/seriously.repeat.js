@@ -29,8 +29,7 @@
 				clear: false
 			},
 			transform = new Float32Array(16),
-			me = this,
-			resolution = this.uniforms.resolution;
+			me = this;
 
 		function resize() {
 			me.resize();
@@ -81,6 +80,10 @@
 
 				this.uniforms.targetRes[0] = this.width;
 				this.uniforms.targetRes[1] = this.height;
+
+				if (this.frameBuffer) {
+					this.frameBuffer.resize(this.width, this.height);
+				}
 
 				this.setDirty();
 			}

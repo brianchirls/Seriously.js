@@ -118,6 +118,10 @@
 				this.uniforms.resolution[0] = width;
 				this.uniforms.resolution[1] = height;
 
+				if (this.frameBuffer) {
+					this.frameBuffer.resize(width, height);
+				}
+
 				this.setDirty();
 			}
 
