@@ -1949,7 +1949,7 @@
 				}
 
 				if (this.inputs[name] === value) {
-					return;
+					return value;
 				}
 
 				this.inputs[name] = value;
