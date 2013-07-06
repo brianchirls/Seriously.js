@@ -5093,10 +5093,10 @@
 
 						forceWidth = x;
 
-						this.width = getWidth();
+						this.resize();
 
-						recompute();
-						return true;
+						//don't need to run setTransformDirty again
+						return false;
 					},
 					type: 'number'
 				},
@@ -5109,10 +5109,10 @@
 
 						forceHeight = y;
 
-						this.height = getHeight();
+						this.resize();
 
-						recompute();
-						return true;
+						//don't need to run setTransformDirty again
+						return false;
 					},
 					type: 'number'
 				},
