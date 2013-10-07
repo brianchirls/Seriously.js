@@ -49,6 +49,7 @@ Full documentation is in progress at the [wiki](https://github.com/brianchirls/S
 - Tone Adjust
 - TV Glitch
 - Vignette
+- White Balance
 
 ### Requirements
 
