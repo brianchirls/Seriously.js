@@ -1530,10 +1530,6 @@
 							}(inputName, input))
 						};
 
-						if (input.type === 'checkbox') {
-							value = input.checked;
-						}
-
 						me.inputElements[inputName] = lookup;
 						if (input.type === 'range') {
 							input.addEventListener('input', lookup.listener, true);
@@ -1541,6 +1537,10 @@
 						} else {
 							input.addEventListener('change', lookup.listener, true);
 						}
+					}
+
+					if (lookup && input.type === 'checkbox') {
+						value = input.checked;
 					}
 				} else {
 					if (lookup) {
