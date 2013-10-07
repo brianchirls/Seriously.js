@@ -1,5 +1,5 @@
 /*
-Motion Blur effect
+Directional Motion Blur
 
 Adapted from v002 by Anton Marini and Tom Butterworth
 * Copyright vade - Anton Marini
@@ -33,13 +33,15 @@ http://v002.info/plugins/v002-blurs/
 			0, 0, 0, 1
 		]);
 
-	Seriously.plugin('motionblur', function () {
+	Seriously.plugin('directionblur', function (options) {
 		var fbs,
+			resize = options && options.resizeFrameBuffer,
 			baseShader,
 			loopUniforms = {
 				amount: 0,
 				angle: 0,
-				resolution: [0, 0],
+				inputScale: 1,
+				resolution: [this.width, this.height],
 				transform: identity,
 				projection: new Float32Array([
 					1, 0, 0, 0,
@@ -68,6 +70,10 @@ http://v002.info/plugins/v002-blurs/
 			},
 			shader: function (inputs, shaderSource) {
 				var gl = this.gl,
+					/*
+					Some devices or browsers (e.g. IE11 preview) don't support enough
+					varying vectors, so we need to fallback to a less efficient method
+					*/
 					maxVaryings = gl.getParameter(gl.MAX_VARYING_VECTORS),
 					defineVaryings = (maxVaryings >= 10 ? '#define USE_VARYINGS' : '');
 
@@ -89,8 +95,12 @@ http://v002.info/plugins/v002-blurs/
 
 					'uniform float angle;',
 					'uniform float amount;',
+					'uniform float inputScale;',
 
+					'const vec2 zero = vec2(0.0, 0.0);',
 					'#ifdef USE_VARYINGS',
+					'vec2 one;',
+					'vec2 amount1;',
 					'varying vec2 vTexCoord1;',
 					'varying vec2 vTexCoord2;',
 					'varying vec2 vTexCoord3;',
@@ -100,6 +110,7 @@ http://v002.info/plugins/v002-blurs/
 					'varying vec2 vTexCoord7;',
 					'varying vec2 vTexCoord8;',
 					'#else',
+					'varying vec2 one;',
 					'varying vec2 amount1;',
 					'#endif',
 
@@ -115,9 +126,14 @@ http://v002.info/plugins/v002-blurs/
 					'	vTexCoord = texCoord;',
 					'	vPosition = gl_Position;',
 
-					'	vTexCoord = vec2(texCoord.s, texCoord.t);',
+					'	one = vec2(1.0, 1.0) * inputScale;',
+					'	if (inputScale < 1.0) {',
+					'		one -= 1.0 / resolution;',
+					'	}',
+					'	vTexCoord = max(zero, min(one, texCoord.st * inputScale));',
+					'	amount1 = vec2(cos(angle), sin(angle)) * amount * 5.0 / resolution;',
+
 					'#ifdef USE_VARYINGS',
-					'	vec2 amount1 = vec2(cos(angle), sin(angle)) * amount * 5.0 / resolution;',
 					'	vec2 amount2 = amount1 * 3.0;',
 					'	vec2 amount3 = amount1 * 6.0;',
 					'	vec2 amount4 = amount1 * 9.0;',
@@ -125,16 +141,14 @@ http://v002.info/plugins/v002-blurs/
 					'	vec2 amount6 = amount5 * 3.0;',
 					'	vec2 amount7 = amount5 * 6.0;',
 					'	vec2 amount8 = amount5 * 9.0;',
-					'	vTexCoord1 = vTexCoord + amount1;',
-					'	vTexCoord2 = vTexCoord + amount2;',
-					'	vTexCoord3 = vTexCoord + amount3;',
-					'	vTexCoord4 = vTexCoord + amount4;',
-					'	vTexCoord5 = vTexCoord + amount5;',
-					'	vTexCoord6 = vTexCoord + amount6;',
-					'	vTexCoord7 = vTexCoord + amount7;',
-					'	vTexCoord8 = vTexCoord + amount8;',
-					'#else',
-					'	amount1 = vec2(cos(angle), sin(angle)) * amount * 5.0 / resolution;',
+					'	vTexCoord1 = max(zero, min(one, vTexCoord + amount1));',
+					'	vTexCoord2 = max(zero, min(one, vTexCoord + amount2));',
+					'	vTexCoord3 = max(zero, min(one, vTexCoord + amount3));',
+					'	vTexCoord4 = max(zero, min(one, vTexCoord + amount4));',
+					'	vTexCoord5 = max(zero, min(one, vTexCoord + amount5));',
+					'	vTexCoord6 = max(zero, min(one, vTexCoord + amount6));',
+					'	vTexCoord7 = max(zero, min(one, vTexCoord + amount7));',
+					'	vTexCoord8 = max(zero, min(one, vTexCoord + amount8));',
 					'#endif',
 					'}'
 				].join('\n');
@@ -149,6 +163,7 @@ http://v002.info/plugins/v002-blurs/
 					'uniform sampler2D source;',
 					'uniform float angle;',
 					'uniform float amount;',
+					'uniform float inputScale;',
 
 					'#ifdef USE_VARYINGS',
 					'varying vec2 vTexCoord1;',
@@ -161,18 +176,20 @@ http://v002.info/plugins/v002-blurs/
 					'varying vec2 vTexCoord8;',
 					'#else',
 					'varying vec2 amount1;',
+					'varying vec2 one;',
+					'const vec2 zero = vec2(0.0, 0.0);',
 					'#endif',
 
 					'void main(void) {',
 					'#ifndef USE_VARYINGS',
-					'	vec2 vTexCoord1 = vTexCoord + amount1;',
-					'	vec2 vTexCoord2 = vTexCoord + amount1 * 3.0;',
-					'	vec2 vTexCoord3 = vTexCoord + amount1 * 6.0;',
-					'	vec2 vTexCoord4 = vTexCoord + amount1 * 9.0;',
-					'	vec2 vTexCoord5 = vTexCoord - amount1;',
-					'	vec2 vTexCoord6 = vTexCoord - amount1 * 3.0;',
-					'	vec2 vTexCoord7 = vTexCoord - amount1 * 6.0;',
-					'	vec2 vTexCoord8 = vTexCoord - amount1 * 9.0;',
+					'	vec2 vTexCoord1 = max(zero, min(one, vTexCoord + amount1));',
+					'	vec2 vTexCoord2 = max(zero, min(one, vTexCoord + amount1 * 3.0));',
+					'	vec2 vTexCoord3 = max(zero, min(one, vTexCoord + amount1 * 6.0));',
+					'	vec2 vTexCoord4 = max(zero, min(one, vTexCoord + amount1 * 9.0));',
+					'	vec2 vTexCoord5 = max(zero, min(one, vTexCoord - amount1));',
+					'	vec2 vTexCoord6 = max(zero, min(one, vTexCoord - amount1 * 3.0));',
+					'	vec2 vTexCoord7 = max(zero, min(one, vTexCoord - amount1 * 6.0));',
+					'	vec2 vTexCoord8 = max(zero, min(one, vTexCoord - amount1 * 9.0));',
 					'#endif',
 					'	gl_FragColor = texture2D(source, vTexCoord) / 9.0;',
 					'	gl_FragColor += texture2D(source, vTexCoord1) / 9.0;',
@@ -199,7 +216,8 @@ http://v002.info/plugins/v002-blurs/
 						width: 0,
 						height: 0,
 						blend: false
-					};
+					},
+					previousPass = 1;
 
 				amount = this.inputs.amount;
 				if (!amount) {
@@ -222,20 +240,38 @@ http://v002.info/plugins/v002-blurs/
 					height = Math.floor(pass * this.height);
 
 					loopUniforms.source = fb ? fb.texture : this.inputs.source.texture;
-					loopUniforms.resolution[0] = width;
-					loopUniforms.resolution[1] = height;
+
+					fb = fbs[i % 2];
+					if (resize) {
+						loopUniforms.resolution[0] = width;
+						loopUniforms.resolution[1] = height;
+						fb.resize(width, height);
+					} else {
+						loopUniforms.inputScale = previousPass;//pass;
+						previousPass = pass;
+					}
 					opts.width = width;
 					opts.height = height;
 
-					fb = fbs[i % 2];
-					fb.resize(width, height);
 					parent(shader, model, loopUniforms, fb.frameBuffer, null, opts);
 				}
 
 				loopUniforms.source = fb.texture;
+				if (resize) {
+					loopUniforms.resolution[0] = this.width;
+					loopUniforms.resolution[1] = this.height;
+				} else {
+					loopUniforms.inputScale = previousPass;
+				}
+				parent(shader, model, loopUniforms, frameBuffer);
+			},
+			resize: function () {
 				loopUniforms.resolution[0] = this.width;
 				loopUniforms.resolution[1] = this.height;
-				parent(shader, model, loopUniforms, frameBuffer);
+				if (!resize && fbs) {
+					fbs[0].resize(this.width, this.height);
+					fbs[1].resize(this.width, this.height);
+				}
 			},
 			destroy: function () {
 				if (fbs) {
@@ -272,6 +308,6 @@ http://v002.info/plugins/v002-blurs/
 				defaultValue: 0
 			}
 		},
-		title: 'Motion Blur'
+		title: 'Directional Motion Blur'
 	});
 }));

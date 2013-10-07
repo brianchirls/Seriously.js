@@ -1785,6 +1785,10 @@
 
 			Node.prototype.resize.call(this);
 
+			if (this.effect.resize) {
+				this.effect.resize.call(this);
+			}
+
 			for (i = 0; i < this.targets.length; i++) {
 				this.targets[i].resize();
 			}
@@ -4979,7 +4983,7 @@
 	Reformat
 	todo: move this to a different file when we have a build tool
 	*/
-	Seriously.transform('reformat', function (options) {
+	Seriously.transform('reformat', function () {
 		var me = this,
 			forceWidth,
 			forceHeight,
@@ -5150,10 +5154,7 @@
 	/*
 	todo: additional transform node types
 	- perspective
-	- 2.5D/3D
 	- matrix
-	- flip horizontal/vertical
-	- reformat (crop to fit, letterbox/pillarbox)
 	- crop? - maybe not - probably would just scale.
 	- camera shake?
 	*/

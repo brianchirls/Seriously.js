@@ -22,11 +22,11 @@
 		require([
 			'seriously',
 			'effects/seriously.blend',
-			'effects/seriously.motionblur'
+			'effects/seriously.directionblur'
 		], function (Seriously) {
 			var seriously = new Seriously(),
 				blend = seriously.effect('blend'),
-				moblur = seriously.effect('motionblur'),
+				moblur = seriously.effect('directionblur'),
 				robot = seriously.source('#robot'),
 				pencils = seriously.source('#pencils'),
 				target = seriously.target('#canvas'),
@@ -56,7 +56,7 @@
 					b = sources[j],
 					amount;
 
-				progress -= (Date.now() - lastDraw) / 1000;
+				progress -= (Date.now() - lastDraw) / 2000;
 				progress = Math.max(0, progress);
 				console.log(progress);
 				if (progress) {
