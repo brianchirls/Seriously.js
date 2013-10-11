@@ -2,8 +2,6 @@
 <html>
 <head>
 	<title>Seriously.js Camera Demo</title>
-	<style type="text/css">
-	</style>
 </head>
 <body>
 	<!-- page content goes here -->
@@ -27,46 +25,52 @@
 		// declare our variables
 		var seriously, // the main object that holds the entire composition
 			video,
-			seriouslyVideo,
+			source,
 			vignette, // a vignette effect
 			target; // a wrapper object for our target canvas
 
 		// detect browser-prefixed getUserMedia
 		navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia;
 
-		// grab the video
+		// detect browser-prefixed window.URL
+		window.URL = window.URL || window.webkitURL || window.mozURL || window.msURL;
+
+		// grab the video element
 		video = document.getElementById('source');
 
-		function successCallback( stream ) {
-			console.log('webrtc success!');
-			if (video.mozCaptureStream) { // Needed to check for Firefox
-				video.mozSrcObject = stream;
-			} else {
-				video.src = (window.URL && window.URL.createObjectURL( stream )) || stream;
-			}
-			video.play();
-		}
-
-		function errorCallback( error ) {
-			console.log("An error occurred: [CODE " + error.code + "]", error);
-		}
-
-		console.log('navigator.getUserMedia', navigator.getUserMedia);
+		// grab the video stream
 		if (navigator.getUserMedia) {
-			console.log('give it a shot!');
-			navigator.getUserMedia({video: true}, successCallback, errorCallback);
+			navigator.getUserMedia(
+				{video: true},
+				// success callback
+				function(stream){
+					// check for firefox
+					if (video.mozCaptureStream) {
+						video.mozSrcObject = stream;
+					} else {
+						video.src = (window.URL && window.URL.createObjectURL( stream )) || stream;
+					}
+					video.play();
+				}, 
+				// error callback
+				function(){
+					console.log("An error occurred: [CODE " + error.code + "]");
+				}
+			);
 		}
 
 		seriously = new Seriously();
-		seriouslyVideo = seriously.source(video);
+
+		source = seriously.source(video);
 		target = seriously.target('#target');
 		vignette = seriously.effect('vignette');
 
 		vignette.amount = '#vignette-range';
 
 		// // connect all our nodes in the right order
-		vignette.source = seriouslyVideo;
+		vignette.source = source;
 		target.source = vignette;
+		
 		seriously.go();
 
 	}());
