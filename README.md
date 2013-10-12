@@ -97,6 +97,10 @@ So for now, it is best to host your own video files.
 	- Gaussian Blur
 	- Curves
 
+## Contributing
+
+Bug fixes, new features, effects and examples are welcome and appreciated. Please follow the [Contributing Guidelines](https://github.com/brianchirls/Seriously.js/wiki/Contributing).
+
 ## License
 Seriously.js is made available under the [MIT License](http://www.opensource.org/licenses/mit-license.php).
 
