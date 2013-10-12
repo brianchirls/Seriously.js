@@ -40,9 +40,7 @@
 
 			seriously = new Seriously();
 			target = seriously.target('#canvas');
-			blur = seriously.effect('blur', {
-				resizeFrameBuffer: false
-			});
+			blur = seriously.effect('blur');
 			blur.source = seriously.source('#robot');
 
 			blur.amount = '#amount';

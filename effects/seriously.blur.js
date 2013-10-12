@@ -39,7 +39,6 @@ http://v002.info/plugins/v002-blurs/
 	Seriously.plugin('blur', function (options) {
 		var fbHorizontal,
 			fbVertical,
-			resize = options && options.resizeFrameBuffer,
 			baseShader,
 			loopUniforms = {
 				amount: 0,
@@ -254,34 +253,29 @@ http://v002.info/plugins/v002-blurs/
 
 					loopUniforms.resolution[0] = width;
 					loopUniforms.resolution[1] = height;
-					if (resize) {
-						fbHorizontal.resize(width, height);
-					} else {
-						loopUniforms.inputScale = previousPass;
-						previousPass = pass;
-					}
+					loopUniforms.inputScale = previousPass;
+					previousPass = pass;
+
 					opts.width = width;
 					opts.height = height;
 
 					//horizontal pass
 					loopUniforms.direction = horizontal;
 					parent(shader, model, loopUniforms, fbHorizontal.frameBuffer, null, opts);
+
 					//vertical pass
-					if (resize) {
-						fbVertical.resize(width, height);
-					} else {
-						loopUniforms.inputScale = pass;
-					}
+					loopUniforms.inputScale = pass;
 					loopUniforms.source = fbHorizontal.texture;
 					loopUniforms.direction = vertical;
 					parent(shader, model, loopUniforms, i === finalPass ? frameBuffer : fbVertical.frameBuffer, null, opts);
+
 					loopUniforms.source = fbVertical.texture;
 				}
 			},
 			resize: function () {
 				loopUniforms.resolution[0] = this.width;
 				loopUniforms.resolution[1] = this.height;
-				if (!resize && fbHorizontal) {
+				if (fbHorizontal) {
 					fbHorizontal.resize(this.width, this.height);
 					fbVertical.resize(this.width, this.height);
 				}

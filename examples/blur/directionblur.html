@@ -41,9 +41,7 @@
 
 			seriously = new Seriously();
 			target = seriously.target('#canvas');
-			moblur = seriously.effect('directionblur', {
-				//resizeFrameBuffer: true
-			});
+			moblur = seriously.effect('directionblur');
 			moblur.source = seriously.source('#robot');
 
 			moblur.amount = '#amount';
