@@ -62,7 +62,7 @@ in the near future. There are no public plans for Internet Explorer to
 support WebGL.
 
 Even though a browser may support WebGL, the ability to run it depends
-on the system's graphics card. Serioulsy.js is heavily optimized, so most
+on the system's graphics card. Seriously.js is heavily optimized, so most
 modern desktops and notebooks should be sufficient. Older systems may
 run slower, especially when using high-resolution videos.
 
