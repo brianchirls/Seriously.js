@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Seriously.js Camera Demo</title>
+</head>
+<body>
+	<!-- page content goes here -->
+
+	<video id="source" width="320" height="240"></video>
+	<canvas id="target" width="640" height="480"></canvas>
+
+
+	<script src="../../lib/html5slider.js"></script>
+	<script src="../../seriously.js"></script>
+	<script src="../../effects/seriously.edge.js"></script>
+	<script>
+	(function() {
+		//main code goes here
+
+		// declare our variables
+		var seriously, // the main object that holds the entire composition
+			gUM, // will reference getUserMedia or whatever browser-prefixed version we can find
+			url, // will reference window.URL or whatever browser-prefixed version we can find
+			video, // video element
+			source, // wrapper object for source video
+			edge, // edge detection effect
+			target; // a wrapper object for our target canvas
+
+		// detect browser-prefixed getUserMedia
+		gUM = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia;
+
+		// detect browser-prefixed window.URL
+		url = window.URL || window.webkitURL || window.mozURL || window.msURL;
+
+		// grab the video element
+		video = document.getElementById('source');
+
+		// construct our seriously object
+		seriously = new Seriously();
+
+		// grab the video stream
+		if (gUM) {
+			gUM.call(navigator,
+				{video: true},
+				// success callback
+				function(stream){
+					// check for firefox
+					if (video.mozCaptureStream) {
+						video.mozSrcObject = stream;
+					} else {
+						video.src = (url && url.createObjectURL( stream )) || stream;
+					}
+					video.play();
+				}, 
+				// error callback
+				function(error){
+					console.log("An error occurred: [CODE " + error.code + "]");
+				}
+			);
+		}
+
+		// wait until video is ready
+		video.addEventListener('canplay', function(){
+
+			// time to get serious
+			source = seriously.source(video);
+			target = seriously.target('#target');
+			edge = seriously.effect('edge');
+
+			// connect all our nodes in the right order
+			edge.source = source;
+			target.source = edge;
+
+			seriously.go();
+		});
+
+	}());
+	</script>
+</body>
+</html>
