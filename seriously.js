@@ -2743,7 +2743,8 @@
 		};
 
 		SourceNode.prototype.resize = function () {
-			var i;
+			var i,
+				target;
 
 			this.uniforms.resolution[0] = this.width;
 			this.uniforms.resolution[1] = this.height;
@@ -2753,7 +2754,11 @@
 			}
 
 			for (i = 0; i < this.targets.length; i++) {
-				this.targets[i].resize();
+				target = this.targets[i];
+				target.resize();
+				if (target.setTransformDirty) {
+					target.setTransformDirty();
+				}
 			}
 		};
 
