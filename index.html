@@ -116,18 +116,6 @@
 					};
 		}());
 
-		function updateTime() {
-			var i;
-			for (i = 0; i < timeNodes.length; i++) {
-				if ('time' in timeNodes[i]) {
-					timeNodes[i].time = Date.now();
-				} else if ('timer' in timeNodes[i]) {
-					timeNodes[i].timer = Date.now();
-				}
-			}
-			requestAnimFrame(updateTime);
-		}
-
 		//for now, only effects that process a single image
 		for (e in effects) {
 			effect = effects[e];
@@ -166,17 +154,6 @@
 				webCamStream,
 				translateZ, rotateX, rotateY, rotateZ;
 
-			function updateTimers() {
-				if (active && active.effect.timer !== undefined) {
-					active.effect.timer = Date.now();
-				}
-				if (active && active.effect.time !== undefined) {
-					active.effect.time = Date.now();
-				}
-				setTimeout(updateTimers, 30);
-			}
-			updateTimers();
-
 			for (e in effects) {
 				if (!Seriously.incompatible(e)) {
 					effect = effects[e];
@@ -204,8 +181,14 @@
 			target = s.target('#canvas');
 			target.source = transform3d;
 
-			s.go();
-			updateTime();
+			s.animate(function () {
+				if (active && active.effect.timer !== undefined) {
+					active.effect.timer = Date.now();
+				}
+				if (active && active.effect.time !== undefined) {
+					active.effect.time = Date.now();
+				}
+			});
 
 			translateZ = document.getElementById('translate-z');
 			translateZ.addEventListener('input', function () {
