@@ -241,6 +241,8 @@
 				}
 				webCamStream = null;
 				source.source = '#colorbars';
+				target.height = source.original.naturalHeight;
+				target.width = source.original.naturalWidth;
 			});
 
 			target.original.addEventListener('dragover', function(event) {
@@ -257,9 +259,8 @@
 				
 				reader.onload = function(event) {
 					function resize() {
-						console.log('resize!');
-						//output.width = element.width;
-						target.height = target.original.width * element.height / element.width;
+						target.height = element.videoHeight || element.naturalHeight || element.height;
+						target.width = element.videoWidth || element.naturalWidth || element.width;
 						if (element.play) {
 							element.currentTime = 0;
 							element.play();
@@ -298,7 +299,8 @@
 			gUM && document.getElementById('camera').addEventListener('click', function () {
 				gUM.call(navigator, { video: true }, function(stream) {
 					function resize() {
-						target.height = target.original.width * video.videoHeight / video.videoWidth;
+						target.height = video.videoHeight;
+						target.width = video.videoWidth;
 					}
 
 					if (window.webkitURL) {
