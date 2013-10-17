@@ -2944,7 +2944,7 @@
 							me.width = me.desiredWidth = value;
 							me.target.width = value;
 
-							me.setDirty();
+							me.setTransformDirty();
 							/*
 							if (this.source && this.source.resize) {
 								this.source.resize(value);
@@ -2969,7 +2969,7 @@
 							me.height = me.desiredHeight = value;
 							me.target.height = value;
 
-							me.setDirty();
+							me.setTransformDirty();
 
 							/*
 							if (this.source && this.source.resize) {
@@ -3250,7 +3250,7 @@
 				this.height = this.target.height;
 				this.uniforms.resolution[0] = this.width;
 				this.uniforms.resolution[1] = this.height;
-				this.dirty = true;
+				this.setTransformDirty();
 			}
 
 			if (this.source &&
