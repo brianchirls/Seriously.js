@@ -2396,7 +2396,7 @@
 		};
 
 		EffectNode.prototype.destroy = function () {
-			var i, item, hook = this.hook;
+			var i, key, item, hook = this.hook;
 
 			//let effect destroy itself
 			if (this.effect.destroy && typeof this.effect.destroy === 'function') {
@@ -2411,46 +2411,45 @@
 			delete this.shader;
 
 			//stop watching any input elements
-			for (i in this.inputElements) {
-				if (this.inputElements.hasOwnProperty(i)) {
-					item = this.inputElements[i];
+			for (key in this.inputElements) {
+				if (this.inputElements.hasOwnProperty(key)) {
+					item = this.inputElements[key];
 					item.element.removeEventListener('change', item.listener, true);
 					item.element.removeEventListener('input', item.listener, true);
 				}
 			}
 
 			//sources
-			for (i in this.sources) {
-				if (this.sources.hasOwnProperty(i)) {
-					item = this.sources[i];
+			for (key in this.sources) {
+				if (this.sources.hasOwnProperty(key)) {
+					item = this.sources[key];
 					if (item && item.removeTarget) {
 						item.removeTarget(this);
 					}
-					delete this.sources[i];
+					delete this.sources[key];
 				}
 			}
 
 			//targets
-			for (i = 0; i < this.targets.length; i++) {
-				item = this.targets[i];
+			while (this.targets.length) {
+				item = this.targets.pop();
 				if (item && item.removeSource) {
 					item.removeSource(this);
 				}
-				delete this.targets[i];
 			}
 
 			for (i in this) {
-				if (this.hasOwnProperty(i) && i !== 'id') {
-					delete this[i];
+				if (this.hasOwnProperty(key) && key !== 'id') {
+					delete this[key];
 				}
 			}
 
 			//remove any aliases
-			for (i in aliases) {
-				if (aliases.hasOwnProperty(i)) {
-					item = aliases[i];
+			for (key in aliases) {
+				if (aliases.hasOwnProperty(key)) {
+					item = aliases[key];
 					if (item.node === this) {
-						seriously.removeAlias(i);
+						seriously.removeAlias(key);
 					}
 				}
 			}
@@ -2866,19 +2865,18 @@
 		};
 
 		SourceNode.prototype.destroy = function () {
-			var i, item;
+			var i, key, item;
 
 			if (this.gl && this.texture) {
 				this.gl.deleteTexture(this.texture);
 			}
 
 			//targets
-			for (i = 0; i < this.targets.length; i++) {
-				item = this.targets[i];
+			while (this.targets.length) {
+				item = this.targets.pop();
 				if (item && item.removeSource) {
 					item.removeSource(this);
 				}
-				delete this.targets[i];
 			}
 
 			//remove self from master list of sources
@@ -2887,9 +2885,9 @@
 				sources.splice(i, 1);
 			}
 
-			for (i in this) {
-				if (this.hasOwnProperty(i) && i !== 'id') {
-					delete this[i];
+			for (key in this) {
+				if (this.hasOwnProperty(key) && key !== 'id') {
+					delete this[key];
 				}
 			}
 
@@ -3758,7 +3756,7 @@
 		};
 
 		TransformNode.prototype.destroy = function () {
-			var i, item, hook = this.hook;
+			var i, key, item, hook = this.hook;
 
 			//let effect destroy itself
 			if (this.plugin.destroy && typeof this.plugin.destroy === 'function') {
@@ -3782,24 +3780,24 @@
 
 			//targets
 			while (this.targets.length) {
-				item = this.targets.shift();
+				item = this.targets.pop();
 				if (item && item.removeSource) {
 					item.removeSource(this);
 				}
 			}
 
-			for (i in this) {
-				if (this.hasOwnProperty(i) && i !== 'id') {
-					delete this[i];
+			for (key in this) {
+				if (this.hasOwnProperty(key) && key !== 'id') {
+					delete this[key];
 				}
 			}
 
 			//remove any aliases
-			for (i in aliases) {
-				if (aliases.hasOwnProperty(i)) {
-					item = aliases[i];
+			for (key in aliases) {
+				if (aliases.hasOwnProperty(key)) {
+					item = aliases[key];
 					if (item.node === this) {
-						seriously.removeAlias(i);
+						seriously.removeAlias(key);
 					}
 				}
 			}
