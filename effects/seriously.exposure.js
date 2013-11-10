@@ -59,7 +59,7 @@
 			exposure: {
 				type: 'number',
 				uniform: 'exposure',
-				defaultValue: 0,
+				defaultValue: 0.6,
 				min: 0,
 				max: 1
 			}

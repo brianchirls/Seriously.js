@@ -63,14 +63,14 @@
 			luminanceThreshold: {
 				type: 'number',
 				uniform: 'luminanceThreshold',
-				defaultValue: 0.2,
+				defaultValue: 0.1,
 				min: 0,
 				max: 1
 			},
 			amplification: {
 				type: 'number',
 				uniform: 'amplification',
-				defaultValue: 3,
+				defaultValue: 1.4,
 				min: 0
 			},
 			color: {

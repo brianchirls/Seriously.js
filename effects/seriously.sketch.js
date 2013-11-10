@@ -78,12 +78,6 @@
 				type: 'image',
 				uniform: 'source',
 				shaderDirty: false
-			},
-			resolution: {
-				type: 'number',
-				uniform: 'res',
-				min: 1,
-				defaultValue: 640
 			}
 		},
 		title: 'Sketch',

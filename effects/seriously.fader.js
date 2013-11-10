@@ -49,7 +49,7 @@
 			amount: {
 				type: 'number',
 				uniform: 'amount',
-				defaultValue: 1,
+				defaultValue: 0.5,
 				min: 0,
 				max: 1
 			}

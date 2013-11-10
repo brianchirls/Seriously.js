@@ -61,7 +61,7 @@
 			segments: {
 				type: 'number',
 				uniform: 'segments',
-				defaultValue: 2
+				defaultValue: 6
 			},
 			offset: {
 				type: 'number',

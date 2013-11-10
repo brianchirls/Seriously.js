@@ -155,7 +155,7 @@
 				title: 'Type',
 				type: 'enum',
 				uniform: 'cbtype',
-				defaultValue: '0.0',
+				defaultValue: '0.2',
 				options: [
 					['0.0', 'Off'],
 					['0.2', 'Protanope'],

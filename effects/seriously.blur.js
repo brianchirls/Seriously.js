@@ -305,7 +305,7 @@ http://v002.info/plugins/v002-blurs/
 			amount: {
 				type: 'number',
 				uniform: 'amount',
-				defaultValue: 0,
+				defaultValue: 0.2,
 				min: 0,
 				max: 1
 			}

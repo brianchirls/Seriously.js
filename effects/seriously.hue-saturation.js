@@ -106,7 +106,7 @@
 			hue: {
 				type: 'number',
 				uniform: 'hue',
-				defaultValue: 0,
+				defaultValue: 0.4,
 				min: -1,
 				max: 1
 			},

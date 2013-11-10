@@ -101,7 +101,7 @@
 				uniform: 'amount',
 				min: 0,
 				max: 1,
-				defaultValue: 0.5
+				defaultValue: 0.8
 			},
 			concentration: {
 				type: 'number',

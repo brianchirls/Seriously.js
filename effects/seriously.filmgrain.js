@@ -115,12 +115,12 @@ Modified to preserve alpha
 				'}',
 
 				'void main(void) {',
-				'	timer = mod(time, 10000.0);',
+				'	timer = mod(time, 10000.0) / 10000.0;',
 				'	vec4 pixel = texture2D(source, vTexCoord);',
-				'	vec3 noise = vec3(pnoise3D(vec3(vTexCoord * resolution, 0.0)));',
+				'	vec3 noise = vec3(pnoise3D(vec3(vTexCoord * resolution, timer + 0.0)));',
 				'	if (colored) {',
-				'		noise.g = pnoise3D(vec3(vTexCoord * resolution, 1.0));',
-				'		noise.b = pnoise3D(vec3(vTexCoord * resolution, 2.0));',
+				'		noise.g = pnoise3D(vec3(vTexCoord * resolution, timer + 1.0));',
+				'		noise.b = pnoise3D(vec3(vTexCoord * resolution, timer + 2.0));',
 				'	}',
 				'	gl_FragColor = vec4(pixel.rgb + noise * amount, pixel.a);',
 				'}'
@@ -136,7 +136,7 @@ Modified to preserve alpha
 			},
 			time: {
 				type: 'number',
-				uniform: 'timer'
+				uniform: 'time'
 			},
 			amount: {
 				type: 'number',
