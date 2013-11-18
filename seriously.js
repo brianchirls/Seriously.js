@@ -4386,23 +4386,23 @@
 			var a, i, s, vectorFields = ['x','y','z','w'];
 
 			if ( Array.isArray(value) ) {
-				a = {};
+				a = [];
 				for (i = 0; i < 4; i++) {
-					a[vectorFields[i]] = isNaN(value[i]) ? 0 : value[i];
+					a[i] = isNaN(value[i]) ? 0 : value[i];
 				}
 				return a;
 			}
 
 			if (typeof value === 'object') {
-				a = {};
+				a = [];
 				for (i = 0; i < 4; i++) {
 					s = vectorFields[i];
-					a[s] = isNaN(value[s]) ? 0 : value[s];
+					a[i] = isNaN(value[s]) ? 0 : value[s];
 				}
 				return a;
 			}
 
-			return { x: 0, y: 0, z: 0, w: 0 };
+			return [0, 0, 0, 0];
 		},
 		'boolean': function (value) {
 			if (!value) {
@@ -4499,9 +4499,7 @@
 		setTimeoutZero: setTimeoutZero,
 		ShaderProgram: ShaderProgram,
 		FrameBuffer: FrameBuffer,
-		requestAnimationFrame: function (callback) {
-			requestAnimFrame(callback);
-		},
+		requestAnimationFrame: requestAnimFrame,
 		shader: {
 			makeNoise: 'float makeNoise(float u, float v, float timer) {\n' +
 						'	float x = u * v * mod(timer * 1000.0, 100.0);\n' +
