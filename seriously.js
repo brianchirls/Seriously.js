@@ -4112,7 +4112,7 @@
 	//todo: validators should not allocate new objects/arrays if input is valid
 	Seriously.inputValidators = {
 		color: function (value) {
-			var s, a, i;
+			var s, a, i, computed, bg;
 			if (typeof value === 'string') {
 				//todo: support percentages, decimals
 				s = (/^(rgb|hsl)a?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(,\s*(\d+(\.\d*)?)\s*)?\)/i).exec(value);
@@ -4181,9 +4181,12 @@
 				}
 				colorElement.style.backgroundColor = '';
 				colorElement.style.backgroundColor = value;
-				value = colorElement.style.backgroundColor;
-				if (value) {
-					return Seriously.inputValidators.color(value);
+				computed = window.getComputedStyle(colorElement);
+				bg = computed.getPropertyValue('background-color') ||
+					computed.getPropertyValue('backgroundColor') ||
+					colorElement.style.backgroundColor;
+				if (bg && bg !== value) {
+					return Seriously.inputValidators.color(bg);
 				}
 
 				return [0,0,0,0];
