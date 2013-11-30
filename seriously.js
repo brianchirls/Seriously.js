@@ -214,6 +214,17 @@
 				};
 	}()),
 
+	cancelAnimFrame = (function (){
+		return  window.cancelAnimationFrame ||
+				window.webkitCancelAnimationFrame ||
+				window.mozCancelAnimationFrame ||
+				window.oCancelAnimationFrame ||
+				window.msCancelAnimationFrame ||
+				function (id) {
+					window.cancelTimeout(id);
+				};
+	}()),
+
 	reservedNames = ['source', 'target', 'effect', 'effects', 'benchmark', 'incompatible',
 		'util', 'ShaderProgram', 'inputValidators', 'save', 'load',
 		'plugin', 'removePlugin', 'alias', 'removeAlias', 'stop', 'go',
@@ -869,8 +880,8 @@
 			transforms = [],
 			effects = [],
 			aliases = {},
-			callbacks = [],
-			animationCallbacks = [],
+			preCallbacks = [],
+			postCallbacks = [],
 			glCanvas,
 			gl,
 			rectangleModel,
@@ -879,8 +890,8 @@
 			Node, SourceNode, EffectNode, TransformNode, TargetNode,
 			Effect, Source, Transform, Target,
 			auto = false,
-			callbacksRunning = false,
-			isDestroyed = false;
+			isDestroyed = false,
+			rafId;
 
 		function makeGlModel(shape, gl) {
 			var vertex, index, texCoord;
@@ -980,9 +991,9 @@
 			var i, node, media,
 				keepRunning = false;
 
-			if (animationCallbacks.length) {
-				for (i = 0; i < animationCallbacks.length; i++) {
-					animationCallbacks[i].call(seriously);
+			if (preCallbacks.length) {
+				for (i = 0; i < preCallbacks.length; i++) {
+					preCallbacks[i].call(seriously);
 				}
 			}
 
@@ -1009,8 +1020,16 @@
 				}
 			}
 
+			if (postCallbacks.length) {
+				for (i = 0; i < postCallbacks.length; i++) {
+					postCallbacks[i].call(seriously);
+				}
+			}
+
 			if (keepRunning) {
-				requestAnimFrame(monitorSources);
+				rafId = requestAnimFrame(monitorSources);
+			} else {
+				rafId = null;
 			}
 		}
 
@@ -1139,21 +1158,6 @@
 			}
 
 			return node;
-		}
-
-		function runCallbacks() {
-			function run() {
-				var i;
-				for (i = 0; i < callbacks.length; i++) {
-					callbacks[i].call(seriously);
-				}
-				callbacksRunning = false;
-			}
-
-			if (!callbacksRunning && callbacks.length) {
-				setTimeoutZero(run);
-				callbacksRunning = true;
-			}
 		}
 
 		//trace back all sources to make sure we're not making a cyclical connection
@@ -1521,8 +1525,8 @@
 				}
 			});
 
-			this.render = function (callback) {
-				me.render(callback);
+			this.render = function () {
+				me.render();
 				return this;
 			};
 
@@ -1725,7 +1729,7 @@
 			}
 		};
 
-		EffectNode.prototype.render = function (callback) {
+		EffectNode.prototype.render = function () {
 			var i,
 				frameBuffer,
 				effect = this.effect,
@@ -1768,10 +1772,6 @@
 				}
 
 				this.dirty = false;
-			}
-
-			if (callback && typeof callback === 'function') {
-				callback();
 			}
 
 			return this.texture;
@@ -2360,8 +2360,8 @@
 				}
 			});
 
-			this.render = function (callback) {
-				me.render(callback);
+			this.render = function () {
+				me.render();
 			};
 
 			this.update = function () {
@@ -2543,7 +2543,7 @@
 
 			sources.push(this);
 
-			if (sources.length === 1 && !animationCallbacks.length) {
+			if (sources.length && rafId) {
 				monitorSources();
 			}
 		};
@@ -2688,7 +2688,7 @@
 			}
 		};
 
-		SourceNode.prototype.renderTypedArray = function (callback) {
+		SourceNode.prototype.renderTypedArray = function () {
 			var media = this.source;
 
 			if (!gl || !media || !media.length) {
@@ -2712,10 +2712,6 @@
 
 				this.lastRenderTime = Date.now() / 1000;
 				this.dirty = false;
-			}
-
-			if (callback && typeof callback === 'function') {
-				callback();
 			}
 		};
 
@@ -2846,8 +2842,8 @@
 				}
 			});
 
-			this.render = function (callback) {
-				me.render(callback);
+			this.render = function () {
+				me.render();
 			};
 
 			this.readPixels = function (x, y, width, height, dest) {
@@ -3034,7 +3030,6 @@
 			this.flip = flip;
 			this.width = width;
 			this.height = height;
-			this.callbacks = [];
 
 			this.uniforms.resolution[0] = this.width;
 			this.uniforms.resolution[1] = this.height;
@@ -3076,15 +3071,8 @@
 		TargetNode.prototype.setDirty = function () {
 			var that;
 
-			function runCallbacks() {
-				var i;
-				for (i = 0; i < that.callbacks.length; i++) {
-					that.callbacks[i]();
-				}
-			}
-
 			function render() {
-				that.render(runCallbacks);
+				that.render();
 			}
 
 			this.dirty = true;
@@ -3119,25 +3107,16 @@
 			this.setDirty();
 		};
 
-		TargetNode.prototype.go = function (options) {
-			if (options) {
-				if (typeof options === 'function') {
-					this.callbacks.push(options);
-				} else if (options.callback && typeof options.callback === 'function') {
-					this.callbacks.push(options.callback);
-				}
-			}
-
+		TargetNode.prototype.go = function () {
 			this.auto = true;
 			this.setDirty();
 		};
 
 		TargetNode.prototype.stop = function () {
 			this.auto = false;
-			this.callbacks.splice(0);
 		};
 
-		TargetNode.prototype.renderWebGL = function (callback) {
+		TargetNode.prototype.renderWebGL = function () {
 			var matrix, x, y;
 
 			this.resize();
@@ -3173,16 +3152,10 @@
 				draw(baseShader, rectangleModel, this.uniforms, this.frameBuffer.frameBuffer, this);
 
 				this.dirty = false;
-
-				runCallbacks();
-			}
-
-			if (callback && typeof callback === 'function') {
-				callback();
 			}
 		};
 
-		TargetNode.prototype.renderSecondaryWebGL = function (callback) {
+		TargetNode.prototype.renderSecondaryWebGL = function () {
 			if (this.dirty && this.source) {
 				this.source.render();
 
@@ -3201,23 +3174,11 @@
 				draw(this.shader, this.model, this.uniforms, null, this);
 
 				this.dirty = false;
-
-				runCallbacks();
-			}
-
-			if (callback && typeof callback === 'function') {
-				callback();
 			}
 		};
 
-		TargetNode.prototype.render2D = function (callback) {
-			//todo: make this actually do something
-
-			runCallbacks();
-
-			if (callback && typeof callback === 'function') {
-				callback();
-			}
+		TargetNode.prototype.render2D = function () {
+			//todo: make this actually do something?
 		};
 
 		TargetNode.prototype.removeSource = function (source) {
@@ -3239,7 +3200,6 @@
 			delete this.uniforms;
 			delete this.pixels;
 			delete this.auto;
-			this.callbacks.splice(0);
 
 			//remove self from master list of targets
 			i = targets.indexOf(this);
@@ -3754,49 +3714,32 @@
 			}
 		};
 
-		this.go = function (options) {
+		this.go = function (pre, post) {
 			var i;
 
-			if (options) {
-				if (typeof options === 'function') {
-					callbacks.push(options);
-					options = {};
-				} else if (options.callback && typeof options.callback === 'function') {
-					callbacks.push(options.callback);
-					options = extend({}, options);
-					delete options.callback;
-				}
+			if (typeof pre === 'function' && preCallbacks.indexOf(pre) < 0) {
+				preCallbacks.push(pre);
+			}
+
+			if (typeof post === 'function' && postCallbacks.indexOf(post) < 0) {
+				postCallbacks.push(post);
 			}
 
 			auto = true;
 			for (i = 0; i < targets.length; i++) {
-				targets[i].go(options);
-			}
-		};
-
-		this.animate = function (callback) {
-			if (!callback || typeof callback !== 'function') {
-				return;
+				targets[i].go();
 			}
 
-			if (animationCallbacks.indexOf(callback) < 0) {
-				animationCallbacks.push(callback);
-			}
-
-			this.go();
-
-			if (!sources.length && animationCallbacks.length === 1) {
+			if (!rafId && (preCallbacks.length || postCallbacks.length)) {
 				monitorSources();
 			}
 		};
 
-		this.stop = function (options) {
-			var i;
-			animationCallbacks.splice(0);
-			callbacks.splice(0);
-			for (i = 0; i < targets.length; i++) {
-				targets[i].stop(options);
-			}
+		this.stop = function () {
+			preCallbacks.length = 0;
+			postCallbacks.length = 0;
+			cancelAnimFrame(rafId);
+			rafId = null;
 		};
 
 		this.render = function (options) {
@@ -3810,9 +3753,6 @@
 			var i,
 				node,
 				descriptor;
-
-			//clear out all animation callbacks
-			animationCallbacks.length = 0;
 
 			while (nodes.length) {
 				node = nodes.shift();
@@ -3858,7 +3798,11 @@
 			targets = [];
 			effects = [];
 			nodes = [];
-			callbacks.splice(0);
+			preCallbacks.length = 0;
+			postCallbacks.length = 0;
+			cancelAnimFrame(rafId);
+			rafId = null;
+
 
 			isDestroyed = true;
 		};
@@ -4225,7 +4169,7 @@
 					if (value[s] === null || isNaN(value[s])) {
 						a[i] = i === 3 ? 1 : 0;
 					} else {
-						a[i] = value[s]
+						a[i] = value[s];
 					}
 				}
 				return a;
