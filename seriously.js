@@ -334,6 +334,11 @@
 		window.postMessage('seriously-timeout-message', window.location);
 	}
 
+	function isArrayLike(obj) {
+		return Array.isArray(obj) ||
+			(obj && obj.BYTES_PER_ELEMENT && 'length' in obj);
+	}
+
 	window.addEventListener('message', function (event) {
 		if (event.source === window && event.data === 'seriously-timeout-message') {
 			event.stopPropagation();
@@ -2457,7 +2462,7 @@
 				matchedType = true;
 
 				this.render = this.renderImageCanvas;
-			} else if ( Array.isArray(source) ) {
+			} else if (isArrayLike(source)) {
 				if (!width || !height) {
 					throw 'Height and width must be provided with an Array';
 				}
@@ -2475,25 +2480,9 @@
 				if (opts.flip === undefined) {
 					flip = false;
 				}
-				source = new Uint8Array(source);
-				this.render = this.renderTypedArray;
-			} else if ( source instanceof Uint8Array ) {
-				if (!width || !height) {
-					throw 'Height and width must be provided with a Uint8Array';
-				}
 
-				if (width * height * 4 !== source.length) {
-					throw 'Typed array length must be height x width x 4.';
-				}
-
-				this.width = width;
-				this.height = height;
-
-				matchedType = true;
-
-				//use opposite default for flip
-				if (opts.flip === undefined) {
-					flip = false;
+				if (!(source instanceof Uint8Array)) {
+					source = new Uint8Array(source);
 				}
 				this.render = this.renderTypedArray;
 			} else if (source instanceof WebGLTexture) {
@@ -4199,7 +4188,7 @@
 				return [0,0,0,0];
 			}
 
-			if (Array.isArray(value)) {
+			if (isArrayLike(value)) {
 				a = value;
 				if (a.length < 3) {
 					return [0,0,0,0];
@@ -4249,7 +4238,7 @@
 				filtered;
 
 			filtered = options.filter(function (opt) {
-				return (Array.isArray(opt) && opt.length && opt[0] === value) || opt === value;
+				return (isArrayLike(opt) && opt.length && opt[0] === value) || opt === value;
 			});
 
 			if (filtered.length) {
@@ -4261,7 +4250,7 @@
 		vector: function (value) {
 			var a, i, s, vectorFields = ['x','y','z','w'];
 
-			if ( Array.isArray(value) ) {
+			if (isArrayLike(value)) {
 				a = [];
 				for (i = 0; i < 4; i++) {
 					a[i] = isNaN(value[i]) ? 0 : value[i];

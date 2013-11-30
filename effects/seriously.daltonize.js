@@ -18,6 +18,7 @@
 }(this, function (Seriously, undefined) {
 	'use strict';
 
+//todo: add Simulate mode http://mudcu.be/labs/Color/Vision/Javascript/Color.Vision.Simulate.js
 
 /*
 * Daltonization algorithm from:
