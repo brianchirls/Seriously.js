@@ -674,70 +674,70 @@
 
 		e.color = 'rgb(10, 20, 30)';
 		val = e.color;
-		ok( compare(val, [10/255, 20/255, 30/255, 1]), 'Set color by rgb');
+		ok(compare(val, [10/255, 20/255, 30/255, 1]), 'Set color by rgb');
 
 		e.color = 'rgba(30, 20, 10, 0.8)';
 		val = e.color;
-		ok( compare(val, [30/255, 20/255, 10/255, 0.8]), 'Set color by rgba');
+		ok(compare(val, [30/255, 20/255, 10/255, 0.8]), 'Set color by rgba');
 
 		//todo: test rgb percentages
 		//todo: test hsl/hsla
 
 		e.color = '#123';
 		val = e.color;
-		ok( compare(val, [1/15, 2/15, 3/15, 1]), 'Set color by 3-character hex');
+		ok(compare(val, [1/15, 2/15, 3/15, 1]), 'Set color by 3-character hex');
 
 		e.color = '#1234';
 		val = e.color;
-		ok( compare(val, [0x1/15, 0x2/15, 0x3/15, 0x4/15]), 'Set color by 4-character hex');
+		ok(compare(val, [0x1/15, 0x2/15, 0x3/15, 0x4/15]), 'Set color by 4-character hex');
 
 		e.color = '#123456';
 		val = e.color;
-		ok( compare(val, [0x12/255, 0x34/255, 0x56/255, 1]), 'Set color by 6-character hex');
+		ok(compare(val, [0x12/255, 0x34/255, 0x56/255, 1]), 'Set color by 6-character hex');
 
 		e.color = '#654321AA';
 		val = e.color;
-		ok( compare(val, [0x65/255, 0x43/255, 0x21/255, 0xAA/255]), 'Set color by 8-character hex');
+		ok(compare(val, [0x65/255, 0x43/255, 0x21/255, 0xAA/255]), 'Set color by 8-character hex');
 
 		e.color = '#fffff';
 		val = e.color;
-		ok( compare(val, [0, 0, 0, 0]), 'Set color by bad hex is transparent black');
+		ok(compare(val, [0, 0, 0, 0]), 'Set color by bad hex is transparent black');
 
 		e.color = 'lightcyan';
 		val = e.color;
-		ok( compare(val, [224/255,1,1,1]), 'Set color by name (lightcyan)');
+		ok(compare(val, [224/255, 1, 1, 1]), 'Set color by name (lightcyan)');
 
 		e.color = 'lightblue';
 		val = e.color;
-		ok( compare(val, [173/255,216/255,230/255,1]), 'Set color by name (lightblue)');
+		ok(compare(val, [173/255, 216/255, 230/255, 1]), 'Set color by name (lightblue)');
 
 		e.color = 'red';
 		val = e.color;
-		ok( compare(val, [1,0,0,1]), 'Set color by name (red)');
+		ok(compare(val, [1, 0, 0, 1]), 'Set color by name (red)');
 
 		e.color = 'white';
 		val = e.color;
-		ok( compare(val, [1,1,1,1]), 'Set color by name (white)');
+		ok(compare(val, [1, 1, 1, 1]), 'Set color by name (white)');
 
 		e.color = 'transparent';
 		val = e.color;
-		ok( compare(val, [0,0,0,0]), 'Set color by name (transparent)');
+		ok(compare(val, [0, 0, 0, 0]), 'Set color by name (transparent)');
 
 		e.color = 'garbage';
 		val = e.color;
-		ok( compare(val, [0, 0, 0, 0]), 'Set color by unknown name is transparent black');
+		ok(compare(val, [0, 0, 0, 0]), 'Set color by unknown name is transparent black');
 
 		e.color = 0.3;
 		val = e.color;
-		ok( compare(val, [0.3, 0.3, 0.3, 1]), 'Set color by single number');
+		ok(compare(val, [0.3, 0.3, 0.3, 1]), 'Set color by single number');
 
 		e.color = [0.1, 0.2, 0.3];
 		val = e.color;
-		ok( compare(val, [0.1, 0.2, 0.3, 1]), 'Set color by 3-array');
+		ok(compare(val, [0.1, 0.2, 0.3, 1]), 'Set color by 3-array');
 
 		e.color = [0.2, 0.3, 0.4, 0.5];
 		val = e.color;
-		ok( compare(val, [0.2, 0.3, 0.4, 0.5]), 'Set color by 4-array');
+		ok(compare(val, [0.2, 0.3, 0.4, 0.5]), 'Set color by 4-array');
 
 		e.color = {
 			r: 0.1,
@@ -820,12 +820,12 @@
 		s = new Seriously();
 		e = s.effect('testVectorInput');
 
-		ok( compare(e.vec2, [1, 2]), 'Default value #1');
-		ok( compare(e.vec4, [1, 2, 3, 4]), 'Default value #2');
+		ok(compare(e.vec2, [1, 2]), 'Default value #1');
+		ok(compare(e.vec4, [1, 2, 3, 4]), 'Default value #2');
 
 		e.vec2 = 3;
 		val = e.vec2;
-		ok( compare(val, [3, 3]), 'Set all to a single value');
+		ok(compare(val, [3, 3]), 'Set all to a single value');
 
 		e.vec4 = {
 			x: 4,
