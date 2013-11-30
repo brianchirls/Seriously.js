@@ -3493,7 +3493,7 @@
 				this.targets.splice(i, 1);
 			}
 
-			if (this.targets.length) {
+			if (this.targets && this.targets.length) {
 				this.resize();
 			}
 		};
@@ -3809,6 +3809,9 @@
 			var i,
 				node,
 				descriptor;
+
+			//clear out all animation callbacks
+			animationCallbacks.length = 0;
 
 			while (nodes.length) {
 				node = nodes.shift();
