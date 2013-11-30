@@ -54,6 +54,9 @@
 		white: [1, 1, 1, 1]
 	},
 
+	vectorFields = ['x','y','z','w'],
+	colorFields = ['r','g','b','a'],
+
 	/*
 		utility functions
 	*/
@@ -272,7 +275,7 @@
 	}
 
 	//http://www.w3.org/TR/css3-color/#hsl-color
-	function hslToRgb(h, s, l, a) {
+	function hslToRgb(h, s, l, a, out) {
 		function hueToRgb(m1, m2, h) {
 			h = h % 1;
 			if (h < 0) {
@@ -297,12 +300,17 @@
 			m2 = l + s - l * s;
 		}
 		m1 = l * 2 - m2;
-		return [
-			hueToRgb(m1, m2, h + 1/3),
-			hueToRgb(m1, m2, h),
-			hueToRgb(m1, m2, h - 1/3),
-			a
-		];
+
+		if (!out) {
+			out = [];
+		}
+
+		out[0] = hueToRgb(m1, m2, h + 1/3);
+		out[1] = hueToRgb(m1, m2, h);
+		out[2] = hueToRgb(m1, m2, h - 1/3);
+		out[3] = a;
+
+		return out;
 	}
 
 	/*
@@ -1811,7 +1819,7 @@
 
 					this.resize();
 				} else {
-					value = input.validate.call(this, value, input, name);
+					value = input.validate.call(this, value, input, this.inputs[name]);
 					uniform = value;
 				}
 
@@ -4104,20 +4112,23 @@
 		return this;
 	};
 
-
 	//todo: validators should not allocate new objects/arrays if input is valid
 	Seriously.inputValidators = {
-		color: function (value) {
+		color: function (value, input, oldValue) {
 			var s, a, i, computed, bg;
+
+			a = oldValue || [];
+
 			if (typeof value === 'string') {
 				//todo: support percentages, decimals
 				s = (/^(rgb|hsl)a?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(,\s*(\d+(\.\d*)?)\s*)?\)/i).exec(value);
 				if (s && s.length) {
 					if (s.length < 3) {
-						return [0,0,0,0];
+						a[0] = a[1] = a[2] = a[3] = 0;
+						return a;
 					}
 
-					a = [0,0,0,1];
+					a[3] = 1;
 					for (i = 0; i < 3; i++) {
 						a[i] = parseFloat(s[i+2]) / 255;
 					}
@@ -4125,7 +4136,7 @@
 						a[3] = parseFloat(s[6]);
 					}
 					if (s[1].toLowerCase() === 'hsl') {
-						return hslToRgb(a[0], a[1], a[2], a[3]);
+						return hslToRgb(a[0], a[1], a[2], a[3], a);
 					}
 					return a;
 				}
@@ -4134,41 +4145,36 @@
 				if (s && s.length) {
 					s = s[1];
 					if (s.length === 3) {
-						a = [
-							parseInt(s[0],16) / 15,
-							parseInt(s[1],16) / 15,
-							parseInt(s[2],16) / 15,
-							1
-						];
+						a[0] = parseInt(s[0], 16) / 15;
+						a[1] = parseInt(s[1], 16) / 15;
+						a[2] = parseInt(s[2], 16) / 15;
+						a[3] = 1;
 					} else if (s.length === 4) {
-						a = [
-							parseInt(s[0],16) / 15,
-							parseInt(s[1],16) / 15,
-							parseInt(s[2],16) / 15,
-							parseInt(s[3],16) / 15
-						];
+						a[0] = parseInt(s[0], 16) / 15;
+						a[1] = parseInt(s[1], 16) / 15;
+						a[2] = parseInt(s[2], 16) / 15;
+						a[3] = parseInt(s[3], 16) / 15;
 					} else if (s.length === 6) {
-						a = [
-							parseInt(s.substr(0,2),16) / 255,
-							parseInt(s.substr(2,2),16) / 255,
-							parseInt(s.substr(4,2),16) / 255,
-							1
-						];
+						a[0] = parseInt(s.substr(0, 2), 16) / 255;
+						a[1] = parseInt(s.substr(2, 2), 16) / 255;
+						a[2] = parseInt(s.substr(4, 2), 16) / 255;
+						a[3] = 1;
 					} else if (s.length === 8) {
-						a = [
-							parseInt(s.substr(0,2),16) / 255,
-							parseInt(s.substr(2,2),16) / 255,
-							parseInt(s.substr(4,2),16) / 255,
-							parseInt(s.substr(6,2),16) / 255
-						];
+						a[0] = parseInt(s.substr(0, 2), 16) / 255;
+						a[1] = parseInt(s.substr(2, 2), 16) / 255;
+						a[2] = parseInt(s.substr(4, 2), 16) / 255;
+						a[3] = parseInt(s.substr(6, 2), 16) / 255;
 					} else {
-						a = [0,0,0,0];
+						a[0] = a[1] = a[2] = a[3] = 0;
 					}
 					return a;
 				}
 
-				a = colorNames[value.toLowerCase()];
-				if (a) {
+				s = colorNames[value.toLowerCase()];
+				if (s) {
+					for (i = 0; i < 4; i++) {
+						a[i] = s[i];
+					}
 					return a;
 				}
 
@@ -4182,20 +4188,23 @@
 					computed.getPropertyValue('backgroundColor') ||
 					colorElement.style.backgroundColor;
 				if (bg && bg !== value) {
-					return Seriously.inputValidators.color(bg);
+					return Seriously.inputValidators.color(bg, input, oldValue);
 				}
 
-				return [0,0,0,0];
+				a[0] = a[1] = a[2] = a[3] = 0;
+				return a;
 			}
 
 			if (isArrayLike(value)) {
 				a = value;
 				if (a.length < 3) {
-					return [0,0,0,0];
+					a[0] = a[1] = a[2] = a[3] = 0;
+					return a;
 				}
 				for (i = 0; i < 3; i++) {
 					if (isNaN(a[i])) {
-						return [0,0,0,0];
+						a[0] = a[1] = a[2] = a[3] = 0;
+						return a;
 					}
 				}
 				if (a.length < 4) {
@@ -4205,12 +4214,25 @@
 			}
 
 			if (typeof value === 'number') {
-				return [value, value, value, 1];
-			//todo: } else if (type === 'Object') {
-				//todo: r, g, b
+				a[0] = a[1] = a[2] = value;
+				a[3] = 1;
+				return a;
 			}
 
-			return [0, 0, 0, 0];
+			if (typeof value === 'object') {
+				for (i = 0; i < 4; i++) {
+					s = colorFields[i];
+					if (value[s] === null || isNaN(value[s])) {
+						a[i] = i === 3 ? 1 : 0;
+					} else {
+						a[i] = value[s]
+					}
+				}
+				return a;
+			}
+
+			a[0] = a[1] = a[2] = a[3] = 0;
+			return a;
 		},
 		number: function (value, input) {
 			if (isNaN(value)) {
@@ -4247,27 +4269,34 @@
 
 			return input.defaultValue || '';
 		},
-		vector: function (value) {
-			var a, i, s, vectorFields = ['x','y','z','w'];
+		vector: function (value, input, oldValue) {
+			var a, i, s, n = input.dimensions || 4;
 
+			a = oldValue || [];
 			if (isArrayLike(value)) {
-				a = [];
-				for (i = 0; i < 4; i++) {
-					a[i] = isNaN(value[i]) ? 0 : value[i];
+				for (i = 0; i < n; i++) {
+					a[i] = value[i] || 0;
 				}
 				return a;
 			}
 
 			if (typeof value === 'object') {
-				a = [];
-				for (i = 0; i < 4; i++) {
+				for (i = 0; i < n; i++) {
 					s = vectorFields[i];
-					a[i] = isNaN(value[s]) ? 0 : value[s];
+					if (value[s] === undefined) {
+						s = colorFields[i];
+					}
+					a[i] = value[s] || 0;
 				}
 				return a;
 			}
 
-			return [0, 0, 0, 0];
+			value = parseFloat(value) || 0;
+			for (i = 0; i < n; i++) {
+				a[i] = value;
+			}
+
+			return a;
 		},
 		'boolean': function (value) {
 			if (!value) {

@@ -658,7 +658,7 @@
 	test('Color', function () {
 		var e, s, val;
 
-		expect(16);
+		expect(18);
 
 		Seriously.plugin('testColorInput', {
 			inputs: {
@@ -739,7 +739,22 @@
 		val = e.color;
 		ok( compare(val, [0.2, 0.3, 0.4, 0.5]), 'Set color by 4-array');
 
-		//todo: set color by object
+		e.color = {
+			r: 0.1,
+			g: 0.2,
+			b: 0.3
+		};
+		val = e.color;
+		ok(compare(val, [0.1, 0.2, 0.3, 1]), 'Set RGB by object');
+
+		e.color = {
+			r: 0.2,
+			g: 0.3,
+			b: 0.4,
+			a: 0.5
+		};
+		val = e.color;
+		ok(compare(val, [0.2, 0.3, 0.4, 0.5]), 'Set RGBA by object');
 
 		s.destroy();
 		Seriously.removePlugin('testColorInput');
@@ -782,6 +797,65 @@
 
 		s.destroy();
 		Seriously.removePlugin('testEnumInput');
+	});
+
+	test('Vector', 7, function() {
+		var s, e, val;
+
+		Seriously.plugin('testVectorInput', {
+			inputs: {
+				vec2: {
+					type: 'vector',
+					defaultValue: [1, 2],
+					dimensions: 2
+				},
+				vec4: {
+					type: 'vector',
+					defaultValue: [1, 2, 3, 4],
+					dimensions: 4
+				}
+			}
+		});
+
+		s = new Seriously();
+		e = s.effect('testVectorInput');
+
+		ok( compare(e.vec2, [1, 2]), 'Default value #1');
+		ok( compare(e.vec4, [1, 2, 3, 4]), 'Default value #2');
+
+		e.vec2 = 3;
+		val = e.vec2;
+		ok( compare(val, [3, 3]), 'Set all to a single value');
+
+		e.vec4 = {
+			x: 4,
+			y: 5,
+			z: 6,
+			w: 7,
+			blah: 9
+		};
+		val = e.vec4;
+		ok(compare(val, [4, 5, 6, 7]), 'Set by object');
+
+		e.vec4 = {
+			r: 0.1,
+			g: 0.2,
+			b: 0.3,
+			a: 0.4
+		};
+		val = e.vec4;
+		ok(compare(val, [0.1, 0.2, 0.3, 0.4]), 'Set by object with color names');
+
+		e.vec4 = [8, 9, 10, 11];
+		val = e.vec4;
+		ok(compare(val, [8, 9, 10, 11]), 'Set by array');
+
+		e.vec2 = 'foo';
+		val = e.vec2;
+		ok(compare(val, [0, 0]), 'Bad value becomes zero vector');
+
+		s.destroy();
+		Seriously.removePlugin('testVectorInput');
 	});
 
 	module('Transform');
