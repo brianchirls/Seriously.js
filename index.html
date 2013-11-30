@@ -18,6 +18,7 @@
 		<script type="text/javascript" src="effects/seriously.edge.js"></script>
 		<script type="text/javascript" src="effects/seriously.emboss.js"></script>
 		<script type="text/javascript" src="effects/seriously.exposure.js"></script>
+		<script type="text/javascript" src="effects/seriously.falsecolor.js"></script>
 		<script type="text/javascript" src="effects/seriously.kaleidoscope.js"></script>
 		<script type="text/javascript" src="effects/seriously.lumakey.js"></script>
 		<script type="text/javascript" src="effects/seriously.fader.js"></script>
@@ -185,7 +186,7 @@
 			target = s.target('#canvas');
 			target.source = transform3d;
 
-			s.animate(function () {
+			s.go(function () {
 				if (active && active.effect.timer !== undefined) {
 					active.effect.timer = Date.now();
 				}
