@@ -47,7 +47,11 @@
 
 	// http://www.w3.org/TR/css3-color/#svg-color
 	colorNames = {
-		'transparent': [0,0,0,0]
+		transparent: [0, 0, 0, 0],
+		red: [1, 0, 0, 1],
+		green: [0, 1, 0, 1],
+		blue: [0, 0, 1, 1],
+		white: [1, 1, 1, 1]
 	},
 
 	/*

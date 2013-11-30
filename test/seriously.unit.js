@@ -658,7 +658,7 @@
 	test('Color', function () {
 		var e, s, val;
 
-		expect(12);
+		expect(16);
 
 		Seriously.plugin('testColorInput', {
 			inputs: {
@@ -705,7 +705,23 @@
 
 		e.color = 'lightcyan';
 		val = e.color;
-		ok( compare(val, [224/255,1,1,1]), 'Set color by name');
+		ok( compare(val, [224/255,1,1,1]), 'Set color by name (lightcyan)');
+
+		e.color = 'lightblue';
+		val = e.color;
+		ok( compare(val, [173/255,216/255,230/255,1]), 'Set color by name (lightblue)');
+
+		e.color = 'red';
+		val = e.color;
+		ok( compare(val, [1,0,0,1]), 'Set color by name (red)');
+
+		e.color = 'white';
+		val = e.color;
+		ok( compare(val, [1,1,1,1]), 'Set color by name (white)');
+
+		e.color = 'transparent';
+		val = e.color;
+		ok( compare(val, [0,0,0,0]), 'Set color by name (transparent)');
 
 		e.color = 'garbage';
 		val = e.color;
