@@ -1823,7 +1823,7 @@
 					uniform = value;
 				}
 
-				if (this.inputs[name] === value) {
+				if (this.inputs[name] === value && input.type !== 'color' && input.type !== 'vector') {
 					return value;
 				}
 
