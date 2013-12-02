@@ -984,20 +984,24 @@
 			}
 		}
 
-		//runs on every frame, as long as there are media sources (img, video, canvas, etc.) to check
-		//any sources that are updated are set to dirty, forcing all dependent nodes to render on next pass
-		//target nodes that are set to auto by .go() will render immediately when set to dirty
-		function monitorSources() {
+		/*
+		runs on every frame, as long as there are media sources (img, video, canvas, etc.) to check,
+		dirty target nodes or pre/post callbacks to run. any sources that are updated are set to dirty,
+		forcing all dependent nodes to render
+		*/
+		function renderDaemon() {
 			var i, node, media,
 				keepRunning = false;
 
 			if (preCallbacks.length) {
+				keepRunning = true;
 				for (i = 0; i < preCallbacks.length; i++) {
 					preCallbacks[i].call(seriously);
 				}
 			}
 
 			if (sources && sources.length) {
+				keepRunning = true;
 				for (i = 0; i < sources.length; i++) {
 					node = sources[i];
 
@@ -1009,8 +1013,6 @@
 						node.setDirty();
 					}
 				}
-
-				keepRunning = true;
 			}
 
 			for (i = 0; i < targets.length; i++) {
@@ -1021,13 +1023,14 @@
 			}
 
 			if (postCallbacks.length) {
+				keepRunning = true;
 				for (i = 0; i < postCallbacks.length; i++) {
 					postCallbacks[i].call(seriously);
 				}
 			}
 
 			if (keepRunning) {
-				rafId = requestAnimFrame(monitorSources);
+				rafId = requestAnimFrame(renderDaemon);
 			} else {
 				rafId = null;
 			}
@@ -2543,8 +2546,8 @@
 
 			sources.push(this);
 
-			if (sources.length && rafId) {
-				monitorSources();
+			if (sources.length && !rafId) {
+				renderDaemon();
 			}
 		};
 
@@ -3069,17 +3072,10 @@
 		};
 
 		TargetNode.prototype.setDirty = function () {
-			var that;
-
-			function render() {
-				that.render();
-			}
-
 			this.dirty = true;
 
-			if (this.auto) {
-				that = this;
-				requestAnimFrame(render);
+			if (this.auto && !rafId) {
+				renderDaemon();
 			}
 		};
 
@@ -3731,7 +3727,7 @@
 			}
 
 			if (!rafId && (preCallbacks.length || postCallbacks.length)) {
-				monitorSources();
+				renderDaemon();
 			}
 		};
 
