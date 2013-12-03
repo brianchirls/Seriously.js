@@ -3889,7 +3889,7 @@
 			'uniform sampler2D source;',
 			'void main(void) {',
 			/*
-			'	if (any(lessThan(vTexCoord, vec2(0.0))) || any(greaterThan(vTexCoord, vec2(1.0)))) {',
+			'	if (any(lessThan(vTexCoord, vec2(0.0))) || any(greaterThanEqual(vTexCoord, vec2(1.0)))) {',
 			'		gl_FragColor = vec4(0.0);',
 			'	} else {',
 			*/
