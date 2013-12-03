@@ -35,15 +35,11 @@
 		};
 
 	Seriously.plugin('channels', function () {
-		var shaders = [],
-			sources = [],
-			matrices = [
-				[],
-				[],
-				[],
-				[]
-			],
-			me = this;
+		var sources = [],
+			shaders = [],
+			matrices = [],
+			me = this,
+			options = {};
 
 		function validateChannel(value, input, name) {
 			var val;
@@ -67,70 +63,210 @@
 			return me.inputs[name];
 		}
 
+		function updateChannels() {
+			var inputs = me.inputs,
+				i, j,
+				source,
+				matrix;
+
+			for (i = 0; i < sources.length; i++) {
+				source = sources[i];
+				matrix = matrices[i];
+				if (!matrix) {
+					matrix = matrices[i] = [];
+					me.uniforms['channels' + i] = matrix;
+				}
+
+				for (j = 0; j < 16; j++) {
+					matrix[j] = 0;
+				}
+
+				matrix[inputs.red] = (inputs.redSource === source) ? 1 : 0;
+				matrix[4 + inputs.green] = (inputs.greenSource === source) ? 1 : 0;
+				matrix[8 + inputs.blue] = (inputs.blueSource === source) ? 1 : 0;
+				matrix[12 + inputs.alpha] = (inputs.alphaSource === source) ? 1 : 0;
+			}
+		}
+
+		function updateSources() {
+			var inputs = me.inputs;
+
+			function validateSource(name) {
+				var s, j;
+				s = inputs[name];
+				if (!s) {
+					s = inputs[name] = inputs.source;
+				}
+
+				j = sources.indexOf(s);
+				if (j < 0) {
+					j = sources.length;
+					sources.push(s);
+					me.uniforms['source' + j] = s;
+				}
+			}
+			sources.length = 0;
+
+			validateSource('redSource');
+			validateSource('greenSource');
+			validateSource('blueSource');
+			validateSource('alphaSource');
+
+			me.resize();
+
+			updateChannels();
+		}
+
+		// custom resize method
+		this.resize = function () {
+			var width,
+				height,
+				mode = this.inputs.sizeMode,
+				i,
+				resolution,
+				source;
+
+			if (!sources.length) {
+				width = 1;
+				height = 1;
+			} else if (sources.length === 1) {
+				source = sources[0];
+				width = source.width;
+				height = source.height;
+			} else if (mode === 'union') {
+				width = 0;
+				height = 0;
+				for (i = 0; i < sources.length; i++) {
+					source = sources[0];
+					width = Math.max(width, source.width);
+					height = Math.max(height, source.height);
+				}
+			} else if (mode === 'intersection') {
+				width = Infinity;
+				height = Infinity;
+				for (i = 0; i < sources.length; i++) {
+					source = sources[0];
+					width = Math.min(width, source.width);
+					height = Math.min(height, source.height);
+				}
+			} else {
+				source = me.inputs[mode + 'Source'];
+				if (source) {
+					width = source.width;
+					height = source.height;
+				} else {
+					width = 1;
+					height = 1;
+				}
+			}
+
+			for (i = 0; i < sources.length; i++) {
+				source = sources[i];
+				resolution = me.uniforms['resolution' + i];
+				if (resolution) {
+					resolution[0] = source.width;
+					resolution[1] = source.height;
+				} else {
+					me.uniforms['resolution' + i] = [source.width, source.height];
+				}
+			}
+
+			if (this.width !== width || this.height !== height) {
+				this.width = width;
+				this.height = height;
+
+				this.uniforms.resolution[0] = width;
+				this.uniforms.resolution[1] = height;
+
+				if (this.frameBuffer) {
+					this.frameBuffer.resize(width, height);
+				}
+
+				this.setDirty();
+			}
+
+			for (i = 0; i < this.targets.length; i++) {
+				this.targets[i].resize();
+			}
+		};
+
 		return {
-			shader: function (inputs, shaderSource) {
-				var i, j,
+			shader: function () {
+				var i,
 					frag,
+					vert,
 					shader,
 					uniforms = '',
 					samples = '',
-					source,
-					matrix;
+					varyings = '',
+					position = '';
 
-				function validateSource(name) {
-					var s, j;
-					s = inputs[name];
-					if (!s) {
-						s = inputs[name] = inputs.source;
-					}
+				/*
+				We'll restore this and the draw function below if we ever figure out a way to
+				add/& multiple renders without screwing up the brightness
+				shaderSource.fragment = [
+					'#ifdef GL_ES',
+					'precision mediump float;',
+					'#endif',
+					'varying vec2 vTexCoord;',
+					'varying vec4 vPosition;',
+					'uniform mat4 channels;',
+					'uniform sampler2D source;',
+					//'uniform sampler2D previous;',
+					'void main(void) {',
+					'	vec4 pixel;',
+					'	if (any(lessThan(vTexCoord, vec2(0.0))) || any(greaterThanEqual(vTexCoord, vec2(1.0)))) {',
+					'		pixel = vec4(0.0);',
+					'	} else {',
+					'		pixel = texture2D(source, vTexCoord) * channels;',
+					//'		if (gl_FragColor.a == 0.0) gl_FragColor.a = 1.0;',
+					'	}',
+					'	gl_FragColor = pixel;',
+					'}'
+				].join('\n');
 
-					j = sources.indexOf(s);
-					if (j < 0) {
-						j = sources.length;
-						sources.push(s);
-					}
-				}
-				sources.splice(0, sources.length);
-
-				validateSource('redSource');
-				validateSource('greenSource');
-				validateSource('blueSource');
-				validateSource('alphaSource');
-
-				for (i = 0; i < sources.length; i++) {
-					source = sources[i];
-					matrix = matrices[i];
-
-					for (j = 0; j < 16; j++) {
-						matrix[j] = 0;
-					}
-
-					matrix[inputs.red] = (inputs.redSource === source) ? 1 : 0;
-					matrix[4 + inputs.green] = (inputs.greenSource === source) ? 1 : 0;
-					matrix[8 + inputs.blue] = (inputs.blueSource === source) ? 1 : 0;
-					matrix[12 + inputs.alpha] = (inputs.alphaSource === source) ? 1 : 0;
-					this.uniforms['source' + i] = source;
-					this.uniforms['channel' + i] = matrix;
-
-				}
-
-
+				return shaderSource;
+				*/
 				if (shaders[sources.length]) {
 					return shaders[sources.length];
 				}
 
 				for (i = 0; i < sources.length; i++) {
+					varyings += 'varying vec2 vTexCoord' + i + ';\n';
+
 					uniforms += 'uniform sampler2D source' + i + ';\n' +
-						'uniform mat4 channel' + i + ';\n';
-					samples += 'gl_FragColor += texture2D(source' + i + ', vTexCoord) * channel' + i + ';\n';
+						'uniform mat4 channels' + i + ';\n' +
+						'uniform vec2 resolution' + i + ';\n\n';
+
+					position += '    vTexCoord' + i + ' = (position.xy * resolution / resolution' + i + ') * 0.5 + 0.5;\n';
+
+					samples += '    if (all(greaterThanEqual(vTexCoord' + i + ', vec2(0.0))) && all(lessThan(vTexCoord' + i + ', vec2(1.0)))) {\n' +
+						'        gl_FragColor += texture2D(source' + i + ', vTexCoord' + i + ') * channels' + i + ';\n    }\n';
 				}
+
+				vert = ['#ifdef GL_ES',
+					'precision mediump float;',
+					'#endif',
+
+					'attribute vec4 position;',
+					'attribute vec2 texCoord;',
+
+					'uniform vec2 resolution;',
+					uniforms,
+
+					varyings,
+
+					'void main(void) {',
+					position,
+					'	gl_Position = position;',
+					'}\n'
+				].join('\n');
 
 				frag = '#ifdef GL_ES\n\n' +
 					'precision mediump float;\n\n' +
 					'#endif\n\n' +
 					'\n' +
-					'varying vec2 vTexCoord;\n' +
-					'varying vec4 vPosition;\n' +
+					varyings +
 					'\n' +
 					uniforms +
 					'\n' +
@@ -138,63 +274,106 @@
 					'	gl_FragColor = vec4(0.0);\n' +
 					samples +
 					'}\n';
+
 				shader = new Seriously.util.ShaderProgram(this.gl,
-					shaderSource.vertex,
+					vert,
 					frag);
 
 				shaders[sources.length] = shader;
 				return shader;
 			},
+			/*
+			draw: function (shader, model, uniforms, frameBuffer, draw) {
+				var i,
+					source;
+
+				options.clear = true;
+				for (i = 0; i < sources.length; i++) {
+				//for (i = sources.length - 1; i >= 0; i--) {
+					uniforms.channels = matrices[i];
+					source = sources[i];
+					uniforms.source = sources[i];
+					//uniforms.resolution[]
+
+					draw(shader, model, uniforms, frameBuffer, null, options);
+					options.clear = false;
+				}
+			},
+			*/
 			inputs: {
+				sizeMode: {
+					type: 'enum',
+					defaultValue: 'red',
+					options: [
+						'red',
+						'green',
+						'blue',
+						'alpha',
+						'union',
+						'intersection'
+					],
+					update: function () {
+						this.resize();
+					}
+				},
 				source: {
 					type: 'image',
+					update: updateSources,
 					shaderDirty: true
 				},
 				redSource: {
 					type: 'image',
+					update: updateSources,
 					shaderDirty: true
 				},
 				greenSource: {
 					type: 'image',
+					update: updateSources,
 					shaderDirty: true
 				},
 				blueSource: {
 					type: 'image',
+					update: updateSources,
 					shaderDirty: true
 				},
 				alphaSource: {
 					type: 'image',
+					update: updateSources,
 					shaderDirty: true
 				},
 				red: {
 					type: 'enum',
 					options: channelOptions,
 					validate: validateChannel,
+					update: updateChannels,
 					defaultValue: 0
 				},
 				green: {
 					type: 'enum',
 					options: channelOptions,
 					validate: validateChannel,
+					update: updateChannels,
 					defaultValue: 1
 				},
 				blue: {
 					type: 'enum',
 					options: channelOptions,
 					validate: validateChannel,
+					update: updateChannels,
 					defaultValue: 2
 				},
 				alpha: {
 					type: 'enum',
 					options: channelOptions,
 					validate: validateChannel,
+					update: updateChannels,
 					defaultValue: 3
 				}
 			}
 		};
 	},
 	{
-		inPlace: true,
+		inPlace: false,
 		title: 'Channel Mapping'
 	});
 }));

@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Seriously.js Channels Example</title>
+	<style type="text/css">
+		img {
+			display: none;
+		}
+	</style>
+</head>
+<body>
+	<img src="../images/pencils.jpg" id="pencils"/>
+	<img src="../images/robot.jpg" id="robot"/>
+	<canvas id="canvas" width="640" height="619"></canvas>
+	<script src="../../lib/require.js"></script>
+	<script>
+		require.config({
+			baseUrl: '../../'
+		});
+
+		require([
+			'seriously',
+			'effects/seriously.channels',
+			'effects/seriously.blend'
+		], function (Seriously) {
+			// declare our variables
+			var seriously, // the main object that holds the entire composition
+				channels, // a split effect
+				blend,
+				target, // a wrapper object for our target canvas
+				scaleRobot,
+				scalePencils,
+
+				moveMask,
+				resizeMask,
+				mask = document.createElement('canvas'),
+				ctx = mask.getContext('2d');
+
+			seriously = new Seriously();
+			target = seriously.target('#canvas');
+			channels = seriously.effect('channels');
+			blend = seriously.effect('blend');
+
+			scaleRobot = seriously.transform('2d');
+			scaleRobot.source = seriously.source('#robot');
+			scaleRobot.scale(640/989);
+
+			scalePencils = seriously.transform('reformat');
+			scalePencils.source = seriously.source('#pencils');
+			scalePencils.width = 640;
+			scalePencils.height = 619;
+			scalePencils.mode = 'cover';
+
+			//draw mask
+			mask.width = 200;
+			mask.height = 200;
+
+			ctx.fillColor = 'black';
+			ctx.fillRect(0, 0, 200, 200);
+			ctx.fillStyle = 'white';
+			ctx.fillRect(40, 40, 160, 160);
+
+			resizeMask = seriously.transform('reformat');
+			resizeMask.source = mask;
+			resizeMask.width = target.width;
+			resizeMask.height = target.height;
+
+			moveMask = seriously.transform();
+			moveMask.source = resizeMask;
+			moveMask.rotation = 30;
+			moveMask.scale(0.5);
+
+			channels.source = scaleRobot;
+			channels.alphaSource = moveMask;
+			channels.alpha = 'red';
+
+			blend.bottom = scalePencils;
+			blend.top = channels;
+
+			target.source = blend;
+
+			window.addEventListener('mousemove', function (evt) {
+				var canvas = target.original,
+					x = evt.pageX - canvas.offsetLeft,
+					y = evt.pageY - canvas.offsetTop;
+
+				moveMask.translateX = x - canvas.width / 2;
+				moveMask.translateY = canvas.height / 2 - y;
+			}, false);
+
+			seriously.go(function () {
+				moveMask.rotation = (Date.now() % 18000) / 50;
+			});
+		});
+	</script>
+</body>
+</html>
