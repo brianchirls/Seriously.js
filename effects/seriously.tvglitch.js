@@ -1,35 +1,49 @@
+/* global define, require */
 (function (root, factory) {
 	'use strict';
 
 	if (typeof exports === 'object') {
 		// Node/CommonJS
-		factory(root.require('seriously'));
-	} else if (typeof root.define === 'function' && root.define.amd) {
+		factory(require('seriously'));
+	} else if (typeof define === 'function' && define.amd) {
 		// AMD. Register as an anonymous module.
-		root.define(['seriously'], factory);
+		define(['seriously'], factory);
 	} else {
-		var Seriously = root.Seriously;
-		if (!Seriously) {
-			Seriously = { plugin: function (name, opt) { this[name] = opt; } };
+		if (!root.Seriously) {
+			root.Seriously = { plugin: function (name, opt) { this[name] = opt; } };
 		}
-		factory(Seriously);
+		factory(root.Seriously);
 	}
 }(this, function (Seriously, undefined) {
 	'use strict';
 
-	Seriously.plugin('tvglitch', (function () {
-		//particle parameters
-		var minVelocity = 0.2,
-			maxVelocity = 0.8,
-			minSize = 0.02,
-			maxSize = 0.3,
-			particleCount = 20;
+	//particle parameters
+	var minVelocity = 0.2,
+		maxVelocity = 0.8,
+		minSize = 0.02,
+		maxSize = 0.3,
+		particleCount = 20;
+
+	Seriously.plugin('tvglitch', function () {
+		var lastHeight,
+			lastTime,
+			particleBuffer,
+			particleShader,
+			particleFrameBuffer,
+			gl;
+
 		return {
 			initialize: function (parent) {
-				var i, sizeRange, velocityRange, gl = this.gl,
-					particleVertex, particleFragment, particles;
+				var i,
+					sizeRange,
+					velocityRange,
+					particleVertex,
+					particleFragment,
+					particles;
 
-				this.lastHeight = this.height;
+				gl = this.gl;
+
+				lastHeight = this.height;
 
 				//initialize particles
 				particles = [];
@@ -42,11 +56,11 @@
 					particles.push(Math.random() * 0.2); //intensity
 				}
 
-				this.particleBuffer = gl.createBuffer();
-				gl.bindBuffer(gl.ARRAY_BUFFER, this.particleBuffer);
+				particleBuffer = gl.createBuffer();
+				gl.bindBuffer(gl.ARRAY_BUFFER, particleBuffer);
 				gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(particles), gl.STATIC_DRAW);
-				this.particleBuffer.itemSize = 4;
-				this.particleBuffer.numItems = particleCount;
+				particleBuffer.itemSize = 4;
+				particleBuffer.numItems = particleCount;
 
 				particleVertex = '#ifdef GL_ES\n' +
 				'precision mediump float;\n' +
@@ -79,9 +93,9 @@
 				'	gl_FragColor.a = 2.0 * intensity * (1.0 - abs(gl_PointCoord.y - 0.5));\n' +
 				'}\n';
 
-				this.particleShader = new Seriously.util.ShaderProgram(gl, particleVertex, particleFragment);
+				particleShader = new Seriously.util.ShaderProgram(gl, particleVertex, particleFragment);
 
-				this.particleFrameBuffer = new Seriously.util.FrameBuffer(gl, 1, this.height / 2);
+				particleFrameBuffer = new Seriously.util.FrameBuffer(gl, 1, this.height / 2);
 				parent();
 			},
 			shader: function (inputs, shaderSource) {
@@ -171,13 +185,11 @@
 				return shaderSource;
 			},
 			draw: function (shader, model, uniforms, frameBuffer, parent) {
-				var doParticles = (this.lastTime !== this.inputs.time),
-					vsyncPeriod,
-					diff,
-					gl = this.gl;
+				var doParticles = (lastTime !== this.inputs.time),
+					vsyncPeriod;
 
-				if (this.lastHeight !== this.height) {
-					this.lastHeight = this.height;
+				if (lastHeight !== this.height) {
+					lastHeight = this.height;
 					//todo: adjust framebuffer height?
 					doParticles = true;
 				}
@@ -196,122 +208,108 @@
 				uniforms.distortion = Math.random() * this.inputs.distortion;
 
 				//render particle canvas and attach uniform
-				//todo: this is a good spot for parallel processing. RiverTrail maybe?
+				//todo: this is a good spot for parallel processing. ParallelArray maybe?
 				if (doParticles && (this.inputs.lineSync || this.inputs.bars)) {
-					diff = this.inputs.time - this.lastTime;
-
-					this.particleShader.useProgram();
+					particleShader.use();
 					gl.viewport(0, 0, 1, this.height / 2);
-					gl.bindFramebuffer(gl.FRAMEBUFFER, this.particleFrameBuffer.frameBuffer);
+					gl.bindFramebuffer(gl.FRAMEBUFFER, particleFrameBuffer.frameBuffer);
 					gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-					gl.enableVertexAttribArray(this.particleShader.location_particle);
-					gl.bindBuffer(gl.ARRAY_BUFFER, this.particleBuffer);
-					gl.vertexAttribPointer(this.particleShader.location_particle, this.particleBuffer.itemSize, gl.FLOAT, false, 0, 0);
+					gl.enableVertexAttribArray(particleShader.location.particle);
+					gl.bindBuffer(gl.ARRAY_BUFFER, particleBuffer);
+					gl.vertexAttribPointer(particleShader.location.particle, particleBuffer.itemSize, gl.FLOAT, false, 0, 0);
 					gl.enable(gl.BLEND);
 					gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
-					this.particleShader.set_time(uniforms.time);
-					this.particleShader.set_height(this.height);
+					particleShader.time.set(uniforms.time);
+					particleShader.height.set(this.height);
 					gl.drawArrays(gl.POINTS, 0, particleCount);
 
-					this.lastTime = this.inputs.time;
+					lastTime = this.inputs.time;
 				}
-				uniforms.particles = this.particleFrameBuffer.texture;
+				uniforms.particles = particleFrameBuffer.texture;
 
 				parent(shader, model, uniforms, frameBuffer);
-				/*
-				this.particleShader.useProgram();
-				gl.viewport(0, 0, 1, 480);
-				gl.bindFramebuffer(gl.FRAMEBUFFER, frameBuffer);
-				//gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-				gl.enableVertexAttribArray(this.particleShader.location_particle);
-				gl.bindBuffer(gl.ARRAY_BUFFER, this.particleBuffer);
-				gl.vertexAttribPointer(this.particleShader.location_particle, this.particleBuffer.itemSize, gl.FLOAT, false, 0, 0);
-				gl.enable(gl.BLEND);
-				gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
-				this.particleShader.set_time(uniforms.time);
-				this.particleShader.set_height(this.height);
-				gl.drawArrays(gl.POINTS, 0, particleCount);
-				*/
 			},
 			destroy: function () {
-				delete this.particleBuffer;
-				if (this.particleFrameBuffer) {
-					this.particleFrameBuffer.destroy();
+				particleBuffer = null;
+				if (particleFrameBuffer) {
+					particleFrameBuffer.destroy();
+					particleFrameBuffer = null;
 				}
-			},
-			inPlace: false,
-			inputs: {
-				source: {
-					type: 'image',
-					uniform: 'source',
-					shaderDirty: false
-				},
-				time: {
-					type: 'number',
-					defaultValue: 0
-				},
-				distortion: {
-					type: 'number',
-					defaultValue: 0.1,
-					min: 0,
-					max: 1
-				},
-				verticalSync: {
-					type: 'number',
-					defaultValue: 0.1,
-					min: 0,
-					max: 1
-				},
-				lineSync: {
-					type: 'number',
-					uniform: 'lineSync',
-					defaultValue: 0.2,
-					min: 0,
-					max: 1
-				},
-				scanlines: {
-					type: 'number',
-					uniform: 'scanlines',
-					defaultValue: 0.3,
-					min: 0,
-					max: 1
-				},
-				bars: {
-					type: 'number',
-					uniform: 'bars',
-					defaultValue: 0,
-					min: 0,
-					max: 1
-				},
-				frameShape: {
-					type: 'number',
-					uniform: 'frameShape',
-					min: 0,
-					max: 2,
-					defaultValue: 0.27
-				},
-				frameLimit: {
-					type: 'number',
-					uniform: 'frameLimit',
-					min: -1,
-					max: 1,
-					defaultValue: 0.34
-				},
-				frameSharpness: {
-					type: 'number',
-					uniform: 'frameSharpness',
-					min: 0,
-					max: 40,
-					defaultValue: 8.4
-				},
-				frameColor: {
-					type: 'color',
-					uniform: 'frameColor',
-					defaultValue: [0, 0, 0, 1]
-				}
-			},
-			description: '',
-			title: 'TV Glitch'
+			}
 		};
-	}()));
+	},
+	{
+		inPlace: false,
+		inputs: {
+			source: {
+				type: 'image',
+				uniform: 'source',
+				shaderDirty: false
+			},
+			time: {
+				type: 'number',
+				defaultValue: 0
+			},
+			distortion: {
+				type: 'number',
+				defaultValue: 0.1,
+				min: 0,
+				max: 1
+			},
+			verticalSync: {
+				type: 'number',
+				defaultValue: 0.1,
+				min: 0,
+				max: 1
+			},
+			lineSync: {
+				type: 'number',
+				uniform: 'lineSync',
+				defaultValue: 0.2,
+				min: 0,
+				max: 1
+			},
+			scanlines: {
+				type: 'number',
+				uniform: 'scanlines',
+				defaultValue: 0.3,
+				min: 0,
+				max: 1
+			},
+			bars: {
+				type: 'number',
+				uniform: 'bars',
+				defaultValue: 0,
+				min: 0,
+				max: 1
+			},
+			frameShape: {
+				type: 'number',
+				uniform: 'frameShape',
+				min: 0,
+				max: 2,
+				defaultValue: 0.27
+			},
+			frameLimit: {
+				type: 'number',
+				uniform: 'frameLimit',
+				min: -1,
+				max: 1,
+				defaultValue: 0.34
+			},
+			frameSharpness: {
+				type: 'number',
+				uniform: 'frameSharpness',
+				min: 0,
+				max: 40,
+				defaultValue: 8.4
+			},
+			frameColor: {
+				type: 'color',
+				uniform: 'frameColor',
+				defaultValue: [0, 0, 0, 1]
+			}
+		},
+		title: 'TV Glitch'
+	});
 }));

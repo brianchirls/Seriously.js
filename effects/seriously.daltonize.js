@@ -1,12 +1,13 @@
+/* global define, require */
 (function (root, factory) {
 	'use strict';
 
 	if (typeof exports === 'object') {
 		// Node/CommonJS
-		factory(root.require('seriously'));
-	} else if (typeof root.define === 'function' && root.define.amd) {
+		factory(require('seriously'));
+	} else if (typeof define === 'function' && define.amd) {
 		// AMD. Register as an anonymous module.
-		root.define(['seriously'], factory);
+		define(['seriously'], factory);
 	} else {
 		var Seriously = root.Seriously;
 		if (!Seriously) {
@@ -17,6 +18,7 @@
 }(this, function (Seriously, undefined) {
 	'use strict';
 
+//todo: add Simulate mode http://mudcu.be/labs/Color/Vision/Javascript/Color.Vision.Simulate.js
 
 /*
 * Daltonization algorithm from:
@@ -155,7 +157,7 @@
 				title: 'Type',
 				type: 'enum',
 				uniform: 'cbtype',
-				defaultValue: '0.0',
+				defaultValue: '0.2',
 				options: [
 					['0.0', 'Off'],
 					['0.2', 'Protanope'],

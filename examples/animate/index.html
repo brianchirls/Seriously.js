@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Seriously.js Animate Example</title>
+	<style type="text/css">
+		img {
+			display: none;
+		}
+	</style>
+</head>
+<body>
+	<img src="../images/pencils.jpg" id="pencils"/>
+	<img src="../images/robot.jpg" id="robot"/>
+	<canvas id="canvas" width="640" height="619"></canvas>
+	<script src="../../lib/require.js"></script>
+	<script>
+		require.config({
+			baseUrl: '../../'
+		});
+
+		require([
+			'seriously',
+			'effects/seriously.split'
+		], function (Seriously) {
+			// declare our variables
+			var seriously, // the main object that holds the entire composition
+				split, // a split effect
+				target, // a wrapper object for our target canvas
+				scaleRobot,
+				scalePencils,
+				PI2 = Math.PI * 2;
+
+			seriously = new Seriously();
+			target = seriously.target('#canvas');
+			split = seriously.effect('split');
+
+			scaleRobot = seriously.transform('2d');
+			scaleRobot.source = seriously.source('#robot');
+			scaleRobot.scale(640/989);
+
+			scalePencils = seriously.transform('reformat');
+			scalePencils.source = seriously.source('#pencils');
+			scalePencils.width = 640;
+			scalePencils.height = 619;
+			scalePencils.mode = 'cover';
+
+			split.sourceA = scalePencils;
+			split.sourceB = scaleRobot;
+
+			split.fuzzy = 0.25;
+
+			target.source = split;
+			seriously.go(function() {
+				var now = Date.now(),
+					minutes;
+
+				minutes = now / 60000;
+				split.angle = (minutes - Math.floor(minutes)) * PI2;
+				split.split = Math.cos(now / 1000) / 2 + 0.5;
+			});
+		});
+	</script>
+</body>
+</html>

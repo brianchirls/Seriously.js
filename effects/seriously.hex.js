@@ -1,18 +1,18 @@
+/* global define, require */
 (function (root, factory) {
 	'use strict';
 
 	if (typeof exports === 'object') {
 		// Node/CommonJS
-		factory(root.require('seriously'));
-	} else if (typeof root.define === 'function' && root.define.amd) {
+		factory(require('seriously'));
+	} else if (typeof define === 'function' && define.amd) {
 		// AMD. Register as an anonymous module.
-		root.define(['seriously'], factory);
+		define(['seriously'], factory);
 	} else {
-		var Seriously = root.Seriously;
-		if (!Seriously) {
-			Seriously = { plugin: function (name, opt) { this[name] = opt; } };
+		if (!root.Seriously) {
+			root.Seriously = { plugin: function (name, opt) { this[name] = opt; } };
 		}
-		factory(Seriously);
+		factory(root.Seriously);
 	}
 }(this, function (Seriously, undefined) {
 	'use strict';
@@ -33,12 +33,12 @@
 				'varying vec4 vPosition;\n' +
 				'\n' +
 				'uniform sampler2D source;\n' +
-				'uniform vec3 srsSize;\n' +
+				'uniform vec2 resolution;\n' +
 				'uniform vec2 center;\n' +
 				'uniform float size;\n' +
 				'\n' +
 				'void main(void) {\n' +
-				'	vec2 aspect = normalize(srsSize.xy);\n' +
+				'	vec2 aspect = normalize(resolution);\n' +
 				'	vec2 tex = (vTexCoord * aspect - center) / size;\n' +
 				'	tex.y /= 0.866025404;\n' +
 				'	tex.x -= tex.y * 0.5;\n' +
@@ -75,11 +75,10 @@
 				'	choice.y *= 0.866025404;\n' +
 				'	choice *= size / aspect;\n' +
 				'	gl_FragColor = texture2D(source, choice + center / aspect);\n' +
-				//'	gl_FragColor = vec4(1.0,0.0,0.0,1.0);\n' +
 				'}\n';
 			return shaderSource;
 		},
-		inPlace: true,
+		inPlace: false,
 		inputs: {
 			source: {
 				type: 'image',

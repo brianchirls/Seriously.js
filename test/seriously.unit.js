@@ -1,5 +1,5 @@
 /*jslint devel: true, bitwise: true, browser: true, white: true, nomen: true, plusplus: true, maxerr: 50, indent: 4 */
-/* global module, test, asyncTest, expect, ok, equal, start, stop, Seriously */
+/* global module, test, asyncTest, expect, ok, equal, start, Seriously */
 (function () {
 	"use strict";
 
@@ -74,12 +74,12 @@
 		expect(2);
 
 		Seriously.plugin('removeme', {
-			compatible: function (gl) {
+			compatible: function () {
 				return false;
 			}
 		});
 
-		s = Seriously();
+		s = new Seriously();
 
 		canvas = document.createElement('canvas');
 		if (!canvas) {
@@ -128,7 +128,7 @@
 		p = Seriously.plugin('removeme', {});
 		ok(p && p.title === 'removeme', 'First plugin loaded');
 
-		s = Seriously();
+		s = new Seriously();
 		e = s.effect('removeme');
 
 		Seriously.removePlugin('removeme');
@@ -193,7 +193,7 @@
 		ok(error1, 'Defining plugin throws error');
 
 		try {
-			s = Seriously();
+			s = new Seriously();
 			s.effect('badPlugin');
 		} catch (ee) {
 			error2 = true;
@@ -203,6 +203,51 @@
 
 		s.destroy();
 		Seriously.removePlugin('badPlugin');
+	});
+
+	test('Effect definition function', function () {
+		var seriously,
+			effect1,
+			effect2,
+			canvas,
+			target;
+
+		expect(4);
+
+		Seriously.plugin('removeme', function (options) {
+			var id = options.id;
+
+			ok(!!seriously, 'Definition function runs after seriously created #' + id);
+
+			return {
+				initialize: function () {
+					equal(this.effect.title, 'removeme' + id, 'Title property #' + id + ' overwritten');
+				},
+				title: 'removeme' + id
+			};
+		},
+		{
+			title: 'removeme'
+		});
+
+		seriously = new Seriously();
+		effect1 = seriously.effect('removeme', {
+			id: 1
+		});
+		effect2 = seriously.effect('removeme', {
+			id: 2
+		});
+
+		canvas = document.createElement('canvas');
+		target = seriously.target(canvas);
+
+		target.source = effect1;
+		target.render();
+		target.source = effect2;
+		target.render();
+
+		seriously.destroy();
+		Seriously.removePlugin('removeme');
 	});
 
 	asyncTest('Plugin loaded before Seriously', function () {
@@ -241,8 +286,8 @@
 				ok(typeof e === 'object' && e.id !== undefined, 'Created effect');
 
 				s.destroy();
-				document.body.removeChild(iframe);
 				win.Seriously.removePlugin('test');
+				document.body.removeChild(iframe);
 				start();
 			}, false);
 			doc.head.appendChild(script);
@@ -257,12 +302,12 @@
 	*/
 
 	test('Effect Polygon Matte', function () {
-	var seriously, effect;
+		var seriously, effect;
 
 		//todo: expects
 
 		Seriously.plugin('removeme', {});
-		seriously = Seriously();
+		seriously = new Seriously();
 		effect = seriously.effect('removeme');
 
 		ok(typeof effect.matte === 'function', 'matte method exists');
@@ -286,6 +331,34 @@
 		seriously.destroy();
 		Seriously.removePlugin('removeme');
 	});
+
+	test('Effect alias', function () {
+		var seriously,
+			effect;
+
+		expect(2);
+
+		Seriously.plugin('removeme', {
+			inputs: {
+				input: {
+					type: 'number'
+				}
+			}
+		});
+		seriously = new Seriously();
+		effect = seriously.effect('removeme');
+
+		effect.alias('input', 'input');
+		seriously.input = 5;
+		equal(effect.input, 5, 'Effect alias sets value');
+
+		effect.destroy();
+		ok(!seriously.hasOwnProperty('input'), 'Effect alias removed');
+
+		seriously.destroy();
+		Seriously.removePlugin('removeme');
+	});
+
 
 	module('Source');
 	/*
@@ -399,7 +472,7 @@
 	test('Create two Source objects on identical sources', function () {
 		var img, seriously, source1, source2;
 
-		seriously = Seriously();
+		seriously = new Seriously();
 		img = document.getElementById('colorbars');
 		source1 = seriously.source(img);
 		source2 = seriously.source('#colorbars');
@@ -420,7 +493,7 @@
 			}
 		});
 
-		seriously = Seriously();
+		seriously = new Seriously();
 		effect = seriously.effect('test');
 		effect.source = '#colorbars';
 		source1 = effect.source;
@@ -436,88 +509,6 @@
 	/*
 	 * create target
 	*/
-
-	module('Render');
-	asyncTest('Callbacks', function () {
-		var seriously,
-			source, target,
-			canvas,
-			effect,
-			timeout,
-			countdown,
-			changed = false;
-
-		function cleanUp() {
-			seriously.destroy();
-			Seriously.removePlugin('test');
-			start();
-		}
-
-		function success(msg, val) {
-			ok(val === undefined ? true : val, msg);
-			countdown--;
-			if (!countdown) {
-				clearTimeout(timeout);
-				cleanUp();
-			}
-		}
-
-		Seriously.plugin('test', {
-			/*
-			shader: function (inputs, shaderSource, utilities) {
-				return shaderSource;
-			},
-			*/
-			inputs: {
-				source: {
-					type: 'image'
-				},
-				num: {
-					type: 'number'
-				}
-			}
-		});
-
-		seriously = new Seriously();
-		source = seriously.source([0, 0, 0, 0], {
-			width: 1,
-			height: 1
-		});
-		effect = seriously.effect('test');
-		effect.source = source;
-		canvas = document.createElement('canvas');
-		target = seriously.target(canvas);
-		target.source = effect;
-
-		timeout = setTimeout(cleanUp, 100000);
-		countdown = 5;
-		expect(countdown);
-
-		//this should only run when 'go' is operating, after target is dirty
-		target.go(function () {
-			success('Target.go callback called successfully', changed);
-		});
-
-		source.render(function () {
-			success('Source callback called successfully');
-		});
-
-		effect.render(function () {
-			success('Effect callback called successfully');
-		});
-
-		target.render(function () {
-			success('Target callback called successfully');
-		});
-
-		seriously.go(function () {
-			success('seriously.go callback called successfully', changed);
-		});
-
-		effect.num = 5;
-		changed = true;
-
-	});
 
 	module('Inputs');
 	/*
@@ -546,7 +537,7 @@
 			}
 		});
 
-		s = Seriously();
+		s = new Seriously();
 		e = s.effect('testNumberInput');
 
 		e.number = Math.PI;
@@ -585,7 +576,7 @@
 	test('Color', function () {
 		var e, s, val;
 
-		expect(12);
+		expect(18);
 
 		Seriously.plugin('testColorInput', {
 			inputs: {
@@ -596,61 +587,92 @@
 			}
 		});
 
-		s = Seriously();
+		s = new Seriously();
 		e = s.effect('testColorInput');
 
 		e.color = 'rgb(10, 20, 30)';
 		val = e.color;
-		ok( compare(val, [10/255, 20/255, 30/255, 1]), 'Set color by rgb');
+		ok(compare(val, [10/255, 20/255, 30/255, 1]), 'Set color by rgb');
 
 		e.color = 'rgba(30, 20, 10, 0.8)';
 		val = e.color;
-		ok( compare(val, [30/255, 20/255, 10/255, 0.8]), 'Set color by rgba');
+		ok(compare(val, [30/255, 20/255, 10/255, 0.8]), 'Set color by rgba');
 
 		//todo: test rgb percentages
 		//todo: test hsl/hsla
 
 		e.color = '#123';
 		val = e.color;
-		ok( compare(val, [1/15, 2/15, 3/15, 1]), 'Set color by 3-character hex');
+		ok(compare(val, [1/15, 2/15, 3/15, 1]), 'Set color by 3-character hex');
 
 		e.color = '#1234';
 		val = e.color;
-		ok( compare(val, [0x1/15, 0x2/15, 0x3/15, 0x4/15]), 'Set color by 4-character hex');
+		ok(compare(val, [0x1/15, 0x2/15, 0x3/15, 0x4/15]), 'Set color by 4-character hex');
 
 		e.color = '#123456';
 		val = e.color;
-		ok( compare(val, [0x12/255, 0x34/255, 0x56/255, 1]), 'Set color by 6-character hex');
+		ok(compare(val, [0x12/255, 0x34/255, 0x56/255, 1]), 'Set color by 6-character hex');
 
 		e.color = '#654321AA';
 		val = e.color;
-		ok( compare(val, [0x65/255, 0x43/255, 0x21/255, 0xAA/255]), 'Set color by 8-character hex');
+		ok(compare(val, [0x65/255, 0x43/255, 0x21/255, 0xAA/255]), 'Set color by 8-character hex');
 
 		e.color = '#fffff';
 		val = e.color;
-		ok( compare(val, [0, 0, 0, 0]), 'Set color by bad hex is transparent black');
+		ok(compare(val, [0, 0, 0, 0]), 'Set color by bad hex is transparent black');
 
 		e.color = 'lightcyan';
 		val = e.color;
-		ok( compare(val, [224/255,1,1,1]), 'Set color by name');
+		ok(compare(val, [224/255, 1, 1, 1]), 'Set color by name (lightcyan)');
+
+		e.color = 'lightblue';
+		val = e.color;
+		ok(compare(val, [173/255, 216/255, 230/255, 1]), 'Set color by name (lightblue)');
+
+		e.color = 'red';
+		val = e.color;
+		ok(compare(val, [1, 0, 0, 1]), 'Set color by name (red)');
+
+		e.color = 'white';
+		val = e.color;
+		ok(compare(val, [1, 1, 1, 1]), 'Set color by name (white)');
+
+		e.color = 'transparent';
+		val = e.color;
+		ok(compare(val, [0, 0, 0, 0]), 'Set color by name (transparent)');
 
 		e.color = 'garbage';
 		val = e.color;
-		ok( compare(val, [0, 0, 0, 0]), 'Set color by unknown name is transparent black');
+		ok(compare(val, [0, 0, 0, 0]), 'Set color by unknown name is transparent black');
 
 		e.color = 0.3;
 		val = e.color;
-		ok( compare(val, [0.3, 0.3, 0.3, 1]), 'Set color by single number');
+		ok(compare(val, [0.3, 0.3, 0.3, 1]), 'Set color by single number');
 
 		e.color = [0.1, 0.2, 0.3];
 		val = e.color;
-		ok( compare(val, [0.1, 0.2, 0.3, 1]), 'Set color by 3-array');
+		ok(compare(val, [0.1, 0.2, 0.3, 1]), 'Set color by 3-array');
 
 		e.color = [0.2, 0.3, 0.4, 0.5];
 		val = e.color;
-		ok( compare(val, [0.2, 0.3, 0.4, 0.5]), 'Set color by 4-array');
+		ok(compare(val, [0.2, 0.3, 0.4, 0.5]), 'Set color by 4-array');
 
-		//todo: set color by object
+		e.color = {
+			r: 0.1,
+			g: 0.2,
+			b: 0.3
+		};
+		val = e.color;
+		ok(compare(val, [0.1, 0.2, 0.3, 1]), 'Set RGB by object');
+
+		e.color = {
+			r: 0.2,
+			g: 0.3,
+			b: 0.4,
+			a: 0.5
+		};
+		val = e.color;
+		ok(compare(val, [0.2, 0.3, 0.4, 0.5]), 'Set RGBA by object');
 
 		s.destroy();
 		Seriously.removePlugin('testColorInput');
@@ -674,7 +696,7 @@
 			}
 		});
 
-		s = Seriously();
+		s = new Seriously();
 		e = s.effect('testEnumInput');
 
 		equal(e.input, 'foo', 'Default value');
@@ -695,18 +717,73 @@
 		Seriously.removePlugin('testEnumInput');
 	});
 
+	test('Vector', 7, function() {
+		var s, e, val;
+
+		Seriously.plugin('testVectorInput', {
+			inputs: {
+				vec2: {
+					type: 'vector',
+					defaultValue: [1, 2],
+					dimensions: 2
+				},
+				vec4: {
+					type: 'vector',
+					defaultValue: [1, 2, 3, 4],
+					dimensions: 4
+				}
+			}
+		});
+
+		s = new Seriously();
+		e = s.effect('testVectorInput');
+
+		ok(compare(e.vec2, [1, 2]), 'Default value #1');
+		ok(compare(e.vec4, [1, 2, 3, 4]), 'Default value #2');
+
+		e.vec2 = 3;
+		val = e.vec2;
+		ok(compare(val, [3, 3]), 'Set all to a single value');
+
+		e.vec4 = {
+			x: 4,
+			y: 5,
+			z: 6,
+			w: 7,
+			blah: 9
+		};
+		val = e.vec4;
+		ok(compare(val, [4, 5, 6, 7]), 'Set by object');
+
+		e.vec4 = {
+			r: 0.1,
+			g: 0.2,
+			b: 0.3,
+			a: 0.4
+		};
+		val = e.vec4;
+		ok(compare(val, [0.1, 0.2, 0.3, 0.4]), 'Set by object with color names');
+
+		e.vec4 = [8, 9, 10, 11];
+		val = e.vec4;
+		ok(compare(val, [8, 9, 10, 11]), 'Set by array');
+
+		e.vec2 = 'foo';
+		val = e.vec2;
+		ok(compare(val, [0, 0]), 'Bad value becomes zero vector');
+
+		s.destroy();
+		Seriously.removePlugin('testVectorInput');
+	});
+
 	module('Transform');
 	test('Basic Transformations', function () {
 		var seriously, source, target,
-			sourceCanvas, targetCanvas, img,
+			transform,
+			flip,
+			sourceCanvas, targetCanvas,
 			ctx,
-			pixels = new Uint8Array(16),
-			comparison = [ //image is upside down
-				0, 0, 255, 255,
-				255, 255, 255, 255,
-				255, 0, 0, 255,
-				0, 255, 0, 255
-			];
+			pixels = new Uint8Array(16);
 
 		expect(4);
 
@@ -731,39 +808,44 @@
 		seriously = new Seriously();
 		source = seriously.source(sourceCanvas);
 		target = seriously.target(targetCanvas);
-		target.source = source;
+		transform = seriously.transform();
+		flip = seriously.transform('flip');
+		transform.source = source;
+		flip.source = source;
+		target.source = transform;
 
-		target.rotateZ(Math.PI / 2); //90 degrees counter-clockwise
+		transform.rotation = -90; //90 degrees counter-clockwise
 		target.readPixels(0, 0, 2, 2, pixels);
 		ok(compare(pixels, [
 			255, 0, 0, 255,
 			0, 0, 255, 255,
 			0, 255, 0, 255,
 			255, 255, 255, 255
-		]), 'Rotate 90 degrees counter-clockwise on Z-Axis');
+		]), 'Rotate 90 degrees counter-clockwise');
+		transform.reset();
 
-		target.reset();
-		target.rotateX(Math.PI); //180 degrees counter-clockwise
+		target.source = flip;
+		flip.direction = 'vertical';
 		target.readPixels(0, 0, 2, 2, pixels);
 		ok(compare(pixels, [ //image is upside down
 			255, 0, 0, 255,
 			0, 255, 0, 255,
 			0, 0, 255, 255,
 			255, 255, 255, 255
-		]), 'Rotate 180 degrees on X-Axis (Flip Vertical)');
+		]), 'Flip Vertical');
 
-		target.reset();
-		target.rotateY(Math.PI); //180 degrees counter-clockwise
+		target.source = flip;
+		flip.direction = 'horizontal';
 		target.readPixels(0, 0, 2, 2, pixels);
 		ok(compare(pixels, [ //image is upside down
 			255, 255, 255, 255,
 			0, 0, 255, 255,
 			0, 255, 0, 255,
 			255, 0, 0, 255
-		]), 'Rotate 180 degrees on Y-Axis (Flip Horizontal)');
+		]), 'Flip Horizontal');
 
-		target.reset();
-		target.translate(1, 0, 0);
+		target.source = transform;
+		transform.translate(1, 0);
 		target.render();
 		target.readPixels(0, 0, 2, 2, pixels);
 		ok(compare(pixels, [ //image is upside down
@@ -771,19 +853,109 @@
 			0, 0, 255, 255,
 			0, 0, 0, 0,
 			255, 0, 0, 255
-		]), 'Translate 1 unit (50%) to the right');
-
+		]), 'Translate 1 pixel to the right');
 
 		seriously.destroy();
 		return;
 	});
 
+	test('Transform definition function', function () {
+		var seriously,
+			transform1,
+			transform2,
+			canvas,
+			target;
+
+		expect(5);
+
+		Seriously.transform('removeme', function (options) {
+			var id = options.id,
+				prop = 0;
+
+			ok(!!seriously, 'Definition function runs after seriously created #' + id);
+
+			return {
+				inputs: {
+					property: {
+						get: function() {
+							return prop;
+						},
+						set: function(x) {
+							prop = x;
+							equal(prop, id, "Transform setter runs successfully #" + id);
+							return true;
+						}
+					},
+					method: {
+						method: function(x) {
+							prop = x;
+							equal(prop, id, "Transform method runs successfully #" + id);
+							return true;
+						}
+					}
+				},
+				title: 'removeme' + id
+			};
+		},
+		{
+			title: 'removeme'
+		});
+
+		seriously = new Seriously();
+		transform1 = seriously.transform('removeme', {
+			id: 1
+		});
+		transform2 = seriously.transform('removeme', {
+			id: 2
+		});
+
+		transform1.property = 1;
+		transform2.method(2);
+		equal(transform2.property, 2, "Transform getter runs successfully");
+
+		canvas = document.createElement('canvas');
+		target = seriously.target(canvas);
+
+		//render makes sure transforms don't crash without a source
+		target.source = transform1;
+		target.render();
+		target.source = transform2;
+		target.render();
+
+		seriously.destroy();
+		Seriously.removePlugin('removeme');
+	});
+
+	test('Transform alias', function () {
+		var seriously,
+			transform;
+
+		expect(5);
+
+		seriously = new Seriously();
+		transform = seriously.transform('2d');
+
+		transform.alias('translateX', 'translateX');
+		seriously.translateX = 5;
+		equal(transform.translateX, 5, 'Transform alias works for property');
+
+		transform.alias('scale', 'scale');
+		seriously.scale(3, 4);
+		equal(transform.scaleX, 3, 'Transform alias works for method');
+		equal(transform.scaleY, 4, 'Transform alias works for method, second parameter');
+
+		transform.destroy();
+		ok(!seriously.hasOwnProperty('translateX'), 'Transform property alias removed');
+		ok(!seriously.hasOwnProperty('scale'), 'Transform method alias removed');
+
+		seriously.destroy();
+	});
 
 	module('Destroy');
 	test('Destroy things', function() {
-		var seriously, source, target, effect, canvas;
+		var seriously, source, target, effect, transform, canvas;
 
-		expect(12);
+		expect(15);
 
 		Seriously.plugin('test', {});
 
@@ -792,23 +964,28 @@
 		seriously = new Seriously();
 		source = seriously.source('#colorbars');
 		effect = seriously.effect('test');
+		transform = seriously.transform('2d');
 		target = seriously.target(canvas);
 
 		ok(!seriously.isDestroyed(), 'New Seriously instance is not destroyed');
 		ok(!source.isDestroyed(), 'New source is not destroyed');
 		ok(!effect.isDestroyed(), 'New effect is not destroyed');
+		ok(!transform.isDestroyed(), 'New transform is not destroyed');
 		ok(!target.isDestroyed(), 'New target is not destroyed');
 
 		source.destroy();
 		effect.destroy();
+		transform.destroy();
 		target.destroy();
 
 		ok(source.isDestroyed(), 'Destroyed source is destroyed');
 		ok(effect.isDestroyed(), 'Destroyed effect is destroyed');
+		ok(transform.isDestroyed(), 'Destroyed transform is destroyed');
 		ok(target.isDestroyed(), 'Destroyed target is destroyed');
 
 		source = seriously.source('#colorbars');
 		effect = seriously.effect('test');
+		transform = seriously.transform('2d');
 		target = seriously.target(canvas);
 
 		seriously.destroy();
@@ -816,6 +993,7 @@
 
 		ok(source.isDestroyed(), 'Destroy Seriously instance destroys source');
 		ok(effect.isDestroyed(), 'Destroy Seriously instance destroys effect');
+		ok(transform.isDestroyed(), 'Destroy Seriously instance destroys transform');
 		ok(target.isDestroyed(), 'Destroy Seriously instance destroys target');
 
 		ok(seriously.effect() === undefined, 'Attempt to create effect with destroyed Seriously does nothing');
@@ -829,7 +1007,7 @@
 
 		expect(2);
 
-		seriously = Seriously();
+		seriously = new Seriously();
 		//create and destroy source twice
 		source = seriously.source('#colorbars');
 		source.destroy();
@@ -924,7 +1102,5 @@
 		fail.addEventListener('load', function() {
 			checkImageFail(this);
 		}, false);
-
-
 	});
 }());

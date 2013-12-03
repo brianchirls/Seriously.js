@@ -1,84 +1,199 @@
+/* global define, require */
 (function (root, factory) {
 	'use strict';
 
 	if (typeof exports === 'object') {
 		// Node/CommonJS
-		factory(root.require('seriously'));
-	} else if (typeof root.define === 'function' && root.define.amd) {
+		factory(require('seriously'));
+	} else if (typeof define === 'function' && define.amd) {
 		// AMD. Register as an anonymous module.
-		root.define(['seriously'], factory);
+		define(['seriously'], factory);
 	} else {
-		var Seriously = root.Seriously;
-		if (!Seriously) {
-			Seriously = { plugin: function (name, opt) { this[name] = opt; } };
+		if (!root.Seriously) {
+			root.Seriously = { plugin: function (name, opt) { this[name] = opt; } };
 		}
-		factory(Seriously);
+		factory(root.Seriously);
 	}
 }(this, function (Seriously, undefined) {
 	'use strict';
 
-	Seriously.plugin('split', (function () {
-		var baseShader;
+	Seriously.plugin('split', function () {
+		var baseShader,
+			resolutionA = [1, 1],
+			resolutionB = [1, 1];
+
+		// custom resize method
+		this.resize = function () {
+			var width,
+				height,
+				mode = this.inputs.sizeMode,
+				node,
+				fn,
+				i,
+				sourceA = this.inputs.sourceA,
+				sourceB = this.inputs.sourceB;
+
+			if (mode === 'a' || mode === 'b') {
+				node = mode === 'a' ? sourceA : sourceB;
+				if (node) {
+					width = node.width;
+					height = node.height;
+				} else {
+					width = 1;
+					height = 1;
+				}
+			} else {
+				if (sourceA) {
+					if (sourceB) {
+						fn = (mode === 'union' ? Math.max : Math.min);
+						width = fn(sourceA.width, sourceB.width);
+						height = fn(sourceA.height, sourceB.height);
+					} else {
+						width = sourceA.width;
+						height = sourceA.height;
+					}
+				} else if (sourceB) {
+					width = sourceB.width;
+					height = sourceB.height;
+				} else {
+					width = 1;
+					height = 1;
+				}
+			}
+
+			if (this.width !== width || this.height !== height) {
+				this.width = width;
+				this.height = height;
+
+				this.uniforms.resolution[0] = width;
+				this.uniforms.resolution[1] = height;
+
+				if (this.frameBuffer) {
+					this.frameBuffer.resize(width, height);
+				}
+
+				this.setDirty();
+			}
+
+			if (sourceA) {
+				resolutionA[0] = sourceA.width;
+				resolutionA[1] = sourceA.height;
+			}
+			if (sourceB) {
+				resolutionB[0] = sourceB.width;
+				resolutionB[1] = sourceB.height;
+			}
+
+			for (i = 0; i < this.targets.length; i++) {
+				this.targets[i].resize();
+			}
+		};
+
 		return {
-			initialize: function (parent) {
-				parent();
+			initialize: function (initialize) {
+				initialize();
+				this.uniforms.resolutionA = resolutionA;
+				this.uniforms.resolutionB = resolutionB;
 			},
 			shader: function (inputs, shaderSource) {
 				baseShader = new Seriously.util.ShaderProgram(this.gl, shaderSource.vertex, shaderSource.fragment);
 
-				shaderSource.vertex = '#ifdef GL_ES\n' +
-					'precision mediump float;\n' +
-					'#endif \n' +
-					'\n' +
-					'attribute vec4 position;\n' +
-					'attribute vec2 texCoord;\n' +
-					'\n' +
-					'uniform vec3 srsSize;\n' +
-					'uniform mat4 projection;\n' +
-					'uniform mat4 transform;\n' +
-					'\n' +
-					'varying vec2 vTexCoord;\n' +
-					'varying vec4 vPosition;\n' +
-					'\n' +
-					'uniform float angle;\n' +
-					'varying float c;\n' +
-					'varying float s;\n' +
-					'varying float t;\n' +
-					'\n' +
-					'void main(void) {\n' +
-					'   c = cos(angle);\n' +
-					'   s = sin(angle);\n' +
-					'	t = abs(c + s);\n' +
-					'\n' +
-					'	vec4 pos = position * vec4(srsSize.x / srsSize.y, 1.0, 1.0, 1.0);\n' +
-					'	gl_Position = transform * pos;\n' +
-					'	gl_Position.z -= srsSize.z;\n' +
-					'	gl_Position = projection * gl_Position;\n' +
-					'	gl_Position.z = 0.0;\n' + //prevent near clipping
-					'	vTexCoord = vec2(texCoord.s, texCoord.t);\n' +
-					'}\n';
-				shaderSource.fragment = '#ifdef GL_ES\n\n' +
-					'precision mediump float;\n\n' +
-					'#endif\n\n' +
-					'\n' +
-					'varying vec2 vTexCoord;\n' +
-					'varying vec4 vPosition;\n' +
-					'\n' +
-					'varying float c;\n' +
-					'varying float s;\n' +
-					'varying float t;\n' +
-					'\n' +
-					'uniform sampler2D sourceA;\n' +
-					'uniform sampler2D sourceB;\n' +
-					'uniform float split;\n' +
-					'uniform float angle;\n' +
-					'uniform float fuzzy;\n' +
-					'\n' +
-					'void main(void) {\n' +
-					'	vec4 pixel1 = texture2D(sourceA, vTexCoord);\n' +
-					'	vec4 pixel2 = texture2D(sourceB, vTexCoord);\n' +
-					'	gl_FragColor = mix(pixel2, pixel1, smoothstep((split - fuzzy * (1.0 - split)) * t, (split + fuzzy * split) * t, c * vTexCoord.x + s * vTexCoord.y));\n' +
-					'}\n';
+				shaderSource.vertex = [
+					'#ifdef GL_ES',
+					'precision mediump float;',
+					'#endif ',
+
+					'attribute vec4 position;',
+					'attribute vec2 texCoord;',
+
+					'uniform vec2 resolution;',
+					'uniform vec2 resolutionA;',
+					'uniform vec2 resolutionB;',
+					'uniform mat4 projection;',
+					//'uniform mat4 transform;',
+
+					'varying vec2 vTexCoord;',
+					'varying vec2 vTexCoordA;',
+					'varying vec2 vTexCoordB;',
+					'varying vec4 vPosition;',
+
+					'uniform float angle;',
+					'varying float c;',
+					'varying float s;',
+					'varying float t;',
+
+					'void main(void) {',
+					'   c = cos(angle);',
+					'   s = sin(angle);',
+					'	t = abs(c + s);',
+
+					// first convert to screen space
+					'	vec4 screenPosition = vec4(position.xy * resolution / 2.0, position.z, position.w);',
+					//'	screenPosition = transform * screenPosition;',
+
+					// convert back to OpenGL coords
+					'	gl_Position.xy = screenPosition.xy * 2.0 / resolution;',
+					'	gl_Position.z = screenPosition.z * 2.0 / (resolution.x / resolution.y);',
+					'	gl_Position.w = screenPosition.w;',
+
+					'	vec2 adjustedTexCoord = (texCoord - 0.5) * resolution;',
+					'	vTexCoordA = adjustedTexCoord / resolutionA + 0.5;',
+					'	vTexCoordB = adjustedTexCoord / resolutionB + 0.5;',
+					'	vTexCoord = texCoord;',
+
+					'	vPosition = gl_Position;',
+					'}'
+				].join('\n');
+				shaderSource.fragment = [
+					'#ifdef GL_ES\n',
+					'precision mediump float;\n',
+					'#endif\n',
+
+					'varying vec2 vTexCoord;',
+					'varying vec2 vTexCoordA;',
+					'varying vec2 vTexCoordB;',
+					'varying vec4 vPosition;',
+
+					'varying float c;',
+					'varying float s;',
+					'varying float t;',
+
+					'uniform sampler2D sourceA;',
+					'uniform sampler2D sourceB;',
+					'uniform float split;',
+					'uniform float angle;',
+					'uniform float fuzzy;',
+
+					'vec4 textureLookup(sampler2D tex, vec2 texCoord) {',
+					'	if (any(lessThan(texCoord, vec2(0.0))) || any(greaterThan(texCoord, vec2(1.0)))) {',
+					'		return vec4(0.0);',
+					'	} else {',
+					'		return texture2D(tex, texCoord);',
+					'	}',
+					'}',
+
+					'void main(void) {',
+					'	float mn = (split - fuzzy * (1.0 - split));',
+					'	float mx = (split + fuzzy * split);;',
+					'	vec2 coords = vTexCoord - vec2(0.5);',
+					'	coords = vec2(coords.x * c - coords.y * s, coords.x * s + coords.y * c);',
+					'	float scale = max(abs(c - s), abs(s + c));',
+					'	coords /= scale;',
+					'	coords += vec2(0.5);',
+					'	float x = coords.x;;',
+					'	if (x <= mn) {',
+					'		gl_FragColor = textureLookup(sourceB, vTexCoordB);',
+					'		return;',
+					'	}',
+					'	if (x >= mx) {',
+					'		gl_FragColor = textureLookup(sourceA, vTexCoordA);',
+					'		return;',
+					'	}',
+					'	vec4 pixel1 = textureLookup(sourceA, vTexCoordA);',
+					'	vec4 pixel2 = textureLookup(sourceB, vTexCoordB);',
+					'	gl_FragColor = mix(pixel2, pixel1, smoothstep(mn, mx, x));',
+					'}'
+				].join('\n');
 
 				return shaderSource;
 			},
@@ -108,40 +223,61 @@
 				}
 
 				return true;
-			},
-			inputs: {
-				sourceA: {
-					type: 'image',
-					uniform: 'sourceA',
-					shaderDirty: false
-				},
-				sourceB: {
-					type: 'image',
-					uniform: 'sourceB',
-					shaderDirty: false
-				},
-				split: {
-					type: 'number',
-					uniform: 'split',
-					defaultValue: 0.5,
-					min: 0,
-					max: 1
-				},
-				angle: {
-					type: 'number',
-					uniform: 'angle',
-					defaultValue: 0
-				},
-				fuzzy: {
-					type: 'number',
-					uniform: 'fuzzy',
-					defaultValue: 0,
-					min: 0,
-					max: 1
+			}
+		};
+	},
+	{
+		inputs: {
+			sourceA: {
+				type: 'image',
+				uniform: 'sourceA',
+				shaderDirty: false,
+				update: function () {
+					this.resize();
 				}
 			},
-			description: 'Split screen or wipe',
-			title: 'Split'
-		};
-	}()));
+			sourceB: {
+				type: 'image',
+				uniform: 'sourceB',
+				shaderDirty: false,
+				update: function () {
+					this.resize();
+				}
+			},
+			sizeMode: {
+				type: 'enum',
+				defaultValue: 'a',
+				options: [
+					'a',
+					'b',
+					'union',
+					'intersection'
+				],
+				update: function () {
+					this.resize();
+				}
+			},
+			split: {
+				type: 'number',
+				uniform: 'split',
+				defaultValue: 0.5,
+				min: 0,
+				max: 1
+			},
+			angle: {
+				type: 'number',
+				uniform: 'angle',
+				defaultValue: 0
+			},
+			fuzzy: {
+				type: 'number',
+				uniform: 'fuzzy',
+				defaultValue: 0,
+				min: 0,
+				max: 1
+			}
+		},
+		description: 'Split screen or wipe',
+		title: 'Split'
+	});
 }));

@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Seriously.js Blur Example</title>
+	<style type="text/css">
+		img {
+			display: none;
+		}
+
+		#controls {
+			display: inline-block;
+			vertical-align: top;
+		}
+
+		#controls input {
+			width: 400px;
+		}
+
+		label {
+			display: block;
+		}
+	</style>
+</head>
+<body>
+	<img src="../../examples/images/robot.jpg" id="robot"/>
+	<canvas id="canvas" width="640" height="619"></canvas>
+	<div id="controls">
+		<div>
+			Slope
+			<label><input type="range" id="redSlope" min="0" max="4" step="0.001" value="1"/> Red</label>
+			<label><input type="range" id="blueSlope" min="0" max="4" step="0.001" value="1"/> Green</label>
+			<label><input type="range" id="greenSlope" min="0" max="4" step="0.001" value="1"/> Blue</label>
+			<label><input type="range" id="alphaSlope" min="0" max="4" step="0.001" value="1"/> Alpha</label>
+		</div>
+
+		<div>
+			Intercept
+			<label><input type="range" id="redIntercept" min="-2" max="2" step="0.001" value="0"/> Red</label>
+			<label><input type="range" id="blueIntercept" min="-2" max="2" step="0.001" value="0"/> Green</label>
+			<label><input type="range" id="greenIntercept" min="-2" max="2" step="0.001" value="0"/> Blue</label>
+			<label><input type="range" id="alphaIntercept" min="-2" max="2" step="0.001" value="0"/> Alpha</label>
+		</div>
+	</div>
+	<script src="../../lib/require.js"></script>
+	<script>
+		require.config({
+			baseUrl: '../../'
+		});
+
+		require([
+			'seriously',
+			'effects/seriously.linear-transfer'
+		], function (Seriously) {
+			// declare our variables
+			var seriously, // the main object that holds the entire composition
+				effect,
+				target, // a wrapper object for our target canvas
+				props = {
+					slope: [1, 1, 1, 1],
+					intercept: [0, 0, 0, 0]
+				};
+
+			seriously = new Seriously();
+			target = seriously.target('#canvas');
+			effect = seriously.effect('linear-transfer');
+			effect.source = '#robot';
+			target.source = effect;
+			seriously.go();
+
+			['slope', 'intercept'].forEach(function (prop) {
+				['red', 'green', 'blue', 'alpha'].forEach(function (channel, channelIndex) {
+					var id = prop;
+					id = channel + id[0].toUpperCase() + prop.substr(1);
+					document.getElementById(id).addEventListener('input', function () {
+						props[prop][channelIndex] = parseFloat(this.value);
+						effect[prop] = props[prop];
+					}, false);
+				});
+			});
+		});
+	</script>
+</body>
+</html>
