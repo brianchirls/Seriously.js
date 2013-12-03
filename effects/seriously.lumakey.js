@@ -1,18 +1,18 @@
+/* global define, require */
 (function (root, factory) {
 	'use strict';
 
 	if (typeof exports === 'object') {
 		// Node/CommonJS
-		factory(root.require('seriously'));
-	} else if (typeof root.define === 'function' && root.define.amd) {
+		factory(require('seriously'));
+	} else if (typeof define === 'function' && define.amd) {
 		// AMD. Register as an anonymous module.
-		root.define(['seriously'], factory);
+		define(['seriously'], factory);
 	} else {
-		var Seriously = root.Seriously;
-		if (!Seriously) {
-			Seriously = { plugin: function (name, opt) { this[name] = opt; } };
+		if (!root.Seriously) {
+			root.Seriously = { plugin: function (name, opt) { this[name] = opt; } };
 		}
-		factory(Seriously);
+		factory(root.Seriously);
 	}
 }(this, function (Seriously, undefined) {
 	'use strict';
@@ -31,6 +31,7 @@
 				'uniform float threshold;\n' +
 				'uniform float clipBlack;\n' +
 				'uniform float clipWhite;\n' +
+				'uniform bool invert;\n' +
 				'\n' +
 				'const vec3 lumcoeff = vec3(0.2125,0.7154,0.0721);\n' +
 				'\n' +
@@ -38,6 +39,7 @@
 				'	vec4 pixel = texture2D(source, vTexCoord);\n' +
 				'	float luma = dot(pixel.rgb,lumcoeff);\n' +
 				'	float alpha = 1.0 - smoothstep(clipBlack, clipWhite, luma);\n' +
+				'	if (invert) alpha = 1.0 - alpha;\n' +
 				'	gl_FragColor = vec4(pixel.rgb, min(pixel.a, alpha) );\n' +
 				'\n' +
 				'} \n';
@@ -63,6 +65,11 @@
 				defaultValue: 1,
 				min: 0,
 				max: 1
+			},
+			invert: {
+				type: 'boolean',
+				uniform: 'invert',
+				defaultValue: false
 			}
 		},
 		title: 'Luma Key',

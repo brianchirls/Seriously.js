@@ -1,5 +1,5 @@
 /*jslint devel: true, bitwise: true, browser: true, white: true, nomen: true, plusplus: true, maxerr: 50, indent: 4, todo: true */
-/*global Float32Array, Float64Array, Uint8Array, Uint16Array, WebGLTexture, HTMLInputElement, HTMLSelectElement, HTMLElement, WebGLFramebuffer, HTMLCanvasElement, WebGLRenderingContext, define, module */
+/*global Float32Array, Uint8Array, Uint16Array, WebGLTexture, HTMLInputElement, HTMLSelectElement, HTMLElement, WebGLFramebuffer, HTMLCanvasElement, WebGLRenderingContext, define, module, exports */
 (function (root, factory) {
 	'use strict';
 	if (typeof exports === 'object') {
@@ -30,11 +30,16 @@
 		Global environment variables
 	*/
 
+	testContext,
+	colorElement,
 	incompatibility,
 	seriousEffects = {},
+	seriousTransforms = {},
 	timeouts = [],
 	allEffectsByHook = {},
-	defaultTransform,
+	allTransformsByHook = {},
+	identity,
+	nop = function () {},
 
 	/*
 		Global reference variables
@@ -42,160 +47,25 @@
 
 	// http://www.w3.org/TR/css3-color/#svg-color
 	colorNames = {
-		'transparent': [0,0,0,0],
-		'aliceblue':	[240/255,248/255,1,1],
-		'antiquewhite':	[250/255,235/255,215/255,1],
-		'aqua':	[0,1,1,1],
-		'aquamarine':	[127/255,1,212/255,1],
-		'azure':	[240/255,1,1,1],
-		'beige':	[245/255,245/255,220/255,1],
-		'bisque':	[1,228/255,196/255,1],
-		'black':	[0,0,0,1],
-		'blanchedalmond':	[1,235/255,205/255,1],
-		'blue':	[0,0,1,1],
-		'blueviolet':	[138/255,43/255,226/255,1],
-		'brown':	[165/255,42/255,42/255,1],
-		'burlywood':	[222/255,184/255,135/255,1],
-		'cadetblue':	[95/255,158/255,160/255,1],
-		'chartreuse':	[127/255,1,0,1],
-		'chocolate':	[210/255,105/255,30/255,1],
-		'coral':	[1,127/255,80/255,1],
-		'cornflowerblue':	[100/255,149/255,237/255,1],
-		'cornsilk':	[1,248/255,220/255,1],
-		'crimson':	[220/255,20/255,60/255,1],
-		'cyan':	[0,1,1,1],
-		'darkblue':	[0,0,139/255,1],
-		'darkcyan':	[0,139/255,139/255,1],
-		'darkgoldenrod':	[184/255,134/255,11/255,1],
-		'darkgray':	[169/255,169/255,169/255,1],
-		'darkgreen':	[0,100/255,0,1],
-		'darkgrey':	[169/255,169/255,169/255,1],
-		'darkkhaki':	[189/255,183/255,107/255,1],
-		'darkmagenta':	[139/255,0,139/255,1],
-		'darkolivegreen':	[85/255,107/255,47/255,1],
-		'darkorange':	[1,140/255,0,1],
-		'darkorchid':	[153/255,50/255,204/255,1],
-		'darkred':	[139/255,0,0,1],
-		'darksalmon':	[233/255,150/255,122/255,1],
-		'darkseagreen':	[143/255,188/255,143/255,1],
-		'darkslateblue':	[72/255,61/255,139/255,1],
-		'darkslategray':	[47/255,79/255,79/255,1],
-		'darkslategrey':	[47/255,79/255,79/255,1],
-		'darkturquoise':	[0,206/255,209/255,1],
-		'darkviolet':	[148/255,0,211/255,1],
-		'deeppink':	[1,20/255,147/255,1],
-		'deepskyblue':	[0,191/255,1,1],
-		'dimgray':	[105/255,105/255,105/255,1],
-		'dimgrey':	[105/255,105/255,105/255,1],
-		'dodgerblue':	[30/255,144/255,1,1],
-		'firebrick':	[178/255,34/255,34/255,1],
-		'floralwhite':	[1,250/255,240/255,1],
-		'forestgreen':	[34/255,139/255,34/255,1],
-		'fuchsia':	[1,0,1,1],
-		'gainsboro':	[220/255,220/255,220/255,1],
-		'ghostwhite':	[248/255,248/255,1,1],
-		'gold':	[1,215/255,0,1],
-		'goldenrod':	[218/255,165/255,32/255,1],
-		'gray':	[128/255,128/255,128/255,1],
-		'green':	[0,128/255,0,1],
-		'greenyellow':	[173/255,1,47/255,1],
-		'grey':	[128/255,128/255,128/255,1],
-		'honeydew':	[240/255,1,240/255,1],
-		'hotpink':	[1,105/255,180/255,1],
-		'indianred':	[205/255,92/255,92/255,1],
-		'indigo':	[75/255,0,130/255,1],
-		'ivory':	[1,1,240/255,1],
-		'khaki':	[240/255,230/255,140/255,1],
-		'lavender':	[230/255,230/255,250/255,1],
-		'lavenderblush':	[1,240/255,245/255,1],
-		'lawngreen':	[124/255,252/255,0,1],
-		'lemonchiffon':	[1,250/255,205/255,1],
-		'lightblue':	[173/255,216/255,230/255,1],
-		'lightcoral':	[240/255,128/255,128/255,1],
-		'lightcyan':	[224/255,1,1,1],
-		'lightgoldenrodyellow':	[250/255,250/255,210/255,1],
-		'lightgray':	[211/255,211/255,211/255,1],
-		'lightgreen':	[144/255,238/255,144/255,1],
-		'lightgrey':	[211/255,211/255,211/255,1],
-		'lightpink':	[1,182/255,193/255,1],
-		'lightsalmon':	[1,160/255,122/255,1],
-		'lightseagreen':	[32/255,178/255,170/255,1],
-		'lightskyblue':	[135/255,206/255,250/255,1],
-		'lightslategray':	[119/255,136/255,153/255,1],
-		'lightslategrey':	[119/255,136/255,153/255,1],
-		'lightsteelblue':	[176/255,196/255,222/255,1],
-		'lightyellow':	[1,1,224/255,1],
-		'lime':	[0,1,0,1],
-		'limegreen':	[50/255,205/255,50/255,1],
-		'linen':	[250/255,240/255,230/255,1],
-		'magenta':	[1,0,1,1],
-		'maroon':	[128/255,0,0,1],
-		'mediumaquamarine':	[102/255,205/255,170/255,1],
-		'mediumblue':	[0,0,205/255,1],
-		'mediumorchid':	[186/255,85/255,211/255,1],
-		'mediumpurple':	[147/255,112/255,219/255,1],
-		'mediumseagreen':	[60/255,179/255,113/255,1],
-		'mediumslateblue':	[123/255,104/255,238/255,1],
-		'mediumspringgreen':	[0,250/255,154/255,1],
-		'mediumturquoise':	[72/255,209/255,204/255,1],
-		'mediumvioletred':	[199/255,21/255,133/255,1],
-		'midnightblue':	[25/255,25/255,112/255,1],
-		'mintcream':	[245/255,1,250/255,1],
-		'mistyrose':	[1,228/255,225/255,1],
-		'moccasin':	[1,228/255,181/255,1],
-		'navajowhite':	[1,222/255,173/255,1],
-		'navy':	[0,0,128/255,1],
-		'oldlace':	[253/255,245/255,230/255,1],
-		'olive':	[128/255,128/255,0,1],
-		'olivedrab':	[107/255,142/255,35/255,1],
-		'orange':	[1,165/255,0,1],
-		'orangered':	[1,69/255,0,1],
-		'orchid':	[218/255,112/255,214/255,1],
-		'palegoldenrod':	[238/255,232/255,170/255,1],
-		'palegreen':	[152/255,251/255,152/255,1],
-		'paleturquoise':	[175/255,238/255,238/255,1],
-		'palevioletred':	[219/255,112/255,147/255,1],
-		'papayawhip':	[1,239/255,213/255,1],
-		'peachpuff':	[1,218/255,185/255,1],
-		'peru':	[205/255,133/255,63/255,1],
-		'pink':	[1,192/255,203/255,1],
-		'plum':	[221/255,160/255,221/255,1],
-		'powderblue':	[176/255,224/255,230/255,1],
-		'purple':	[128/255,0,128/255,1],
-		'red':	[1,0,0,1],
-		'rosybrown':	[188/255,143/255,143/255,1],
-		'royalblue':	[65/255,105/255,225/255,1],
-		'saddlebrown':	[139/255,69/255,19/255,1],
-		'salmon':	[250/255,128/255,114/255,1],
-		'sandybrown':	[244/255,164/255,96/255,1],
-		'seagreen':	[46/255,139/255,87/255,1],
-		'seashell':	[1,245/255,238/255,1],
-		'sienna':	[160/255,82/255,45/255,1],
-		'silver':	[192/255,192/255,192/255,1],
-		'skyblue':	[135/255,206/255,235/255,1],
-		'slateblue':	[106/255,90/255,205/255,1],
-		'slategray':	[112/255,128/255,144/255,1],
-		'slategrey':	[112/255,128/255,144/255,1],
-		'snow':	[1,250/255,250/255,1],
-		'springgreen':	[0,1,127/255,1],
-		'steelblue':	[70/255,130/255,180/255,1],
-		'tan':	[210/255,180/255,140/255,1],
-		'teal':	[0,128/255,128/255,1],
-		'thistle':	[216/255,191/255,216/255,1],
-		'tomato':	[1,99/255,71/255,1],
-		'turquoise':	[64/255,224/255,208/255,1],
-		'violet':	[238/255,130/255,238/255,1],
-		'wheat':	[245/255,222/255,179/255,1],
-		'white':	[1,1,1,1],
-		'whitesmoke':	[245/255,245/255,245/255,1],
-		'yellow':	[1,1,0,1],
-		'yellowgreen':	[154/255,205/255,50/255,1]
+		transparent: [0, 0, 0, 0],
+		red: [1, 0, 0, 1],
+		green: [0, 1, 0, 1],
+		blue: [0, 0, 1, 1],
+		white: [1, 1, 1, 1]
 	},
+
+	vectorFields = ['x', 'y', 'z', 'w'],
+	colorFields = ['r', 'g', 'b', 'a'],
 
 	/*
 		utility functions
 	*/
 
+	/*
+	mat4 matrix functions borrowed from gl-matrix by toji
+	https://github.com/toji/gl-matrix
+	License: https://github.com/toji/gl-matrix/blob/master/LICENSE.md
+	*/
 	mat4 = {
 		/*
 		 * mat4.frustum
@@ -210,7 +80,7 @@
 		 * Returns:
 		 * dest if specified, a new mat4 otherwise
 		 */
-		frustum: function(left, right, bottom, top, near, far, dest) {
+		frustum: function (left, right, bottom, top, near, far, dest) {
 			if(!dest) { dest = mat4.create(); }
 			var rl = (right - left),
 				tb = (top - bottom),
@@ -234,22 +104,20 @@
 			return dest;
 		},
 
-		perspective: function(fovy, aspect, near, far, dest) {
+		perspective: function (fovy, aspect, near, far, dest) {
 			var top = near*Math.tan(fovy*Math.PI / 360.0),
 				right = top*aspect;
 			return mat4.frustum(-right, right, -top, top, near, far, dest);
 		},
-		multiply: function (mat, mat2, dest) {
-			if (!dest) { dest = mat; }
-
+		multiply: function (dest, mat, mat2) {
 			// Cache the matrix values (makes for huge speed increases!)
-			var a00 = mat[ 0], a01 = mat[ 1], a02 = mat[ 2], a03 = mat[3],
-				a10 = mat[ 4], a11 = mat[ 5], a12 = mat[ 6], a13 = mat[7],
-				a20 = mat[ 8], a21 = mat[ 9], a22 = mat[10], a23 = mat[11],
+			var a00 = mat[0], a01 = mat[1], a02 = mat[2], a03 = mat[3],
+				a10 = mat[4], a11 = mat[5], a12 = mat[6], a13 = mat[7],
+				a20 = mat[8], a21 = mat[9], a22 = mat[10], a23 = mat[11],
 				a30 = mat[12], a31 = mat[13], a32 = mat[14], a33 = mat[15],
 
 			// Cache only the current line of the second matrix
-				b0 = mat2[0], b1 = mat2[1], b2 = mat2[2], b3 = mat2[3];
+			b0 = mat2[0], b1 = mat2[1], b2 = mat2[2], b3 = mat2[3];
 			dest[0] = b0*a00 + b1*a10 + b2*a20 + b3*a30;
 			dest[1] = b0*a01 + b1*a11 + b2*a21 + b3*a31;
 			dest[2] = b0*a02 + b1*a12 + b2*a22 + b3*a32;
@@ -302,16 +170,35 @@
 			dest[14] = 0;
 			dest[15] = 1;
 			return dest;
+		},
+		copy: function (out, a) {
+			out[0] = a[0];
+			out[1] = a[1];
+			out[2] = a[2];
+			out[3] = a[3];
+			out[4] = a[4];
+			out[5] = a[5];
+			out[6] = a[6];
+			out[7] = a[7];
+			out[8] = a[8];
+			out[9] = a[9];
+			out[10] = a[10];
+			out[11] = a[11];
+			out[12] = a[12];
+			out[13] = a[13];
+			out[14] = a[14];
+			out[15] = a[15];
+			return out;
 		}
 	},
 
-	requestAnimFrame = (function(){
+	requestAnimationFrame = (function (){
 		var lastTime = 0;
-		return  window.requestAnimationFrame       ||
+		return  window.requestAnimationFrame ||
 				window.webkitRequestAnimationFrame ||
-				window.mozRequestAnimationFrame    ||
-				window.oRequestAnimationFrame      ||
-				window.msRequestAnimationFrame     ||
+				window.mozRequestAnimationFrame ||
+				window.oRequestAnimationFrame ||
+				window.msRequestAnimationFrame ||
 				function (callback) {
 					var currTime, timeToCall, id;
 
@@ -325,13 +212,29 @@
 					lastTime = currTime + timeToCall;
 					return id;
 				};
-	}());
+	}()),
+
+	cancelAnimFrame = (function (){
+		return  window.cancelAnimationFrame ||
+				window.webkitCancelAnimationFrame ||
+				window.mozCancelAnimationFrame ||
+				window.oCancelAnimationFrame ||
+				window.msCancelAnimationFrame ||
+				function (id) {
+					window.cancelTimeout(id);
+				};
+	}()),
+
+	reservedNames = ['source', 'target', 'effect', 'effects', 'benchmark', 'incompatible',
+		'util', 'ShaderProgram', 'inputValidators', 'save', 'load',
+		'plugin', 'removePlugin', 'alias', 'removeAlias', 'stop', 'go',
+		'destroy', 'isDestroyed'];
 
 	function getElement(input, tags) {
 		var element,
 			tag;
 		if (typeof input === 'string') {
-			//element = document.getElementById(input) || document.getElementsByTagName( input )[0];
+			//element = document.getElementById(input) || document.getElementsByTagName(input)[0];
 			element = document.querySelector(input);
 		} else if (!input) {
 			return false;
@@ -354,27 +257,27 @@
 	}
 
 	function extend(dest, src) {
-		var property, g, s;
+		var property,
+			descriptor;
 
 		//todo: are we sure this is safe?
 		if (dest.prototype && src.prototype && dest.prototype !== src.prototype) {
 			extend(dest.prototype, src.prototype);
 		}
 
-		for ( property in src ) {
+		for (property in src) {
 			if (src.hasOwnProperty(property)) {
-				g = src.__lookupGetter__(property);
-				s = src.__lookupSetter__(property);
+				descriptor = Object.getOwnPropertyDescriptor(src, property);
 
-				if (g || s) {
-					if (g) {
-						dest.__defineGetter__(property, g);
-					}
-					if (s) {
-						dest.__defineSetter__(property, s);
-					}
+				if (descriptor.get || descriptor.set) {
+					Object.defineProperty(dest, property, {
+						configurable: true,
+						enumerable: true,
+						get: descriptor.get,
+						set: descriptor.set
+					});
 				} else {
-					dest[ property ] = src[ property ];
+					dest[property] = src[property];
 				}
 			}
 		}
@@ -383,7 +286,7 @@
 	}
 
 	//http://www.w3.org/TR/css3-color/#hsl-color
-	function hslToRgb(h, s, l, a) {
+	function hslToRgb(h, s, l, a, out) {
 		function hueToRgb(m1, m2, h) {
 			h = h % 1;
 			if (h < 0) {
@@ -408,12 +311,17 @@
 			m2 = l + s - l * s;
 		}
 		m1 = l * 2 - m2;
-		return [
-			hueToRgb(m1, m2, h + 1/3),
-			hueToRgb(m1, m2, h),
-			hueToRgb(m1, m2, h - 1/3),
-			a
-		];
+
+		if (!out) {
+			out = [];
+		}
+
+		out[0] = hueToRgb(m1, m2, h + 1/3);
+		out[1] = hueToRgb(m1, m2, h);
+		out[2] = hueToRgb(m1, m2, h - 1/3);
+		out[3] = a;
+
+		return out;
 	}
 
 	/*
@@ -445,7 +353,12 @@
 		window.postMessage('seriously-timeout-message', window.location);
 	}
 
-	window.addEventListener('message', function(event) {
+	function isArrayLike(obj) {
+		return Array.isArray(obj) ||
+			(obj && obj.BYTES_PER_ELEMENT && 'length' in obj);
+	}
+
+	window.addEventListener('message', function (event) {
 		if (event.source === window && event.data === 'seriously-timeout-message') {
 			event.stopPropagation();
 			if (timeouts.length > 0) {
@@ -455,9 +368,37 @@
 		}
 	}, true);
 
+	function getTestContext() {
+		var canvas;
+
+		if (testContext || !window.WebGLRenderingContext) {
+			return testContext;
+		}
+
+		canvas = document.createElement('canvas');
+		try {
+			testContext = canvas.getContext('experimental-webgl');
+			canvas.addEventListener('webglcontextlost', function (event) {
+				/*
+				If/When context is lost, just clear testContext and create
+				a new one the next time it's needed
+				*/
+				event.preventDefault();
+				if (testContext && testContext.canvas === this) {
+					testContext = undefined;
+				}
+			}, false);
+		} catch (webglError) {
+			console.log('Unable to access WebGL.');
+		}
+
+		return testContext;
+	}
+
 	function checkSource(source) {
 		var element, canvas, ctx, texture;
 
+		//todo: don't need to create a new array every time we do this
 		element = getElement(source, ['img', 'canvas', 'video']);
 		if (!element) {
 			return false;
@@ -469,13 +410,7 @@
 			return false;
 		}
 
-		if (window.WebGLRenderingContext) {
-			try {
-				ctx = canvas.getContext('experimental-webgl');
-			} catch (webglError) {
-				console.log('Unable to access WebGL. Trying 2D canvas.');
-			}
-		}
+		ctx = getTestContext();
 
 		if (ctx) {
 			texture = ctx.createTexture();
@@ -484,7 +419,7 @@
 			try {
 				ctx.texImage2D(ctx.TEXTURE_2D, 0, ctx.RGBA, ctx.RGBA, ctx.UNSIGNED_BYTE, element);
 			} catch (textureError) {
-				if (textureError.name === 'SECURITY_ERR') {
+				if (textureError.code === window.DOMException.SECURITY_ERR) {
 					console.log('Unable to access cross-domain image');
 				} else {
 					console.log('Error: ' + textureError.message);
@@ -499,7 +434,7 @@
 				ctx.drawImage(element, 0, 0);
 				ctx.getImageData(0, 0, 1, 1);
 			} catch (drawImageError) {
-				if (drawImageError.name === 'SECURITY_ERR') {
+				if (drawImageError.code === window.DOMException.SECURITY_ERR) {
 					console.log('Unable to access cross-domain image');
 				} else {
 					console.log('Error: ' + drawImageError.message);
@@ -508,24 +443,107 @@
 			}
 		}
 
-
 		// This method will return a false positive for resources that aren't
 		// actually images or haven't loaded yet
 
 		return true;
 	}
 
+	function validateInputSpecs(effect) {
+		var reserved = ['render', 'initialize', 'original', 'plugin', 'alias',
+			'prototype', 'destroy', 'isDestroyed'],
+			input,
+			name;
+
+		function nop(value) {
+			return value;
+		}
+
+		for (name in effect.inputs) {
+			if (effect.inputs.hasOwnProperty(name)) {
+				if (reserved.indexOf(name) >= 0 || Object.prototype[name]) {
+					throw 'Reserved effect input name: ' + name;
+				}
+
+				input = effect.inputs[name];
+
+				if (isNaN(input.min)) {
+					input.min = -Infinity;
+				}
+
+				if (isNaN(input.max)) {
+					input.max = Infinity;
+				}
+
+				if (isNaN(input.minCount)) {
+					input.minCount = -Infinity;
+				}
+
+				if (isNaN(input.maxCount)) {
+					input.maxCount = Infinity;
+				}
+
+				if (isNaN(input.step)) {
+					input.step = 0;
+				}
+
+				if (input.defaultValue === undefined || input.defaultValue === null) {
+					if (input.type === 'number') {
+						input.defaultValue = Math.min(Math.max(0, input.min), input.max);
+					} else if (input.type === 'color') {
+						input.defaultValue = [0, 0, 0, 0];
+					} else if (input.type === 'enum') {
+						if (input.options && input.options.length) {
+							input.defaultValue = input.options[0];
+						} else {
+							input.defaultValue = '';
+						}
+					} else if (input.type === 'boolean') {
+						input.defaultValue = false;
+					} else {
+						input.defaultValue = '';
+					}
+				}
+
+				if (input.type === 'vector') {
+					if (input.dimensions < 2) {
+						input.dimensions = 2;
+					} else if (input.dimensions > 4) {
+						input.dimensions = 4;
+					} else if (!input.dimensions || isNaN(input.dimensions)) {
+						input.dimensions = 4;
+					} else {
+						input.dimensions = Math.round(input.dimensions);
+					}
+				} else {
+					input.dimensions = 1;
+				}
+
+				input.shaderDirty = !!input.shaderDirty;
+
+				if (typeof input.validate !== 'function') {
+					input.validate = Seriously.inputValidators[input.type] || nop;
+				}
+
+				if (!effect.defaultImageInput && input.type === 'image') {
+					effect.defaultImageInput = name;
+				}
+			}
+		}
+	}
+
 	/*
 		helper Classes
 	*/
 
-	function FrameBuffer(gl, width, height, useFloat) {
+	function FrameBuffer(gl, width, height, options) {
 		var frameBuffer,
 			renderBuffer,
 			tex,
-			status;
+			status,
+			useFloat = options === true ? options : (options && options.useFloat);
 
-		useFloat = false && useFloat && !!gl.getExtension("OES_texture_float"); //useFloat is not ready!
+		useFloat = false;//useFloat && !!gl.getExtension("OES_texture_float"); //useFloat is not ready!
 		if (useFloat) {
 			this.type = gl.FLOAT;
 		} else {
@@ -535,12 +553,19 @@
 		frameBuffer = gl.createFramebuffer();
 		gl.bindFramebuffer(gl.FRAMEBUFFER, frameBuffer);
 
-		this.texture = gl.createTexture();
-		gl.bindTexture(gl.TEXTURE_2D, this.texture);
-		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+		if (options && options.texture) {
+			this.texture = options.texture;
+			gl.bindTexture(gl.TEXTURE_2D, this.texture);
+			this.ownTexture = false;
+		} else {
+			this.texture = gl.createTexture();
+			gl.bindTexture(gl.TEXTURE_2D, this.texture);
+			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+			this.ownTexture = true;
+		}
 
 		try {
 			if (this.type === gl.FLOAT) {
@@ -560,17 +585,9 @@
 		renderBuffer = gl.createRenderbuffer();
 		gl.bindRenderbuffer(gl.RENDERBUFFER, renderBuffer);
 		gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, width, height);
+		gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, renderBuffer);
 
 		gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.texture, 0);
-
-		//clean up
-		gl.bindTexture(gl.TEXTURE_2D, null);
-		gl.bindRenderbuffer(gl.RENDERBUFFER, null);
-		gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-
-		if (!gl.isFramebuffer(frameBuffer)) {
-			throw('Invalid framebuffer');
-		}
 
 		status = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
 
@@ -594,6 +611,11 @@
 			throw('Incomplete framebuffer: ' + status);
 		}
 
+		//clean up
+		gl.bindTexture(gl.TEXTURE_2D, null);
+		gl.bindRenderbuffer(gl.RENDERBUFFER, null);
+		gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
 		this.gl = gl;
 		this.frameBuffer = frameBuffer;
 		this.renderBuffer = renderBuffer;
@@ -601,29 +623,59 @@
 		this.height = height;
 	}
 
-	FrameBuffer.prototype.destroy = function() {
+	FrameBuffer.prototype.resize = function (width, height) {
+		var gl = this.gl;
+
+		if (this.width === width && this.height === height) {
+			return;
+		}
+
+		this.width = width;
+		this.height = height;
+
+		if (!gl) {
+			return;
+		}
+
+		gl.bindTexture(gl.TEXTURE_2D, this.texture);
+		gl.bindFramebuffer(gl.FRAMEBUFFER, this.frameBuffer);
+		gl.bindRenderbuffer(gl.RENDERBUFFER, this.renderBuffer);
+
+		//todo: handle float
+		gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+		gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, width, height);
+		gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.texture, 0);
+
+		gl.bindTexture(gl.TEXTURE_2D, null);
+		gl.bindRenderbuffer(gl.RENDERBUFFER, null);
+		gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+	};
+
+	FrameBuffer.prototype.destroy = function () {
 		var gl = this.gl;
 
 		if (gl) {
 			gl.deleteFramebuffer(this.frameBuffer);
 			gl.deleteRenderbuffer(this.renderBuffer);
-			gl.deleteTexture(this.texture);
+			if (this.ownTexture) {
+				gl.deleteTexture(this.texture);
+			}
 		}
 
 		delete this.frameBuffer;
 		delete this.renderBuffer;
 		delete this.texture;
+		delete this.gl;
 	};
 
 	/* ShaderProgram - utility class for building and accessing WebGL shaders */
 
 	function ShaderProgram(gl, vertexShaderSource, fragmentShaderSource) {
-
 		var program, vertexShader, fragmentShader,
-			programError = '', shaderError,
-			num_uniforms,
-			num_attribs,
-			i, info, name, loc, setter, getter;
+			programError = '',
+			shaderError,
+			i, l,
+			obj;
 
 		function compileShader(source, fragment) {
 			var shader, i;
@@ -649,9 +701,8 @@
 		}
 
 		function makeShaderSetter(info, loc) {
-
 			if (info.type === gl.SAMPLER_2D) {
-				return function(value) {
+				return function (value) {
 					info.glTexture = gl['TEXTURE' + value];
 					gl.uniform1i(loc, value);
 				};
@@ -659,79 +710,63 @@
 
 			if (info.type === gl.BOOL|| info.type === gl.INT) {
 				if (info.size > 1) {
-					return function(value) {
+					return function (value) {
 						gl.uniform1iv(loc, value);
 					};
 				}
 
-				return function(value) {
+				return function (value) {
 					gl.uniform1i(loc, value);
 				};
 			}
 
 			if (info.type === gl.FLOAT) {
 				if (info.size > 1) {
-					return function(value) {
+					return function (value) {
 						gl.uniform1fv(loc, value);
 					};
 				}
 
-				return function(value) {
+				return function (value) {
 					gl.uniform1f(loc, value);
 				};
 			}
 
 			if (info.type === gl.FLOAT_VEC2) {
-				return function(obj) {
-					//todo: standardize this so we don't have to do this check
-					if ( Array.isArray(obj) ) {
-						gl.uniform2f(loc, obj[0], obj[1]);
-					} else {
-						gl.uniform2f(loc, obj.x, obj.y);
-					}
+				return function (obj) {
+					gl.uniform2f(loc, obj[0], obj[1]);
 				};
 			}
 
 			if (info.type === gl.FLOAT_VEC3) {
-				return function(obj) {
-					//todo: standardize this so we don't have to do this check
-					if ( Array.isArray(obj) ) {
-						gl.uniform3f(loc, obj[0], obj[1], obj[2]);
-					} else {
-						gl.uniform3f(loc, obj.x, obj.y, obj.z);
-					}
+				return function (obj) {
+					gl.uniform3f(loc, obj[0], obj[1], obj[2]);
 				};
 			}
 
 			if (info.type === gl.FLOAT_VEC4) {
-				return function(obj) {
-					//todo: standardize this so we don't have to do this check
-					if ( Array.isArray(obj) ) {
-						gl.uniform4f(loc, obj[0], obj[1], obj[2], obj[3]);
-					} else {
-						gl.uniform4f(loc, obj.x, obj.y, obj.z, obj.w);
-					}
+				return function (obj) {
+					gl.uniform4f(loc, obj[0], obj[1], obj[2], obj[3]);
 				};
 			}
 
 			if (info.type === gl.FLOAT_MAT3) {
-				return function(mat3) {
+				return function (mat3) {
 					gl.uniformMatrix3fv(loc, false, mat3);
 				};
 			}
 
 			if (info.type === gl.FLOAT_MAT4) {
-				return function(mat4) {
+				return function (mat4) {
 					gl.uniformMatrix4fv(loc, false, mat4);
 				};
 			}
 
 			throw "Unknown shader uniform type: " + info.type;
-
 		}
 
 		function makeShaderGetter(loc) {
-			return function() {
+			return function () {
 				return gl.getUniform(program, loc);
 			};
 		}
@@ -761,41 +796,45 @@
 		}
 
 		gl.useProgram(program);
-		num_uniforms = gl.getProgramParameter(program, gl.ACTIVE_UNIFORMS);
-		this.uniforms = [];
-		for (i = 0; i < num_uniforms; ++i) {
-			info = gl.getActiveUniform(program, i);
-			name = info.name;
-			loc = gl.getUniformLocation(program, name);
-			loc.name = name;
 
-			setter = makeShaderSetter(info, loc);
-			info.set = setter;
-			this['set_' + name] = setter;
+		this.uniforms = {};
 
-			getter = makeShaderGetter(loc);
-			info.get = getter;
-			this['get_' + name] = getter;
+		l = gl.getProgramParameter(program, gl.ACTIVE_UNIFORMS);
+		for (i = 0; i < l; ++i) {
+			obj = {
+				info: gl.getActiveUniform(program, i)
+			};
 
-			info.loc = this['location_' + name] = loc;
+			obj.name = obj.info.name;
+			obj.loc = gl.getUniformLocation(program, obj.name);
+			obj.set = makeShaderSetter(obj.info, obj.loc);
+			obj.get = makeShaderGetter(obj.loc);
+			this.uniforms[obj.name] = obj;
 
-			this.uniforms.push(info);
+			if (!this[obj.name]) {
+				//for convenience
+				this[obj.name] = obj;
+			}
 		}
 
-		num_attribs = gl.getProgramParameter(program, gl.ACTIVE_ATTRIBUTES);
-		this.attributes = [];
-		for (i = 0; i < num_attribs; ++i) {
-			info = gl.getActiveAttrib(program, i);
-			name = info.name;
-			loc = gl.getAttribLocation(program, name);
-			this['location_' + name] = loc;
-			this.attributes.push(name);
+		this.attributes = {};
+		this.location = {};
+		l = gl.getProgramParameter(program, gl.ACTIVE_ATTRIBUTES);
+		for (i = 0; i < l; ++i) {
+			obj = {
+				info: gl.getActiveAttrib(program, i)
+			};
+
+			obj.name = obj.info.name;
+			obj.location = gl.getAttribLocation(program, obj.name);
+			this.attributes[obj.name] = obj;
+			this.location[obj.name] = obj.location;
 		}
 
 		this.gl = gl;
 		this.program = program;
 
-		this.destroy = function() {
+		this.destroy = function () {
 			var i;
 
 			if (gl) {
@@ -806,7 +845,6 @@
 
 			for (i in this) {
 				if (this.hasOwnProperty(i)) {
-
 					delete this[i];
 				}
 			}
@@ -817,7 +855,7 @@
 		};
 	}
 
-	ShaderProgram.prototype.useProgram = function() {
+	ShaderProgram.prototype.use = function () {
 		this.gl.useProgram(this.program);
 	};
 
@@ -828,7 +866,7 @@
 	function Seriously(options) {
 
 		//if called without 'new', make a new object and return that
-		if (window === this || !(this instanceof Seriously) ) {
+		if (window === this || !(this instanceof Seriously)) {
 			return new Seriously(options);
 		}
 
@@ -839,20 +877,21 @@
 			nodeId = 0,
 			sources = [],
 			targets = [],
+			transforms = [],
 			effects = [],
 			aliases = {},
-			callbacks = [],
-			animationCallbacks = [],
+			preCallbacks = [],
+			postCallbacks = [],
 			glCanvas,
 			gl,
 			rectangleModel,
 			baseShader,
 			baseVertexShader, baseFragmentShader,
-			Node, SourceNode, EffectNode, TargetNode,
-			Effect, Source, Target,
+			Node, SourceNode, EffectNode, TransformNode, TargetNode,
+			Effect, Source, Transform, Target,
 			auto = false,
-			callbacksRunning = false,
-			isDestroyed = false;
+			isDestroyed = false,
+			rafId;
 
 		function makeGlModel(shape, gl) {
 			var vertex, index, texCoord;
@@ -896,14 +935,14 @@
 
 			shape.indices = new Uint16Array([
 				0, 1, 2,
-				0, 2, 3    // Front face
+				0, 2, 3	// Front face
 			]);
 
 			shape.coords = new Float32Array([
-				0,0,
-				1,0,
-				1,1,
-				0,1
+				0, 0,
+				1, 0,
+				1, 1,
+				0, 1
 			]);
 
 			return makeGlModel(shape, gl);
@@ -945,20 +984,26 @@
 			}
 		}
 
-		//runs on every frame, as long as there are media sources (img, video, canvas, etc.) to check
-		//any sources that are updated are set to dirty, forcing all dependent nodes to render on next pass
-		//target nodes that are set to auto by .go() will render immediately when set to dirty
-		function monitorSources() {
+		/*
+		runs on every frame, as long as there are media sources (img, video, canvas, etc.) to check,
+		dirty target nodes or pre/post callbacks to run. any sources that are updated are set to dirty,
+		forcing all dependent nodes to render
+		*/
+		function renderDaemon() {
 			var i, node, media,
 				keepRunning = false;
 
-			if (animationCallbacks.length) {
-				for (i = 0; i < animationCallbacks.length; i++) {
-					animationCallbacks[i].call(seriously);
+			rafId = null;
+
+			if (preCallbacks.length) {
+				keepRunning = true;
+				for (i = 0; i < preCallbacks.length; i++) {
+					preCallbacks[i].call(seriously);
 				}
 			}
 
 			if (sources && sources.length) {
+				keepRunning = true;
 				for (i = 0; i < sources.length; i++) {
 					node = sources[i];
 
@@ -970,8 +1015,6 @@
 						node.setDirty();
 					}
 				}
-
-				keepRunning = true;
 			}
 
 			for (i = 0; i < targets.length; i++) {
@@ -981,63 +1024,81 @@
 				}
 			}
 
-			if (keepRunning) {
-				requestAnimFrame(monitorSources);
+			if (postCallbacks.length) {
+				keepRunning = true;
+				for (i = 0; i < postCallbacks.length; i++) {
+					postCallbacks[i].call(seriously);
+				}
+			}
+
+			//rafId may have been set again by a callback or in target.setDirty()
+			if (keepRunning && !rafId) {
+				rafId = requestAnimationFrame(renderDaemon);
 			}
 		}
 
 		function draw(shader, model, uniforms, frameBuffer, node, options) {
 			var numTextures = 0,
-				name, value, setter,
+				name, value, shaderUniform,
 				width, height,
-				nodeGl = (node && node.gl) || gl,
-				opts = options || {};
+				nodeGl = (node && node.gl) || gl;
 
 			if (!nodeGl) {
 				return;
 			}
 
 			if (node) {
-				width = opts.width || node.width || nodeGl.canvas.width;
-				height = opts.height || node.height || nodeGl.canvas.height;
+				width = options && options.width || node.width || nodeGl.canvas.width;
+				height = options && options.height || node.height || nodeGl.canvas.height;
 			} else {
-				width = opts.width || nodeGl.canvas.width;
-				height = opts.height || nodeGl.canvas.height;
+				width = options && options.width || nodeGl.canvas.width;
+				height = options && options.height || nodeGl.canvas.height;
 			}
 
-			shader.useProgram();
+			shader.use();
 
 			nodeGl.viewport(0, 0, width, height);
 
 			nodeGl.bindFramebuffer(nodeGl.FRAMEBUFFER, frameBuffer);
 
 			/* todo: do this all only once at the beginning, since we only have one model? */
-			nodeGl.enableVertexAttribArray(shader.location_position);
-			nodeGl.enableVertexAttribArray(shader.location_texCoord);
+			nodeGl.enableVertexAttribArray(shader.location.position);
+			nodeGl.enableVertexAttribArray(shader.location.texCoord);
 
 			if (model.texCoord) {
 				nodeGl.bindBuffer(nodeGl.ARRAY_BUFFER, model.texCoord);
-				nodeGl.vertexAttribPointer(shader.location_texCoord, model.texCoord.size, nodeGl.FLOAT, false, 0, 0);
+				nodeGl.vertexAttribPointer(shader.location.texCoord, model.texCoord.size, nodeGl.FLOAT, false, 0, 0);
 			}
 
 			nodeGl.bindBuffer(nodeGl.ARRAY_BUFFER, model.vertex);
-			nodeGl.vertexAttribPointer(shader.location_position, model.vertex.size, nodeGl.FLOAT, false, 0, 0);
+			nodeGl.vertexAttribPointer(shader.location.position, model.vertex.size, nodeGl.FLOAT, false, 0, 0);
 
 			nodeGl.bindBuffer(nodeGl.ELEMENT_ARRAY_BUFFER, model.index);
 
 			//default for depth is disable
-			if (opts.depth) {
+			if (options && options.depth) {
 				gl.enable(gl.DEPTH_TEST);
 			} else {
 				gl.disable(gl.DEPTH_TEST);
 			}
 
 			//default for blend is enable
-			if (opts.blend === undefined || opts.blend) {
+			if (!options || options.blend === undefined || options.blend) {
 				gl.enable(gl.BLEND);
-				gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA,
-									gl.SRC_ALPHA, gl.DST_ALPHA);
-				gl.blendEquation(gl.FUNC_ADD);
+				gl.blendFunc(
+					options && options.srcRGB || gl.SRC_ALPHA,
+					options && options.dstRGB || gl.ONE_MINUS_SRC_ALPHA
+				);
+
+				/*
+				gl.blendFuncSeparate(
+					options && options.srcRGB || gl.SRC_ALPHA,
+					options && options.dstRGB || gl.ONE_MINUS_SRC_ALPHA,
+					options && options.srcAlpha || gl.SRC_ALPHA,
+					options && options.dstAlpha || gl.DST_ALPHA
+				);
+				*/
+				gl.blendEquation(options && options.blendEquation || gl.FUNC_ADD);
 			} else {
 				gl.disable(gl.BLEND);
 			}
@@ -1046,29 +1107,31 @@
 			for (name in uniforms) {
 				if (uniforms.hasOwnProperty(name)) {
 					value = uniforms[name];
-					setter = 'set_' + name;
-					if (shader[setter]) {
+					shaderUniform = shader.uniforms[name];
+					if (shaderUniform) {
 						if (value instanceof WebGLTexture) {
 							nodeGl.activeTexture(nodeGl.TEXTURE0 + numTextures);
 							nodeGl.bindTexture(nodeGl.TEXTURE_2D, value);
-							shader[setter](numTextures); //todo: make this faster
+							shaderUniform.set(numTextures);
 							numTextures++;
-						} else if (value instanceof SourceNode || value instanceof EffectNode) {
+						} else if (value instanceof SourceNode ||
+								value instanceof EffectNode ||
+								value instanceof TransformNode) {
 							if (value.texture) {
 								nodeGl.activeTexture(nodeGl.TEXTURE0 + numTextures);
 								nodeGl.bindTexture(nodeGl.TEXTURE_2D, value.texture);
-								shader[setter](numTextures); //todo: make this faster
+								shaderUniform.set(numTextures);
 								numTextures++;
 							}
 						} else if(value !== undefined && value !== null) {
-							shader['set_' + name](value);
+							shaderUniform.set(value);
 						}
 					}
 				}
 			}
 
 			//default for clear is true
-			if (opts.clear === undefined || opts.clear) {
+			if (!options || options.clear === undefined || options.clear) {
 				nodeGl.clearColor(0.0, 0.0, 0.0, 0.0);
 				nodeGl.clear(nodeGl.COLOR_BUFFER_BIT | nodeGl.DEPTH_BUFFER_BIT);
 			}
@@ -1082,16 +1145,21 @@
 
 		function findInputNode(source, options) {
 			var node, i;
-			if (source instanceof SourceNode || source instanceof EffectNode) {
+
+			if (source instanceof SourceNode ||
+					source instanceof EffectNode ||
+					source instanceof TransformNode) {
 				node = source;
-			} else if (source instanceof Effect || source instanceof Source) {
+			} else if (source instanceof Effect ||
+					source instanceof Source ||
+					source instanceof Transform) {
 				node = nodesById[source.id];
 
 				if (!node) {
 					throw 'Cannot connect a foreign node';
 				}
 			} else {
-				if ( typeof source === 'string' && isNaN(source) ) {
+				if (typeof source === 'string' && isNaN(source)) {
 					source = getElement(source, ['canvas', 'img', 'video']);
 				}
 
@@ -1107,59 +1175,44 @@
 			return node;
 		}
 
-		function runCallbacks() {
-			function run() {
-				var i;
-				for (i = 0; i < callbacks.length; i++) {
-					callbacks[i].call(seriously);
-				}
-				callbacksRunning = false;
+		//trace back all sources to make sure we're not making a cyclical connection
+		function traceSources(node, original) {
+			var i,
+				source,
+				sources;
+
+			if (!(node instanceof EffectNode) && !(node instanceof TransformNode)) {
+				return false;
 			}
 
-			if (!callbacksRunning && callbacks.length) {
-				setTimeoutZero(run);
-				callbacksRunning = true;
+			sources = node.sources;
+
+			for (i in sources) {
+				if (sources.hasOwnProperty(i)) {
+					source = sources[i];
+
+					if (source === original || traceSources(source, original)) {
+						return true;
+					}
+				}
 			}
+
+			return false;
 		}
 
-		Node = function (options) {
-			var width, height, depth;
-			this.transform = new Float32Array(16);
-			this.projection = new Float32Array(16);
-
-			if (options) {
-				this.desiredWidth = parseInt(options.width, 10);
-				this.desiredHeight = parseInt(options.height, 10);
-				this.fov = parseInt(options.fov, 10);
-			}
-			if (isNaN(this.fov)) {
-				this.fov = 0;
-			}
-
-			width = this.width = this.desiredWidth || 1;
-			height = this.height = this.desiredHeight || 1;
-			//depth = Math.sin(Math.PI / 4) / Math.sin(this.fov * Math.PI / 360); // 1 / sin(angle/2)
-			if (this.fov) {
-				depth = 1 / Math.tan(this.fov * Math.PI / 360.0);
-			} else {
-				depth = 1;
-			}
+		Node = function () {
+			this.width = 1;
+			this.height = 1;
 
 			this.gl = gl;
 
-			this.reset();
-
 			this.uniforms = {
-				transform: this.transform,
-				srsSize: [width, height, depth],
-				projection: this.projection
+				resolution: [this.width, this.height],
+				transform: null
 			};
-
-			this.perspective(this.fov);
 
 			this.dirty = true;
 			this.isDestroyed = false;
-			this.transformed = false;
 
 			this.seriously = seriously;
 
@@ -1185,14 +1238,6 @@
 
 		Node.prototype.initFrameBuffer = function (useFloat) {
 			if (gl) {
-				if (!this.width) {
-					this.width = this.desiredWidth || glCanvas.width;
-				}
-
-				if (!this.height) {
-					this.height = this.desiredHeight || glCanvas.height;
-				}
-
 				this.frameBuffer = new FrameBuffer(gl, this.width, this.height, useFloat);
 			}
 		};
@@ -1213,16 +1258,10 @@
 			//todo: should we render here?
 			this.render();
 
-			if (this instanceof SourceNode) {
-				//todo: move this to SourceNode.render so it only runs when it changes
-				this.uniforms.source = this.texture;
-				draw(baseShader, rectangleModel, this.uniforms, this.frameBuffer.frameBuffer, this);
-			}
-
 			//todo: figure out formats and types
 			if (dest === undefined) {
 				dest = new Uint8Array(width * height * 4);
-			} else if ( !dest instanceof Uint8Array ) {
+			} else if (!dest instanceof Uint8Array) {
 				throw 'Incompatible array type';
 			}
 
@@ -1232,190 +1271,42 @@
 			return dest;
 		};
 
-		Node.prototype.reset = function () {
-			var i;
-			for (i = 0; i < 16; i++) {
-				this.transform[i] = defaultTransform[i];
-			}
-			this.transformed = false;
-			this.setDirty();
-		};
+		Node.prototype.resize = function () {
+			var width,
+				height;
 
-		Node.prototype.setSize = function (width, height) {
-			if (!width || !height) {
-				return;
-			}
-			this.width = width;
-			this.height = height;
-
-			this.perspective(this.fov);
-			this.uniforms.srsSize[0] = width;
-			this.uniforms.srsSize[1] = height;
-		};
-
-
-		Node.prototype.setTransform = function(mat) {
-			var i, val, isDefault = true;
-
-			if (!mat ||
-				!Array.isArray(mat) && !(mat instanceof Float32Array) && !(mat instanceof Float64Array)) {
-				this.reset();
-				return;
-			}
-
-			if (mat.length < 16) {
-				throw 'transform matrix must be array or typed array of 16 numbers.';
-			}
-
-			for (i = 0; i < 16; i++) {
-				val = mat[i];
-				if (isNaN(val)) {
-					throw 'transform matrix must be array or typed array of 16 numbers.';
-				}
-				if (val !== defaultTransform[i]) {
-					isDefault = false;
-				}
-				this.transform[i] = val;
-			}
-
-			this.transformed = !isDefault;
-			this.setDirty();
-		};
-
-		Node.prototype.perspective = function(fov) {
-			fov = parseFloat(fov);
-			if (isNaN(fov)) {
-				this.fov = 0;
+			if (this.source) {
+				width = this.source.width;
+				height = this.source.height;
+			} else if (this.sources && this.sources.source) {
+				width = this.sources.source.width;
+				height = this.sources.source.height;
+			} else if (this.inputs && this.inputs.width) {
+				width = this.inputs.width;
+				height = this.inputs.height || width;
+			} else if (this.inputs && this.inputs.height) {
+				width = height = this.inputs.height;
 			} else {
-				this.fov = fov;
+				//this node will be responsible for calculating its own size
+				width = 1;
+				height = 1;
 			}
 
-			if (this.fov) {
-				mat4.perspective(this.fov, this.width / this.height, 1, 100, this.projection);
-				this.uniforms.srsSize[2] = 1 / Math.tan(this.fov * Math.PI / 360.0);
-			} else {
-				mat4.identity(this.projection);
-				this.projection[0] = this.height / this.width;
-	//			this.projection[10] = 2/200;
-				this.uniforms.srsSize[2] = 1;
+			if (this.width !== width || this.height !== height) {
+				this.width = width;
+				this.height = height;
+
+				this.setDirty();
 			}
 
-			this.setDirty();
-		};
-
-		//matrix code inspired by glMatrix
-		Node.prototype.translate = function(x, y, z) {
-			var mat = this.transform;
-
-			if (isNaN(x)) {
-				x = 0;
+			if (this.uniforms && this.uniforms.resolution) {
+				this.uniforms.resolution[0] = width;
+				this.uniforms.resolution[1] = height;
 			}
 
-			if (isNaN(y)) {
-				y = 0;
+			if (this.frameBuffer && this.frameBuffer.resize) {
+				this.frameBuffer.resize(width, height);
 			}
-			y *= this.width / this.height;
-
-			if (isNaN(z)) {
-				z = 0;
-			}
-
-			mat[12] = mat[0]*x + mat[4]*y + mat[8]*z + mat[12];
-			mat[13] = mat[1]*x + mat[5]*y + mat[9]*z + mat[13];
-			mat[14] = mat[2]*x + mat[6]*y + mat[10]*z + mat[14];
-			mat[15] = mat[3]*x + mat[7]*y + mat[11]*z + mat[15];
-
-			this.transformed = true;
-			this.setDirty();
-		};
-
-		//todo: only 2D for now, so z is always 1.  allow 3D later.
-		Node.prototype.scale = function(x, y) {
-			if (y === undefined) {
-				y = x;
-			}
-
-			var mat = this.transform;
-			mat[0] *= x;
-			mat[1] *= x;
-			mat[2] *= x;
-			mat[3] *= x;
-			mat[4] *= y;
-			mat[5] *= y;
-			mat[6] *= y;
-			mat[7] *= y;
-
-			this.transformed = true;
-			this.setDirty();
-		};
-
-		Node.prototype.rotateX = function(angle) {
-			var mat = this.transform,
-				sin = Math.sin(angle),
-				cos = Math.cos(angle),
-
-			// Cache the matrix values (faster!)
-				a10 = mat[4], a11 = mat[5], a12 = mat[6], a13 = mat[7],
-				a20 = mat[8], a21 = mat[9], a22 = mat[10], a23 = mat[11];
-
-			// Perform axis-specific matrix multiplication
-			mat[4] = a10*cos + a20*-sin;
-			mat[5] = a11*cos + a21*-sin;
-			mat[6] = a12*cos + a22*-sin;
-			mat[7] = a13*cos + a23*-sin;
-
-			mat[8] = a10*sin + a20*cos;
-			mat[9] = a11*sin + a21*cos;
-			mat[10] = a12*sin + a22*cos;
-			mat[11] = a13*sin + a23*cos;
-			this.transformed = true;
-			this.setDirty();
-		};
-
-		Node.prototype.rotateY = function(angle) {
-			var mat = this.transform,
-				sin = Math.sin(angle),
-				cos = Math.cos(angle),
-
-			// Cache the matrix values (faster!)
-				a00 = mat[0], a01 = mat[1], a02 = mat[2], a03 = mat[3],
-				a20 = mat[8], a21 = mat[9], a22 = mat[10], a23 = mat[11];
-
-			// Perform axis-specific matrix multiplication
-			mat[0] = a00*cos + a20*-sin;
-			mat[1] = a01*cos + a21*-sin;
-			mat[2] = a02*cos + a22*-sin;
-			mat[3] = a03*cos + a23*-sin;
-
-			mat[8] = a00*sin + a20*cos;
-			mat[9] = a01*sin + a21*cos;
-			mat[10] = a02*sin + a22*cos;
-			mat[11] = a03*sin + a23*cos;
-			this.transformed = true;
-			this.setDirty();
-		};
-
-		Node.prototype.rotateZ = function(angle) {
-			var mat = this.transform,
-				sin = Math.sin(angle),
-				cos = Math.cos(angle),
-
-			// Cache the matrix values (makes for huge speed increases!)
-				a00 = mat[0], a01 = mat[1], a02 = mat[2], a03 = mat[3],
-				a10 = mat[4], a11 = mat[5], a12 = mat[6], a13 = mat[7];
-
-			// Perform axis-specific matrix multiplication
-			mat[0] = a00*cos + a10*sin;
-			mat[1] = a01*cos + a11*sin;
-			mat[2] = a02*cos + a12*sin;
-			mat[3] = a03*cos + a13*sin;
-
-			mat[4] = a00*-sin + a10*cos;
-			mat[5] = a01*-sin + a11*cos;
-			mat[6] = a02*-sin + a12*cos;
-			mat[7] = a03*-sin + a13*cos;
-			this.transformed = true;
-			this.setDirty();
 		};
 
 		Node.prototype.destroy = function () {
@@ -1471,10 +1362,10 @@
 
 				lookup = me.inputElements[inputName];
 
-				if ( typeof input === 'string' && isNaN(input)) {
+				if (typeof input === 'string' && isNaN(input)) {
 					if (effectInput.type === 'enum') {
 						if (effectInput.options && effectInput.options.filter) {
-							i = ('' + input).toLowerCase();
+							i = String(input).toLowerCase();
 							value = effectInput.options.filter(function (e) {
 								return (typeof e === 'string' && e.toLowerCase() === i) ||
 									(e.length && typeof e[0] === 'string' && e[0].toLowerCase() === i);
@@ -1500,6 +1391,7 @@
 
 					if (lookup && lookup.element !== input) {
 						lookup.element.removeEventListener('change', lookup.listener, true);
+						lookup.element.removeEventListener('input', lookup.listener, true);
 						delete me.inputElements[inputName];
 						lookup = null;
 					}
@@ -1508,7 +1400,7 @@
 						lookup = {
 							element: input,
 							listener: (function (name, element) {
-								return function() {
+								return function () {
 									var oldValue, newValue;
 
 									if (input.type === 'checkbox') {
@@ -1533,16 +1425,22 @@
 							}(inputName, input))
 						};
 
-						if (input.type === 'checkbox') {
-							value = input.checked;
-						}
-
 						me.inputElements[inputName] = lookup;
-						input.addEventListener('change', lookup.listener, true);
+						if (input.type === 'range') {
+							input.addEventListener('input', lookup.listener, true);
+							input.addEventListener('change', lookup.listener, true);
+						} else {
+							input.addEventListener('change', lookup.listener, true);
+						}
+					}
+
+					if (lookup && input.type === 'checkbox') {
+						value = input.checked;
 					}
 				} else {
 					if (lookup) {
 						lookup.element.removeEventListener('change', lookup.listener, true);
+						lookup.element.removeEventListener('input', lookup.listener, true);
 						delete me.inputElements[inputName];
 					}
 					value = input;
@@ -1584,12 +1482,19 @@
 				if (me.effect.inputs.hasOwnProperty(name)) {
 					if (this[name] === undefined) {
 						if (me.effect.inputs[name].type === 'image') {
-							this.__defineSetter__(name, makeImageSetter(name));
-							this.__defineGetter__(name, makeImageGetter(name));
+							Object.defineProperty(this, name, {
+								configurable: true,
+								enumerable: true,
+								get: makeImageGetter(name),
+								set: makeImageSetter(name)
+							});
 						} else {
-							this.__defineSetter__(name, makeSetter(name));
-
-							this.__defineGetter__(name, makeGetter(name));
+							Object.defineProperty(this, name, {
+								configurable: true,
+								enumerable: true,
+								get: makeGetter(name),
+								set: makeSetter(name)
+							});
 						}
 					} else {
 						//todo: this is temporary. get rid of it.
@@ -1598,43 +1503,50 @@
 				}
 			}
 
-			this.__defineGetter__('inputs', function () {
-				return {
-					source: {
-						type: 'image'
+			Object.defineProperties(this, {
+				inputs: {
+					enumerable: true,
+					configurable: true,
+					get: function () {
+						return {
+							source: {
+								type: 'image'
+							}
+						};
 					}
-				};
+				},
+				original: {
+					enumerable: true,
+					configurable: true,
+					get: function () {
+						return me.source;
+					}
+				},
+				width: {
+					enumerable: true,
+					configurable: true,
+					get: function () {
+						return me.width;
+					}
+				},
+				height: {
+					enumerable: true,
+					configurable: true,
+					get: function () {
+						return me.height;
+					}
+				},
+				id: {
+					enumerable: true,
+					configurable: true,
+					get: function () {
+						return me.id;
+					}
+				}
 			});
 
-			this.__defineSetter__('inputs', function () {
-				//should we throw an error or just fail silently
-				return;
-			});
-
-			this.__defineGetter__('original', function () {
-				return me.source;
-			});
-
-			this.__defineSetter__('original', function () {
-			});
-
-			this.__defineSetter__('width', function(value) {
-				me.setSize(value);
-			});
-
-			this.__defineSetter__('height', function(value) {
-				me.setSize(undefined, value);
-			});
-
-			this.__defineGetter__('id', function () {
-				return me.id;
-			});
-
-			this.__defineSetter__('id', function () {
-			});
-
-			this.render = function(callback) {
-				me.render(callback);
+			this.render = function () {
+				me.render();
 				return this;
 			};
 
@@ -1642,84 +1554,45 @@
 				return me.readPixels(x, y, width, height, dest);
 			};
 
-			this.alias = function(inputName, aliasName) {
+			this.alias = function (inputName, aliasName) {
 				me.alias(inputName, aliasName);
 				return this;
 			};
 
-			this.reset = function() {
-				me.reset();
-				return this;
-			};
-
-			this.setTransform = function(transform) {
-				me.setTransform(transform);
-				return this;
-			};
-
-			this.perspective = function(fov) {
-				me.perspective(fov);
-				return this;
-			};
-
-			this.translate = function(x, y, z) {
-				me.translate(x, y, z);
-				return this;
-			};
-
-			this.scale = function(x, y) {
-				me.scale(x, y);
-				return this;
-			};
-
-			this.rotateX = function(angle) {
-				me.rotateX(angle);
-				return this;
-			};
-
-			this.rotateY = function(angle) {
-				me.rotateY(angle);
-				return this;
-			};
-
-			this.rotateZ = function(angle) {
-				me.rotateZ(angle);
-				return this;
-			};
-
-			this.matte = function(polygons) {
+			this.matte = function (polygons) {
 				me.matte(polygons);
 			};
 
-			this.destroy = function() {
-				var i, nop = function() { };
+			this.destroy = function () {
+				var i,
+					descriptor;
 
 				me.destroy();
 
 				for (i in this) {
 					if (this.hasOwnProperty(i) && i !== 'isDestroyed') {
-						if (this.__lookupGetter__(i) ||
-							typeof this[i] !== 'function') {
-
+						descriptor = Object.getOwnPropertyDescriptor(this, i);
+						if (descriptor.get || descriptor.set ||
+								typeof this[i] !== 'function') {
 							delete this[i];
 						} else {
 							this[i] = nop;
 						}
 					}
 				}
-
-				//todo: remove getters/setters
 			};
 
-			this.isDestroyed = function() {
+			this.isDestroyed = function () {
 				return me.isDestroyed;
 			};
 		};
 
 		EffectNode = function (hook, options) {
+			var key, name, input;
+
 			Node.call(this, options);
 
-			this.effect = seriousEffects[hook];
+			this.effectRef = seriousEffects[hook];
 			this.sources = {};
 			this.targets = [];
 			this.inputElements = {};
@@ -1727,11 +1600,30 @@
 			this.shaderDirty = true;
 			this.hook = hook;
 			this.options = options;
+			this.transform = null;
+
+			if (this.effectRef.definition) {
+				this.effect = this.effectRef.definition.call(this, options);
+				/*
+				todo: copy over inputs object separately in case some are specified
+				in advance and some are specified in definition function
+				*/
+				for (key in this.effectRef) {
+					if (this.effectRef.hasOwnProperty(key) && !this.effect[key]) {
+						this.effect[key] = this.effectRef[key];
+					}
+				}
+				if (this.effect.inputs !== this.effectRef.inputs) {
+					validateInputSpecs(this.effect);
+				}
+			} else {
+				this.effect = extend({}, this.effectRef);
+			}
 
 			//todo: set up frame buffer(s), inputs, transforms, stencils, draw method. allow plugin to override
 
+			this.uniforms.transform = identity;
 			this.inputs = {};
-			var name, input;
 			for (name in this.effect.inputs) {
 				if (this.effect.inputs.hasOwnProperty(name)) {
 					input = this.effect.inputs[name];
@@ -1746,6 +1638,8 @@
 			if (gl) {
 				this.buildShader();
 			}
+
+			this.inPlace = this.effect.inPlace;
 
 			this.pub = new Effect(this);
 
@@ -1782,59 +1676,18 @@
 			}
 		};
 
-		EffectNode.prototype.setSize = function (width, height) {
-			var i, maxWidth = 0, maxHeight = 0, dirty = false;
+		EffectNode.prototype.resize = function () {
+			var i;
 
-			if (width !== undefined) {
-				if (width <= 0) {
-					this.desiredWidth = null;
-				} else {
-					if (this.desiredWidth !== width) {
-						dirty = true;
-					}
-					this.desiredWidth = width;
-				}
+			Node.prototype.resize.call(this);
+
+			if (this.effect.resize) {
+				this.effect.resize.call(this);
 			}
 
-			if (height !== undefined) {
-				if (height <= 0) {
-					this.desiredHeight = null;
-				} else {
-					if (this.desiredHeight !== height) {
-						dirty = true;
-					}
-					this.desiredHeight = height;
-				}
+			for (i = 0; i < this.targets.length; i++) {
+				this.targets[i].resize();
 			}
-
-			if (!this.desiredWidth || !this.desiredHeight) {
-				for (i = 0; i < this.targets.length; i++) {
-					maxWidth = Math.max(maxWidth, this.targets[i].width);
-					maxHeight = Math.max(maxHeight, this.targets[i].height);
-				}
-
-				this.width = this.desiredWidth || maxWidth;
-				this.height = this.desiredHeight || maxHeight;
-
-				this.setDirty();
-
-				for (i in this.sources) {
-					if (this.sources.hasOwnProperty(i) && this.sources[i].setSize) {
-						this.sources[i].setSize();
-					}
-				}
-			} else {
-				this.width = this.desiredWidth;
-				this.height = this.desiredHeight;
-
-				if (dirty) {
-					this.setDirty();
-				}
-			}
-
-			//this.uniforms.srsSize[0] = this.width;
-			//this.uniforms.srsSize[1] = this.height;
-			Node.prototype.setSize.call(this, this.width, this.height);
 		};
 
 		EffectNode.prototype.setTarget = function (target) {
@@ -1846,18 +1699,12 @@
 			}
 
 			this.targets.push(target);
-
-			this.setSize();
 		};
 
 		EffectNode.prototype.removeTarget = function (target) {
 			var i = this.targets && this.targets.indexOf(target);
 			if (i >= 0) {
 				this.targets.splice(i, 1);
-			}
-
-			if (this.targets.length) {
-				this.setSize();
 			}
 		};
 
@@ -1903,12 +1750,16 @@
 			}
 		};
 
-		EffectNode.prototype.render = function (callback) {
+		EffectNode.prototype.render = function () {
 			var i,
 				frameBuffer,
 				effect = this.effect,
 				that = this,
-				dirty = this.dirty || this.reusedFrameBuffer;
+				inPlace;
+
+			function drawFn(shader, model, uniforms, frameBuffer, node, options) {
+				draw(shader, model, uniforms, frameBuffer, node || that, options);
+			}
 
 			if (!this.initialized) {
 				this.initialize();
@@ -1918,25 +1769,25 @@
 				this.buildShader();
 			}
 
-			if (dirty) {
+			if (this.dirty) {
 				for (i in this.sources) {
 					if (this.sources.hasOwnProperty(i) &&
 						(!effect.requires || effect.requires.call(this, i, this.inputs))) {
-						this.sources[i].render();
+
+						//todo: set source texture
+						//sourcetexture = this.sources[i].render() || this.sources[i].texture
+
+						inPlace = typeof this.inPlace === 'function' ? this.inPlace(i) : this.inPlace;
+						this.sources[i].render(!inPlace);
 					}
 				}
 
-				if (this.reusedFrameBuffer) {
-					//todo: frameBuffer =
-				} else if (this.frameBuffer) {
+				if (this.frameBuffer) {
 					frameBuffer = this.frameBuffer.frameBuffer;
 				}
 
 				if (typeof effect.draw === 'function') {
-					effect.draw.call(this, this.shader, this.model, this.uniforms, frameBuffer,
-						function(shader, model, uniforms, frameBuffer, node, options) {
-							draw(shader, model, uniforms, frameBuffer, node || that, options);
-						});
+					effect.draw.call(this, this.shader, this.model, this.uniforms, frameBuffer, drawFn);
 				} else if (frameBuffer) {
 					draw(this.shader, this.model, this.uniforms, frameBuffer, this);
 				}
@@ -1944,40 +1795,13 @@
 				this.dirty = false;
 			}
 
-			if (callback && typeof callback === 'function') {
-				callback();
-			}
-
-			return this;
+			return this.texture;
 		};
 
 		EffectNode.prototype.setInput = function (name, value) {
-			var input, uniform;
-
-			//trace back all sources to make sure we're not making a cyclical connection
-			function traceSources(node, original) {
-				var i,
-					source,
-					sources;
-
-				if ( !(node instanceof EffectNode) ) {
-					return false;
-				}
-
-				sources = node.sources;
-
-				for (i in sources) {
-					if (sources.hasOwnProperty(i)) {
-						source = sources[i];
-
-						if ( source === original || traceSources(source, original) ) {
-							return true;
-						}
-					}
-				}
-
-				return false;
-			}
+			var input, uniform,
+				sourceKeys,
+				source;
 
 			if (this.effect.inputs.hasOwnProperty(name)) {
 				input = this.effect.inputs[name];
@@ -1992,7 +1816,7 @@
 								this.sources[name].removeTarget(this);
 							}
 
-							if ( traceSources(value, this) ) {
+							if (traceSources(value, this)) {
 								throw 'Attempt to make cyclical connection.';
 							}
 
@@ -2000,13 +1824,28 @@
 							value.setTarget(this);
 						}
 					} else {
+						delete this.sources[name];
 						value = false;
 					}
 
 					uniform = this.sources[name];
+
+					sourceKeys = Object.keys(this.sources);
+					if (this.inPlace === true && sourceKeys.length === 1) {
+						source = this.sources[sourceKeys[0]];
+						this.uniforms.transform = source && source.cumulativeMatrix || identity;
+					} else {
+						this.uniforms.transform = identity;
+					}
+
+					this.resize();
 				} else {
-					value = input.validate.call(this, value, input, name);
+					value = input.validate.call(this, value, input, this.inputs[name]);
 					uniform = value;
+				}
+
+				if (this.inputs[name] === value && input.type !== 'color' && input.type !== 'vector') {
+					return value;
 				}
 
 				this.inputs[name] = value;
@@ -2021,16 +1860,16 @@
 
 				this.setDirty();
 
+				if (input.update) {
+					input.update.call(this, value);
+				}
+
 				return value;
 			}
 		};
 
 		EffectNode.prototype.alias = function (inputName, aliasName) {
-			var that = this,
-				reservedNames = ['source', 'target', 'effect', 'effects', 'benchmark', 'incompatible',
-					'util', 'ShaderProgram', 'inputValidators', 'save', 'load',
-					'plugin', 'removePlugin', 'alias', 'removeAlias', 'stop', 'go',
-					'destroy', 'isDestroyed'];
+			var that = this;
 
 			if (reservedNames.indexOf(aliasName) >= 0) {
 				throw aliasName + ' is a reserved name and cannot be used as an alias.';
@@ -2048,12 +1887,15 @@
 					input: inputName
 				};
 
-				seriously.__defineSetter__(aliasName, function (value) {
-					return that.setInput(inputName, value);
-				});
-
-				seriously.__defineGetter__(aliasName, function () {
-					return that.inputs[inputName];
+				Object.defineProperty(seriously, aliasName, {
+					configurable: true,
+					enumerable: true,
+					get: function () {
+						return that.inputs[inputName];
+					},
+					set: function (value) {
+						return that.setInput(inputName, value);
+					}
 				});
 			}
 
@@ -2446,7 +2288,7 @@
 		};
 
 		EffectNode.prototype.destroy = function () {
-			var i, item, hook = this.hook;
+			var i, key, item, hook = this.hook;
 
 			//let effect destroy itself
 			if (this.effect.destroy && typeof this.effect.destroy === 'function') {
@@ -2461,45 +2303,45 @@
 			delete this.shader;
 
 			//stop watching any input elements
-			for (i in this.inputElements) {
-				if (this.inputElements.hasOwnProperty(i)) {
-					item = this.inputElements[i];
+			for (key in this.inputElements) {
+				if (this.inputElements.hasOwnProperty(key)) {
+					item = this.inputElements[key];
 					item.element.removeEventListener('change', item.listener, true);
+					item.element.removeEventListener('input', item.listener, true);
 				}
 			}
 
 			//sources
-			for (i in this.sources) {
-				if (this.sources.hasOwnProperty(i)) {
-					item = this.sources[i];
+			for (key in this.sources) {
+				if (this.sources.hasOwnProperty(key)) {
+					item = this.sources[key];
 					if (item && item.removeTarget) {
 						item.removeTarget(this);
 					}
-					delete this.sources[i];
+					delete this.sources[key];
 				}
 			}
 
 			//targets
-			for (i = 0; i < this.targets.length; i++) {
-				item = this.targets[i];
+			while (this.targets.length) {
+				item = this.targets.pop();
 				if (item && item.removeSource) {
 					item.removeSource(this);
 				}
-				delete this.targets[i];
 			}
 
 			for (i in this) {
-				if (this.hasOwnProperty(i) && i !== 'id') {
-					delete this[i];
+				if (this.hasOwnProperty(key) && key !== 'id') {
+					delete this[key];
 				}
 			}
 
 			//remove any aliases
-			for (i in aliases) {
-				if (aliases.hasOwnProperty(i)) {
-					item = aliases[i];
+			for (key in aliases) {
+				if (aliases.hasOwnProperty(key)) {
+					item = aliases[key];
 					if (item.node === this) {
-						seriously.removeAlias(i);
+						seriously.removeAlias(key);
 					}
 				}
 			}
@@ -2522,25 +2364,28 @@
 			var me = sourceNode;
 
 			//priveleged accessor methods
-			this.__defineGetter__('original', function () {
-				return me.source;
+			Object.defineProperties(this, {
+				original: {
+					enumerable: true,
+					configurable: true,
+					get: function () {
+						return me.source;
+					}
+				},
+				id: {
+					enumerable: true,
+					configurable: true,
+					get: function () {
+						return me.id;
+					}
+				}
 			});
 
-			this.__defineSetter__('original', function () {
-			});
-
-			this.__defineGetter__('id', function () {
-				return me.id;
-			});
-
-			this.__defineSetter__('id', function () {
-			});
-
-			this.render = function(callback) {
-				me.render(callback);
+			this.render = function () {
+				me.render();
 			};
 
-			this.update = function() {
+			this.update = function () {
 				me.setDirty();
 			};
 
@@ -2548,56 +2393,17 @@
 				return me.readPixels(x, y, width, height, dest);
 			};
 
-			this.reset = function() {
-				me.reset();
-				return this;
-			};
-
-			this.setTransform = function(transform) {
-				me.setTransform(transform);
-				return this;
-			};
-
-			this.perspective = function(fov) {
-				me.perspective(fov);
-				return this;
-			};
-
-			this.translate = function(x, y, z) {
-				me.translate(x, y, z);
-				return this;
-			};
-
-			this.scale = function(x, y) {
-				me.scale(x, y);
-				return this;
-			};
-
-			this.rotateX = function(angle) {
-				me.rotateX(angle);
-				return this;
-			};
-
-			this.rotateY = function(angle) {
-				me.rotateY(angle);
-				return this;
-			};
-
-			this.rotateZ = function(angle) {
-				me.rotateZ(angle);
-				return this;
-			};
-
-			this.destroy = function() {
-				var i, nop = function() { };
+			this.destroy = function () {
+				var i,
+					descriptor;
 
 				me.destroy();
 
 				for (i in this) {
 					if (this.hasOwnProperty(i) && i !== 'isDestroyed') {
-						if (this.__lookupGetter__(i) ||
-							typeof this[i] !== 'function') {
-
+						descriptor = Object.getOwnPropertyDescriptor(this, i);
+						if (descriptor.get || descriptor.set ||
+								typeof this[i] !== 'function') {
 							delete this[i];
 						} else {
 							this[i] = nop;
@@ -2606,7 +2412,7 @@
 				}
 			};
 
-			this.isDestroyed = function() {
+			this.isDestroyed = function () {
 				return me.isDestroyed;
 			};
 		};
@@ -2617,61 +2423,53 @@
 		SourceNode = function (source, options) {
 			var opts = options || {},
 				flip = opts.flip === undefined ? true : opts.flip,
-				width, height,
+				width = opts.width,
+				height = opts.height,
 				deferTexture = false,
 				that = this,
 				matchedType = false;
 
-			Node.call(this, opts);
-			width = this.width;
-			height = this.height;
+			Node.call(this);
 
-			if ( typeof source === 'string' && isNaN(source) ) {
+			if (typeof source === 'string' && isNaN(source)) {
 				source = getElement(source, ['canvas', 'img', 'video']);
 			}
 
 			if (source instanceof HTMLElement) {
 				if (source.tagName === 'CANVAS') {
-					this.desiredWidth = width = source.width;
-					this.desiredHeight = height = source.height;
+					this.width = source.width;
+					this.height = source.height;
 
 					this.render = this.renderImageCanvas;
-					this.setSize(width, height);
 				} else if (source.tagName === 'IMG') {
-					width = source.naturalWidth;
-					height = source.naturalHeight;
+					this.width = source.naturalWidth || 1;
+					this.height = source.naturalHeight || 1;
 
 					if (!source.complete) {
 						deferTexture = true;
 
-						source.addEventListener('load', function() {
-							that.desiredWidth = source.naturalWidth;
-							that.desiredHeight = source.naturalHeight;
-							that.setSize(source.naturalWidth, source.naturalHeight);
+						source.addEventListener('load', function () {
+							that.width = source.naturalWidth;
+							that.height = source.naturalHeight;
+							that.resize();
 							that.initialize();
 						}, true);
-					} else {
-						that.setSize(source.naturalWidth, source.naturalHeight);
 					}
 
 					this.render = this.renderImageCanvas;
 				} else if (source.tagName === 'VIDEO') {
-					that.desiredWidth = width = source.videoWidth;
-					that.desiredHeight = height = source.videoHeight;
+					this.width = source.videoWidth || 1;
+					this.height = source.videoHeight || 1;
 
 					if (!source.readyState) {
 						deferTexture = true;
 
-						source.addEventListener('loadedmetadata', function() {
-							that.desiredWidth = source.videoWidth;
-							that.desiredHeight = source.videoHeight;
-							that.setSize(source.videoWidth, source.videoHeight);
+						source.addEventListener('loadedmetadata', function () {
+							that.width = source.videoWidth;
+							that.height = source.videoHeight;
+							that.resize();
 							that.initialize();
 						}, true);
-					} else {
-						that.desiredWidth = source.videoWidth;
-						that.desiredHeight = source.videoHeight;
-						that.setSize(source.videoWidth, source.videoHeight);
 					}
 
 					this.render = this.renderVideo;
@@ -2688,13 +2486,12 @@
 				//Because of this bug, Firefox doesn't recognize ImageData, so we have to duck type
 				//https://bugzilla.mozilla.org/show_bug.cgi?id=637077
 
-				this.desiredWidth = width = source.width;
-				this.desiredHeight = height = source.height;
-				this.setSize(width, height);
+				this.width = source.width;
+				this.height = source.height;
 				matchedType = true;
 
 				this.render = this.renderImageCanvas;
-			} else if ( Array.isArray(source) ) {
+			} else if (isArrayLike(source)) {
 				if (!width || !height) {
 					throw 'Height and width must be provided with an Array';
 				}
@@ -2703,9 +2500,8 @@
 					throw 'Array length must be height x width x 4.';
 				}
 
-				this.desiredWidth = width;
-				this.desiredHeight = height;
-				this.setSize(width, height);
+				this.width = width;
+				this.height = height;
 
 				matchedType = true;
 
@@ -2713,26 +2509,9 @@
 				if (opts.flip === undefined) {
 					flip = false;
 				}
-				source = new Uint8Array(source);
-				this.render = this.renderTypedArray;
-			} else if ( source instanceof Uint8Array ) {
-				if (!width || !height) {
-					throw 'Height and width must be provided with a Uint8Array';
-				}
 
-				if (width * height * 4 !== source.length) {
-					throw 'Typed array length must be height x width x 4.';
-				}
-
-				this.desiredWidth = width;
-				this.desiredHeight = height;
-				this.setSize(width, height);
-
-				matchedType = true;
-
-				//use opposite default for flip
-				if (opts.flip === undefined) {
-					flip = false;
+				if (!(source instanceof Uint8Array)) {
+					source = new Uint8Array(source);
 				}
 				this.render = this.renderTypedArray;
 			} else if (source instanceof WebGLTexture) {
@@ -2747,54 +2526,53 @@
 					}
 				} else if (!isNaN(height)) {
 					width = height;
-				} else {
+				}/* else {
 					//todo: guess based on dimensions of target canvas
 					//throw 'Must specify width and height when using a WebGL texture as a source';
-				}
+				}*/
 
-				this.desiredWidth = width;
-				this.desiredHeight = height;
-				this.setSize(width, height);
+				this.width = width;
+				this.height = height;
 
 				if (opts.flip === undefined) {
 					flip = false;
 				}
 				matchedType = true;
 
-				this.sourceTexture = source;
+				this.texture = source;
 				this.initialized = true;
 
 				//todo: if WebGLTexture source is from a different context render it and copy it over
-				this.render = function() { };
+				this.render = function () {};
 			}
 
 			if (!matchedType) {
 				throw 'Unknown source type';
 			}
 
+			this.source = source;
+			this.flip = flip;
+
+			this.targets = [];
+
 			if (!deferTexture) {
+				this.resize();
 				this.initialize();
 			}
 
-			this.source = source;
-			this.flip = flip;
-			this.width = width;
-			this.height = height;
-
-			this.targets = [];
 			this.pub = new Source(this);
 
 			sources.push(this);
 
-			if (sources.length === 1 && !animationCallbacks.length) {
-				monitorSources();
+			if (sources.length && !rafId) {
+				renderDaemon();
 			}
 		};
 
 		extend(SourceNode, Node);
 
-		SourceNode.prototype.initialize = function() {
-			if (!gl || this.sourceTexture) {
+		SourceNode.prototype.initialize = function () {
+			if (!gl || this.texture) {
 				return;
 			}
 
@@ -2806,10 +2584,19 @@
 			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 			gl.bindTexture(gl.TEXTURE_2D, null);
 
-			this.sourceTexture = texture;
+			this.texture = texture;
 			this.initialized = true;
 			this.allowRefresh = true;
 			this.setDirty();
+		};
+
+		SourceNode.prototype.initFrameBuffer = function (useFloat) {
+			if (gl) {
+				this.frameBuffer = new FrameBuffer(gl, this.width, this.height, {
+					texture: this.texture,
+					useFloat: useFloat
+				});
+			}
 		};
 
 		SourceNode.prototype.setTarget = function (target) {
@@ -2830,7 +2617,27 @@
 			}
 		};
 
-		SourceNode.prototype.renderVideo = function(callback) {
+		SourceNode.prototype.resize = function () {
+			var i,
+				target;
+
+			this.uniforms.resolution[0] = this.width;
+			this.uniforms.resolution[1] = this.height;
+
+			if (this.framebuffer) {
+				this.framebuffer.resize(this.width, this.height);
+			}
+
+			for (i = 0; i < this.targets.length; i++) {
+				target = this.targets[i];
+				target.resize();
+				if (target.setTransformDirty) {
+					target.setTransformDirty();
+				}
+			}
+		};
+
+		SourceNode.prototype.renderVideo = function () {
 			var video = this.source;
 
 			if (!gl || !video || !video.videoHeight || !video.videoWidth || video.readyState < 2) {
@@ -2849,7 +2656,7 @@
 				this.lastRenderFrame !== video.mozPresentedFrames ||
 				this.lastRenderTime !== video.currentTime) {
 
-				gl.bindTexture(gl.TEXTURE_2D, this.sourceTexture);
+				gl.bindTexture(gl.TEXTURE_2D, this.texture);
 				gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, this.flip);
 				try {
 					gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, video);
@@ -2866,28 +2673,11 @@
 				}
 				this.lastRenderFrame = video.mozPresentedFrames;
 				this.lastRenderTimeStamp = Date.now();
-			}
-
-			if (this.transformed || this.fov) {
-				if (!this.frameBuffer) {
-					this.initFrameBuffer();
-				}
-				this.texture = this.frameBuffer.texture;
-				this.uniforms.source = this.sourceTexture;
-				if (this.dirty) {
-					draw(baseShader, rectangleModel, this.uniforms, this.frameBuffer.frameBuffer, this);
-				}
-			} else {
-				this.texture = this.sourceTexture;
-			}
-
-			this.dirty = false;
-			if (callback && typeof callback === 'function') {
-				callback();
+				this.dirty = false;
 			}
 		};
 
-		SourceNode.prototype.renderImageCanvas = function(callback) {
+		SourceNode.prototype.renderImageCanvas = function () {
 			var media = this.source;
 
 			if (!gl || !media || !media.height || !media.width) {
@@ -2903,7 +2693,7 @@
 			}
 
 			if (this.dirty) {
-				gl.bindTexture(gl.TEXTURE_2D, this.sourceTexture);
+				gl.bindTexture(gl.TEXTURE_2D, this.texture);
 				gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, this.flip);
 				try {
 					gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, media);
@@ -2915,29 +2705,11 @@
 				}
 
 				this.lastRenderTime = Date.now() / 1000;
-				this.dirty = true;
-			}
-
-			if (this.transformed || this.fov) {
-				if (!this.frameBuffer) {
-					this.initFrameBuffer();
-				}
-				this.texture = this.frameBuffer.texture;
-				this.uniforms.source = this.sourceTexture;
-				if (this.dirty) {
-					draw(baseShader, rectangleModel, this.uniforms, this.frameBuffer.frameBuffer, this);
-				}
-			} else {
-				this.texture = this.sourceTexture;
-			}
-			this.dirty = false;
-
-			if (callback && typeof callback === 'function') {
-				callback();
+				this.dirty = false;
 			}
 		};
 
-		SourceNode.prototype.renderTypedArray = function(callback) {
+		SourceNode.prototype.renderTypedArray = function () {
 			var media = this.source;
 
 			if (!gl || !media || !media.length) {
@@ -2955,47 +2727,28 @@
 			}
 
 			if (this.dirty) {
-				gl.bindTexture(gl.TEXTURE_2D, this.sourceTexture);
+				gl.bindTexture(gl.TEXTURE_2D, this.texture);
 				gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, this.flip);
 				gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, this.width, this.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, media);
 
 				this.lastRenderTime = Date.now() / 1000;
-				this.dirty = true;
-			}
-
-			if (this.transformed || this.fov) {
-				if (!this.frameBuffer) {
-					this.initFrameBuffer();
-				}
-				this.texture = this.frameBuffer.texture;
-				this.uniforms.source = this.sourceTexture;
-				if (this.dirty) {
-					draw(baseShader, rectangleModel, this.uniforms, this.frameBuffer.frameBuffer, this);
-				}
-			} else {
-				this.texture = this.sourceTexture;
-			}
-			this.dirty = false;
-
-			if (callback && typeof callback === 'function') {
-				callback();
+				this.dirty = false;
 			}
 		};
 
-		SourceNode.prototype.destroy = function() {
-			var i, item;
+		SourceNode.prototype.destroy = function () {
+			var i, key, item;
 
 			if (this.gl && this.texture) {
 				this.gl.deleteTexture(this.texture);
 			}
 
 			//targets
-			for (i = 0; i < this.targets.length; i++) {
-				item = this.targets[i];
+			while (this.targets.length) {
+				item = this.targets.pop();
 				if (item && item.removeSource) {
 					item.removeSource(this);
 				}
-				delete this.targets[i];
 			}
 
 			//remove self from master list of sources
@@ -3004,9 +2757,9 @@
 				sources.splice(i, 1);
 			}
 
-			for (i in this) {
-				if (this.hasOwnProperty(i) && i !== 'id') {
-					delete this[i];
+			for (key in this) {
+				if (this.hasOwnProperty(key) && key !== 'id') {
+					delete this[key];
 				}
 			}
 
@@ -3019,154 +2772,128 @@
 			var me = targetNode;
 
 			//priveleged accessor methods
-			this.__defineGetter__('inputs', function () {
-				return {
-					source: {
-						type: 'image'
-						//todo: include current value
+			Object.defineProperties(this, {
+				inputs: {
+					enumerable: true,
+					configurable: true,
+					get: function () {
+						return {
+							source: {
+								type: 'image'
+							}
+						};
 					}
-				};
-			});
+				},
+				source: {
+					enumerable: true,
+					configurable: true,
+					get: function () {
+						if (me.source) {
+							return me.source.pub;
+						}
+					},
+					set: function (value) {
+						me.setSource(value);
+					}
+				},
+				original: {
+					enumerable: true,
+					configurable: true,
+					get: function () {
+						return me.target;
+					}
+				},
+				width: {
+					enumerable: true,
+					configurable: true,
+					get: function () {
+						return me.width;
+					},
+					set: function (value) {
+						if (!isNaN(value) && value >0 && me.width !== value) {
+							me.width = me.desiredWidth = value;
+							me.target.width = value;
 
-			this.__defineSetter__('inputs', function () {
-				//should we throw an error or just fail silently
-				return;
-			});
+							me.setTransformDirty();
+							/*
+							if (this.source && this.source.resize) {
+								this.source.resize(value);
 
-			this.__defineGetter__('source', function () {
-				if (me.source) {
-					return me.source.pub;
+								//todo: for secondary webgl nodes, we need a new array
+								//if (this.pixels && this.pixels.length !== (this.width * this.height * 4)) {
+								//	delete this.pixels;
+								//}
+							}
+							*/
+						}
+					}
+				},
+				height: {
+					enumerable: true,
+					configurable: true,
+					get: function () {
+						return me.height;
+					},
+					set: function (value) {
+						if (!isNaN(value) && value >0 && me.height !== value) {
+							me.height = me.desiredHeight = value;
+							me.target.height = value;
+
+							me.setTransformDirty();
+
+							/*
+							if (this.source && this.source.resize) {
+								this.source.resize(undefined, value);
+
+								//for secondary webgl nodes, we need a new array
+								//if (this.pixels && this.pixels.length !== (this.width * this.height * 4)) {
+								//	delete this.pixels;
+								//}
+							}
+							*/
+						}
+					}
+				},
+				id: {
+					enumerable: true,
+					configurable: true,
+					get: function () {
+						return me.id;
+					}
 				}
 			});
 
-			this.__defineSetter__('source', function (value) {
-				me.setSource(value);
-				return this;
-			});
-
-			this.__defineGetter__('original', function () {
-				return me.target;
-			});
-
-			this.__defineSetter__('original', function () {
-			});
-
-			this.__defineSetter__('width', function(value) {
-				if (!isNaN(value) && value >0 && me.width !== value) {
-					me.width = me.desiredWidth = value;
-					me.target.width = value;
-
-					me.setDirty();
-					/*
-					if (this.source && this.source.setSize) {
-						this.source.setSize(value);
-
-						//todo: for secondary webgl nodes, we need a new array
-						//if ( this.pixels && this.pixels.length !== (this.width * this.height * 4) ) {
-						//	delete this.pixels;
-						//}
-					}
-					*/
-				}
-			});
-
-			this.__defineSetter__('height', function(value) {
-				if (!isNaN(value) && value >0 && me.height !== value) {
-					me.height = me.desiredHeight = value;
-					me.target.height = value;
-
-					me.setDirty();
-
-					/*
-					if (this.source && this.source.setSize) {
-						this.source.setSize(undefined, value);
-
-						//for secondary webgl nodes, we need a new array
-						//if ( this.pixels && this.pixels.length !== (this.width * this.height * 4) ) {
-						//	delete this.pixels;
-						//}
-					}
-					*/
-				}
-			});
-
-			this.__defineGetter__('id', function () {
-				return me.id;
-			});
-
-			this.__defineSetter__('id', function () {
-			});
-
-			this.render = function(callback) {
-				me.render(callback);
+			this.render = function () {
+				me.render();
 			};
 
 			this.readPixels = function (x, y, width, height, dest) {
 				return me.readPixels(x, y, width, height, dest);
 			};
 
-			this.reset = function() {
-				me.reset();
-				return this;
-			};
-
-			this.setTransform = function(transform) {
-				me.setTransform(transform);
-				return this;
-			};
-
-			this.perspective = function(fov) {
-				me.perspective(fov);
-				return this;
-			};
-
-			this.translate = function(x, y, z) {
-				me.translate(x, y, z);
-				return this;
-			};
-
-			this.scale = function(x, y) {
-				me.scale(x, y);
-				return this;
-			};
-
-			this.rotateX = function(angle) {
-				me.rotateX(angle);
-				return this;
-			};
-
-			this.rotateY = function(angle) {
-				me.rotateY(angle);
-				return this;
-			};
-
-			this.rotateZ = function(angle) {
-				me.rotateZ(angle);
-				return this;
-			};
-
-			this.go = function(options) {
+			this.go = function (options) {
 				me.go(options);
 			};
 
-			this.stop = function() {
+			this.stop = function () {
 				me.stop();
 			};
 
-			this.getTexture = function() {
+			this.getTexture = function () {
 				return me.frameBuffer.texture;
 			};
 
-			this.destroy = function() {
-				var i, nop = function() { };
+			this.destroy = function () {
+				var i,
+					descriptor;
 
 				me.destroy();
 
 				for (i in this) {
 					if (this.hasOwnProperty(i) && i !== 'isDestroyed') {
-						if (this.__lookupGetter__(i) ||
-							typeof this[i] !== 'function') {
-
+						descriptor = Object.getOwnPropertyDescriptor(this, i);
+						if (descriptor.get || descriptor.set ||
+								typeof this[i] !== 'function') {
 							delete this[i];
 						} else {
 							this[i] = nop;
@@ -3175,7 +2902,7 @@
 				}
 			};
 
-			this.isDestroyed = function() {
+			this.isDestroyed = function () {
 				return me.isDestroyed;
 			};
 		};
@@ -3319,12 +3046,14 @@
 			}
 
 			this.target = target;
+			this.transform = null;
+			this.transformDirty = true;
 			this.flip = flip;
 			this.width = width;
 			this.height = height;
-			this.callbacks = [];
 
-			this.setSize(width, height);
+			this.uniforms.resolution[0] = this.width;
+			this.uniforms.resolution[1] = this.height;
 
 			if (opts.auto !== undefined) {
 				this.auto = opts.auto;
@@ -3340,23 +3069,12 @@
 
 		extend(TargetNode, Node);
 
-		TargetNode.prototype.setSource = function(source) {
+		TargetNode.prototype.setSource = function (source) {
 			var newSource;
 
 			//todo: what if source is null/undefined/false
 
-			if (source instanceof SourceNode || source instanceof EffectNode) {
-				newSource = source;
-			} else if (source instanceof Effect || source instanceof Source) {
-				newSource = nodesById[source.id];
-
-				if (!newSource) {
-					throw 'Cannot connect a foreign node';
-				}
-
-			} else {
-				newSource = findInputNode(source);
-			}
+			newSource = findInputNode(source);
 
 			//todo: check for cycles
 
@@ -3369,50 +3087,54 @@
 
 				this.setDirty();
 			}
-
 		};
 
 		TargetNode.prototype.setDirty = function () {
-			var that;
-
-			function runCallbacks() {
-				var i;
-				for (i = 0; i < that.callbacks.length; i++) {
-					that.callbacks[i]();
-				}
-			}
-
-			function render() {
-				that.render(runCallbacks);
-			}
-
 			this.dirty = true;
 
-			if (this.auto) {
-				that = this;
-				requestAnimFrame(render);
+			if (this.auto && !rafId) {
+				rafId = requestAnimationFrame(renderDaemon);
 			}
 		};
 
-		TargetNode.prototype.go = function (options) {
-			if (options) {
-				if (typeof options === 'function') {
-					this.callbacks.push(options);
-				} else if (options.callback && typeof options.callback === 'function') {
-					this.callbacks.push(options.callback);
-				}
+		TargetNode.prototype.resize = function () {
+			//if target is a canvas, reset size to canvas size
+			if (this.target instanceof HTMLCanvasElement &&
+					(this.width !== this.target.width || this.height !== this.target.height)) {
+				this.width = this.target.width;
+				this.height = this.target.height;
+				this.uniforms.resolution[0] = this.width;
+				this.uniforms.resolution[1] = this.height;
+				this.setTransformDirty();
 			}
 
+			if (this.source &&
+				(this.source.width !== this.width || this.source.height !== this.height)) {
+				if (!this.transform) {
+					this.transform = new Float32Array(16);
+				}
+			}
+		};
+
+		TargetNode.prototype.setTransformDirty = function () {
+			this.transformDirty = true;
+			this.setDirty();
+		};
+
+		TargetNode.prototype.go = function () {
 			this.auto = true;
 			this.setDirty();
 		};
 
 		TargetNode.prototype.stop = function () {
 			this.auto = false;
-			this.callbacks.splice(0);
 		};
 
-		TargetNode.prototype.renderWebGL = function(callback) {
+		TargetNode.prototype.renderWebGL = function () {
+			var matrix, x, y;
+
+			this.resize();
+
 			if (this.dirty) {
 				if (!this.source) {
 					return;
@@ -3421,19 +3143,33 @@
 				this.source.render();
 
 				this.uniforms.source = this.source.texture;
+
+				if (this.source.width === this.width && this.source.height === this.height) {
+					this.uniforms.transform = this.source.cumulativeMatrix || identity;
+				} else if (this.transformDirty) {
+					matrix = this.transform;
+					mat4.copy(matrix, this.source.cumulativeMatrix || identity);
+					x = this.source.width / this.width;
+					y = this.source.height / this.height;
+					matrix[0] *= x;
+					matrix[1] *= x;
+					matrix[2] *= x;
+					matrix[3] *= x;
+					matrix[4] *= y;
+					matrix[5] *= y;
+					matrix[6] *= y;
+					matrix[7] *= y;
+					this.uniforms.transform = matrix;
+					this.transformDirty = false;
+				}
+
 				draw(baseShader, rectangleModel, this.uniforms, this.frameBuffer.frameBuffer, this);
 
 				this.dirty = false;
-
-				runCallbacks();
-			}
-
-			if (callback && typeof callback === 'function') {
-				callback();
 			}
 		};
 
-		TargetNode.prototype.renderSecondaryWebGL = function(callback) {
+		TargetNode.prototype.renderSecondaryWebGL = function () {
 			if (this.dirty && this.source) {
 				this.source.render();
 
@@ -3452,23 +3188,11 @@
 				draw(this.shader, this.model, this.uniforms, null, this);
 
 				this.dirty = false;
-
-				runCallbacks();
-			}
-
-			if (callback && typeof callback === 'function') {
-				callback();
 			}
 		};
 
-		TargetNode.prototype.render2D = function(callback) {
-			//todo: make this actually do something
-
-			runCallbacks();
-
-			if (callback && typeof callback === 'function') {
-				callback();
-			}
+		TargetNode.prototype.render2D = function () {
+			//todo: make this actually do something?
 		};
 
 		TargetNode.prototype.removeSource = function (source) {
@@ -3477,7 +3201,7 @@
 			}
 		};
 
-		TargetNode.prototype.destroy = function() {
+		TargetNode.prototype.destroy = function () {
 			var i;
 
 			//source
@@ -3490,12 +3214,432 @@
 			delete this.uniforms;
 			delete this.pixels;
 			delete this.auto;
-			this.callbacks.splice(0);
 
 			//remove self from master list of targets
 			i = targets.indexOf(this);
 			if (i >= 0) {
 				targets.splice(i, 1);
+			}
+
+			Node.prototype.destroy.call(this);
+		};
+
+		Transform = function (transformNode) {
+			var me = transformNode,
+				self = this,
+				key;
+
+			function setProperty(name, def) {
+				// todo: validate value passed to 'set'
+				Object.defineProperty(self, name, {
+					configurable: true,
+					enumerable: true,
+					get: function () {
+						return def.get.call(me);
+					},
+					set: function (val) {
+						if (def.set.call(me, val)) {
+							me.setTransformDirty();
+						}
+					}
+				});
+			}
+
+			function makeMethod(method) {
+				return function () {
+					if (method.apply(me, arguments)) {
+						me.setTransformDirty();
+					}
+				};
+			}
+
+			//priveleged accessor methods
+			Object.defineProperties(this, {
+				id: {
+					enumerable: true,
+					configurable: true,
+					get: function () {
+						return me.id;
+					}
+				},
+				source: {
+					enumerable: true,
+					configurable: true,
+					get: function () {
+						return me.source.pub;
+					},
+					set: function (source) {
+						me.setSource(source);
+					}
+				}
+			});
+
+			// attach methods
+			for (key in me.methods) {
+				if (me.methods.hasOwnProperty(key)) {
+					this[key] = makeMethod(me.methods[key].bind(me));
+				}
+			}
+
+			for (key in me.inputs) {
+				if (me.inputs.hasOwnProperty(key)) {
+					setProperty(key, me.inputs[key]);
+				}
+			}
+
+			this.update = function () {
+				me.setDirty();
+			};
+
+			this.alias = function (inputName, aliasName) {
+				me.alias(inputName, aliasName);
+				return this;
+			};
+
+			this.destroy = function () {
+				var i,
+					descriptor;
+
+				me.destroy();
+
+				for (i in this) {
+					if (this.hasOwnProperty(i) && i !== 'isDestroyed') {
+						//todo: probably can simplify this if the only setter/getter is id
+						descriptor = Object.getOwnPropertyDescriptor(this, i);
+						if (descriptor.get || descriptor.set ||
+								typeof this[i] !== 'function') {
+							delete this[i];
+						} else {
+							this[i] = nop;
+						}
+					}
+				}
+			};
+
+			this.isDestroyed = function () {
+				return me.isDestroyed;
+			};
+		};
+
+		TransformNode = function (hook, options) {
+			var key,
+				input;
+
+			this.matrix = new Float32Array(16);
+			this.cumulativeMatrix = new Float32Array(16);
+
+			this.width = 1;
+			this.height = 1;
+
+			this.seriously = seriously;
+
+			this.transformRef = seriousTransforms[hook];
+			this.hook = hook;
+			this.id = nodeId;
+			nodes.push(this);
+			nodesById[nodeId] = this;
+			nodeId++;
+
+			this.options = options;
+			this.sources = null;
+			this.targets = [];
+			this.inputElements = {};
+			this.inputs = {};
+			this.methods = {};
+
+			this.texture = null;
+			this.frameBuffer = null;
+			this.uniforms = null;
+
+			this.dirty = true;
+			this.transformDirty = true;
+			this.renderDirty = false;
+			this.isDestroyed = false;
+			this.transformed = false;
+
+			if (this.transformRef.definition) {
+				this.plugin = this.transformRef.definition.call(this, options);
+				for (key in this.transformRef) {
+					if (this.transformRef.hasOwnProperty(key) && !this.plugin[key]) {
+						this.plugin[key] = this.transformRef[key];
+					}
+				}
+
+				/*
+				todo: validate method definitions, check against reserved names
+				if (this.plugin.inputs !== this.transformRef.inputs) {
+					validateInputSpecs(this.plugin);
+				}
+				*/
+			} else {
+				this.plugin = extend({}, this.transformRef);
+			}
+
+			for (key in this.plugin.inputs) {
+				if (this.plugin.inputs.hasOwnProperty(key)) {
+					input = this.plugin.inputs[key];
+
+					if (input.method && typeof input.method === 'function') {
+						this.methods[key] = input.method;
+					} else if (typeof input.set === 'function' && typeof input.get === 'function') {
+						this.inputs[key] = input;
+					}
+				}
+			}
+
+			this.pub = new Transform(this);
+
+			transforms.push(this);
+
+			allTransformsByHook[hook].push(this);
+		};
+
+		TransformNode.prototype.setDirty = function () {
+			this.renderDirty = true;
+			Node.prototype.setDirty.call(this);
+		};
+
+		TransformNode.prototype.setTransformDirty = function () {
+			var i,
+				target;
+			this.transformDirty = true;
+			this.dirty = true;
+			this.renderDirty = true;
+			for (i = 0; i < this.targets.length; i++) {
+				target = this.targets[i];
+				if (target.setTransformDirty) {
+					target.setTransformDirty();
+				} else {
+					target.setDirty();
+				}
+			}
+		};
+
+		TransformNode.prototype.resize = function () {
+			var i;
+
+			Node.prototype.resize.call(this);
+
+			for (i = 0; i < this.targets.length; i++) {
+				this.targets[i].resize();
+			}
+
+			this.setTransformDirty();
+		};
+
+		TransformNode.prototype.setSource = function (source) {
+			var newSource;
+
+			//todo: what if source is null/undefined/false
+
+			newSource = findInputNode(source);
+
+			if (newSource === this.source) {
+				return;
+			}
+
+			if (traceSources(newSource, this)) {
+				throw 'Attempt to make cyclical connection.';
+			}
+
+			if (this.source) {
+				this.source.removeTarget(this);
+			}
+			this.source = newSource;
+			newSource.setTarget(this);
+
+			this.resize();
+		};
+
+		TransformNode.prototype.setTarget = function (target) {
+			var i;
+			for (i = 0; i < this.targets.length; i++) {
+				if (this.targets[i] === target) {
+					return;
+				}
+			}
+
+			this.targets.push(target);
+		};
+
+		TransformNode.prototype.removeTarget = function (target) {
+			var i = this.targets && this.targets.indexOf(target);
+			if (i >= 0) {
+				this.targets.splice(i, 1);
+			}
+
+			if (this.targets && this.targets.length) {
+				this.resize();
+			}
+		};
+
+		TransformNode.prototype.alias = function (inputName, aliasName) {
+			var me = this,
+				input,
+				def;
+
+			if (reservedNames.indexOf(aliasName) >= 0) {
+				throw aliasName + ' is a reserved name and cannot be used as an alias.';
+			}
+
+			if (this.plugin.inputs.hasOwnProperty(inputName)) {
+				if (!aliasName) {
+					aliasName = inputName;
+				}
+
+				seriously.removeAlias(aliasName);
+
+				input = this.inputs[inputName];
+				if (input) {
+					def = me.inputs[inputName];
+					Object.defineProperty(seriously, aliasName, {
+						configurable: true,
+						enumerable: true,
+						get: function () {
+							return def.get.call(me);
+						},
+						set: function (val) {
+							if (def.set.call(me, val)) {
+								me.setTransformDirty();
+							}
+						}
+					});
+				} else {
+					input = this.methods[inputName];
+					if (input) {
+						def = input;
+						seriously[aliasName] = function () {
+							if (def.apply(me, arguments)) {
+								me.setTransformDirty();
+							}
+						};
+					}
+				}
+
+				if (input) {
+					aliases[aliasName] = {
+						node: this,
+						input: inputName
+					};
+				}
+			}
+
+			return this;
+		};
+
+		TransformNode.prototype.render = function (renderTransform) {
+			if (!this.source) {
+				if (this.transformDirty) {
+					mat4.copy(this.cumulativeMatrix, this.matrix);
+					this.transformDirty = false;
+				}
+				this.texture = null;
+				this.dirty = false;
+
+				return;
+			}
+
+			this.source.render();
+
+			if (this.transformDirty) {
+				if (this.transformed) {
+					//use this.matrix
+					if (this.source.cumulativeMatrix) {
+						mat4.multiply(this.cumulativeMatrix, this.matrix, this.source.cumulativeMatrix);
+					} else {
+						mat4.copy(this.cumulativeMatrix, this.matrix);
+					}
+				} else {
+					//copy source.cumulativeMatrix
+					mat4.copy(this.cumulativeMatrix, this.source.cumulativeMatrix || identity);
+				}
+
+				this.transformDirty = false;
+			}
+
+			if (renderTransform && gl) {
+				if (this.renderDirty) {
+					if (!this.frameBuffer) {
+						this.uniforms = {
+							resolution: [this.width, this.height]
+						};
+						this.frameBuffer = new FrameBuffer(gl, this.width, this.height);
+					}
+
+					this.uniforms.source = this.source.texture;
+					this.uniforms.transform = this.cumulativeMatrix || identity;
+					draw(baseShader, rectangleModel, this.uniforms, this.frameBuffer.frameBuffer, this);
+
+					this.renderDirty = false;
+				}
+				this.texture = this.frameBuffer.texture;
+			} else if (this.source) {
+				this.texture = this.source.texture;
+			} else {
+				this.texture = null;
+			}
+
+			this.dirty = false;
+
+			return this.texture;
+		};
+
+		TransformNode.prototype.destroy = function () {
+			var i, key, item, hook = this.hook;
+
+			//let effect destroy itself
+			if (this.plugin.destroy && typeof this.plugin.destroy === 'function') {
+				this.plugin.destroy.call(this);
+			}
+			delete this.effect;
+
+			//stop watching any input elements
+			for (i in this.inputElements) {
+				if (this.inputElements.hasOwnProperty(i)) {
+					item = this.inputElements[i];
+					item.element.removeEventListener('change', item.listener, true);
+					item.element.removeEventListener('input', item.listener, true);
+				}
+			}
+
+			//sources
+			if (this.source) {
+				this.source.removeTarget(this);
+			}
+
+			//targets
+			while (this.targets.length) {
+				item = this.targets.pop();
+				if (item && item.removeSource) {
+					item.removeSource(this);
+				}
+			}
+
+			for (key in this) {
+				if (this.hasOwnProperty(key) && key !== 'id') {
+					delete this[key];
+				}
+			}
+
+			//remove any aliases
+			for (key in aliases) {
+				if (aliases.hasOwnProperty(key)) {
+					item = aliases[key];
+					if (item.node === this) {
+						seriously.removeAlias(key);
+					}
+				}
+			}
+
+			//remove self from master list of effects
+			i = transforms.indexOf(this);
+			if (i >= 0) {
+				transforms.splice(i, 1);
+			}
+
+			i = allTransformsByHook[hook].indexOf(this);
+			if (i >= 0) {
+				allTransformsByHook[hook].splice(i, 1);
 			}
 
 			Node.prototype.destroy.call(this);
@@ -3514,13 +3658,12 @@
 		}
 
 		if (options.canvas) {
-
 		}
 
 		/*
 		priveleged methods
 		*/
-		this.effect = function(hook, options) {
+		this.effect = function (hook, options) {
 			if (!seriousEffects[hook]) {
 				throw 'Unknown effect: ' + hook;
 			}
@@ -3533,6 +3676,29 @@
 			var sourceNode = findInputNode(source, options);
 			//var sourceNode = new SourceNode(source, options);
 			return sourceNode.pub;
+		};
+
+		this.transform = function (hook, opts) {
+			var transformNode;
+
+			if (typeof hook !== 'string') {
+				opts = hook;
+				hook = false;
+			}
+
+			if (hook) {
+				if (!seriousTransforms[hook]) {
+					throw 'Unknown transforms: ' + hook;
+				}
+			} else {
+				hook = options && options.defaultTransform || '2d';
+				if (!seriousTransforms[hook]) {
+					throw 'No transform specified';
+				}
+			}
+
+			transformNode = new TransformNode(hook, opts);
+			return transformNode.pub;
 		};
 
 		this.target = function (target, options) {
@@ -3562,60 +3728,46 @@
 			}
 		};
 
-		this.go = function(options) {
+		this.go = function (pre, post) {
 			var i;
 
-			if (options) {
-				if (typeof options === 'function') {
-					callbacks.push(options);
-					options = {};
-				} else if (options.callback && typeof options.callback === 'function') {
-					callbacks.push(options.callback);
-					options = extend({}, options);
-					delete options.callback;
-				}
+			if (typeof pre === 'function' && preCallbacks.indexOf(pre) < 0) {
+				preCallbacks.push(pre);
+			}
+
+			if (typeof post === 'function' && postCallbacks.indexOf(post) < 0) {
+				postCallbacks.push(post);
 			}
 
 			auto = true;
 			for (i = 0; i < targets.length; i++) {
-				targets[i].go(options);
+				targets[i].go();
+			}
+
+			if (!rafId && (preCallbacks.length || postCallbacks.length)) {
+				renderDaemon();
 			}
 		};
 
-		this.animate = function (callback) {
-			if (!callback || typeof callback !== 'function') {
-				return;
-			}
-
-			if (animationCallbacks.indexOf(callback) < 0) {
-				animationCallbacks.push(callback);
-			}
-
-			this.go();
-
-			if (!sources.length && animationCallbacks.length === 1) {
-				monitorSources();
-			}
+		this.stop = function () {
+			preCallbacks.length = 0;
+			postCallbacks.length = 0;
+			cancelAnimFrame(rafId);
+			rafId = null;
 		};
 
-		this.stop = function(options) {
-			var i;
-			animationCallbacks.splice(0);
-			callbacks.splice(0);
-			for (i = 0; i < targets.length; i++) {
-				targets[i].stop(options);
-			}
-		};
-
-		this.render = function(options) {
+		this.render = function () {
 			var i;
 			for (i = 0; i < targets.length; i++) {
 				targets[i].render(options);
 			}
 		};
 
-		this.destroy = function() {
-			var i, node, nop = function() { };
+		this.destroy = function () {
+			var i,
+				node,
+				descriptor;
+
 			while (nodes.length) {
 				node = nodes.shift();
 				node.destroy();
@@ -3641,9 +3793,9 @@
 
 			for (i in this) {
 				if (this.hasOwnProperty(i) && i !== 'isDestroyed') {
-					if (this.__lookupGetter__(i) ||
-						typeof this[i] !== 'function') {
-
+					descriptor = Object.getOwnPropertyDescriptor(this, i);
+					if (descriptor.get || descriptor.set ||
+							typeof this[i] !== 'function') {
 						delete this[i];
 					} else {
 						this[i] = nop;
@@ -3660,12 +3812,16 @@
 			targets = [];
 			effects = [];
 			nodes = [];
-			callbacks.splice(0);
+			preCallbacks.length = 0;
+			postCallbacks.length = 0;
+			cancelAnimFrame(rafId);
+			rafId = null;
+
 
 			isDestroyed = true;
 		};
 
-		this.isDestroyed = function() {
+		this.isDestroyed = function () {
 			return isDestroyed;
 		};
 
@@ -3698,43 +3854,51 @@
 
 		//todo: load, save, find
 
-		baseVertexShader = '#ifdef GL_ES\n' +
-			'precision mediump float;\n' +
-			'#endif \n' +
-			'\n' +
-			'attribute vec4 position;\n' +
-			'attribute vec2 texCoord;\n' +
-			'\n' +
-			'uniform vec3 srsSize;\n' +
-			'uniform mat4 projection;\n' +
-			'uniform mat4 transform;\n' +
-			'\n' +
-			'varying vec2 vTexCoord;\n' +
-			'varying vec4 vPosition;\n' +
-			'\n' +
-			'void main(void) {\n' +
-			'	vec4 pos = position * vec4(srsSize.x / srsSize.y, 1.0, 1.0, 1.0);\n' +
-			'	gl_Position = transform * pos;\n' +
-			'	gl_Position.z -= srsSize.z;\n' +
-			'	gl_Position = projection * gl_Position;\n' +
-			'	gl_Position.z = 0.0;\n' + //prevent near clipping
-			'	vTexCoord = vec2(texCoord.s, texCoord.t);\n' +
-			'	vPosition = gl_Position;\n' +
-			'}\n';
+		baseVertexShader = [
+			'#ifdef GL_ES',
+			'precision mediump float;',
+			'#endif',
 
-		baseFragmentShader = '#ifdef GL_ES\n\n' +
-			'precision mediump float;\n\n' +
-			'#endif\n\n' +
-			'\n' +
-			'varying vec2 vTexCoord;\n' +
-			'varying vec4 vPosition;\n' +
-			'\n' +
-			'uniform sampler2D source;\n' +
-			'\n' +
-			'void main(void) {\n' +
-			'	gl_FragColor = texture2D(source, vTexCoord);\n' +
-			'}\n';
+			'attribute vec4 position;',
+			'attribute vec2 texCoord;',
 
+			'uniform vec2 resolution;',
+			'uniform mat4 transform;',
+
+			'varying vec2 vTexCoord;',
+			'varying vec4 vPosition;',
+
+			'void main(void) {',
+			// first convert to screen space
+			'	vec4 screenPosition = vec4(position.xy * resolution / 2.0, position.z, position.w);',
+			'	screenPosition = transform * screenPosition;',
+
+			// convert back to OpenGL coords
+			'	gl_Position.xy = screenPosition.xy * 2.0 / resolution;',
+			'	gl_Position.z = screenPosition.z * 2.0 / (resolution.x / resolution.y);',
+			'	gl_Position.w = screenPosition.w;',
+			'	vTexCoord = texCoord;',
+			'	vPosition = gl_Position;',
+			'}\n'
+		].join('\n');
+
+		baseFragmentShader = [
+			'#ifdef GL_ES',
+			'precision mediump float;',
+			'#endif',
+			'varying vec2 vTexCoord;',
+			'varying vec4 vPosition;',
+			'uniform sampler2D source;',
+			'void main(void) {',
+			/*
+			'	if (any(lessThan(vTexCoord, vec2(0.0))) || any(greaterThanEqual(vTexCoord, vec2(1.0)))) {',
+			'		gl_FragColor = vec4(0.0);',
+			'	} else {',
+			*/
+			'		gl_FragColor = texture2D(source, vTexCoord);',
+			//'	}',
+			'}'
+		].join('\n');
 	}
 
 	Seriously.incompatible = function (pluginHook) {
@@ -3747,15 +3911,7 @@
 			} else if (!window.WebGLRenderingContext) {
 				incompatibility = 'webgl';
 			} else {
-				try {
-					gl = canvas.getContext('experimental-webgl');
-				} catch(expError) {
-					try {
-						gl = canvas.getContext('webgl');
-					} catch(webglError) {
-					}
-				}
-
+				gl = getTestContext();
 				if (!gl) {
 					incompatibility = 'context';
 				}
@@ -3778,108 +3934,41 @@
 		return false;
 	};
 
-	Seriously.plugin = function (hook, effect) {
-		var reserved = ['render', 'initialize', 'original', 'width', 'height',
-			'transform', 'translate', 'translateX', 'translateY', 'translateZ',
-			'rotate', 'rotateX', 'rotateY', 'rotateZ', 'scale', 'scaleX', 'scaleY',
-			'scaleZ', 'benchmark', 'plugin', 'alias', 'reset',
-			'prototype', 'destroy', 'isDestroyed'],
-			name, input;
-
-		function nop(value) {
-			return value;
-		}
+	Seriously.plugin = function (hook, definition, meta) {
+		var effect;
 
 		if (seriousEffects[hook]) {
 			console.log('Effect [' + hook + '] already loaded');
 			return;
 		}
 
-		if (!effect) {
+		if (meta === undefined && typeof definition === 'object') {
+			meta = definition;
+		}
+
+		if (!meta) {
 			return;
 		}
 
+		effect = extend({}, meta);
+
+		if (typeof definition === 'function') {
+			effect.definition = definition;
+		}
+
 		if (effect.inputs) {
-			for (name in effect.inputs) {
-				if (effect.inputs.hasOwnProperty(name)) {
-					if (reserved.indexOf(name) >= 0 || Object.prototype[name]) {
-						throw 'Reserved effect input name: ' + name;
-					}
-
-					input = effect.inputs[name];
-
-					if (isNaN(input.min)) {
-						input.min = -Infinity;
-					}
-
-					if (isNaN(input.max)) {
-						input.max = Infinity;
-					}
-
-					if (isNaN(input.minCount)) {
-						input.minCount = -Infinity;
-					}
-
-					if (isNaN(input.maxCount)) {
-						input.maxCount = Infinity;
-					}
-
-					if (isNaN(input.step)) {
-						input.step = 0;
-					}
-
-					if (input.defaultValue === undefined || input.defaultValue === null) {
-						if (input.type === 'number') {
-							input.defaultValue = Math.min(Math.max(0, input.min), input.max);
-						} else if (input.type === 'color') {
-							input.defaultValue = [0, 0, 0, 0];
-						} else if (input.type === 'enum') {
-							if (input.options && input.options.length) {
-								input.defaultValue = input.options[0];
-							} else {
-								input.defaultValue = '';
-							}
-						} else if (input.type === 'boolean') {
-							input.defaultValue = false;
-						} else {
-							input.defaultValue = '';
-						}
-					}
-
-					if (input.type === 'vector') {
-						if (input.dimensions < 2) {
-							input.dimensions = 2;
-						} else if (input.dimensions > 4) {
-							input.dimensions = 4;
-						} else if (!input.dimensions || isNaN(input.dimensions)) {
-							input.dimensions = 4;
-						} else {
-							input.dimensions = Math.round(input.dimensions);
-						}
-					} else {
-						input.dimensions = 1;
-					}
-
-					input.shaderDirty = !!input.shaderDirty;
-
-					if (typeof input.validate !== 'function') {
-						input.validate = Seriously.inputValidators[input.type] || nop;
-					}
-
-					if (!effect.defaultImageInput && input.type === 'image') {
-						effect.defaultImageInput = name;
-					}
-				}
-			}
+			validateInputSpecs(effect);
 		}
 
 		if (!effect.title) {
 			effect.title = hook;
 		}
 
+		/*
 		if (typeof effect.requires !== 'function') {
 			effect.requires = false;
 		}
+		*/
 
 		seriousEffects[hook] = effect;
 		allEffectsByHook[hook] = [];
@@ -3914,18 +4003,90 @@
 		return this;
 	};
 
+	Seriously.transform = function (hook, definition, meta) {
+		var transform;
+
+		if (seriousTransforms[hook]) {
+			console.log('Transform [' + hook + '] already loaded');
+			return;
+		}
+
+		if (meta === undefined && typeof definition === 'object') {
+			meta = definition;
+		}
+
+		if (!meta && !definition) {
+			return;
+		}
+
+		transform = extend({}, meta);
+
+		if (typeof definition === 'function') {
+			transform.definition = definition;
+		}
+
+		/*
+		todo: validate method definitions
+		if (effect.inputs) {
+			validateInputSpecs(effect);
+		}
+		*/
+
+		if (!transform.title) {
+			transform.title = hook;
+		}
+
+
+		seriousTransforms[hook] = transform;
+		allTransformsByHook[hook] = [];
+
+		return transform;
+	};
+
+	Seriously.removeTransform = function (hook) {
+		var all, transform, plugin;
+
+		if (!hook) {
+			return this;
+		}
+
+		plugin = seriousTransforms[hook];
+
+		if (!plugin) {
+			return this;
+		}
+
+		all = allTransformsByHook[hook];
+		if (all) {
+			while (all.length) {
+				transform = all[0];
+				transform.destroy();
+			}
+			delete allTransformsByHook[hook];
+		}
+
+		delete seriousTransforms[hook];
+
+		return this;
+	};
+
+	//todo: validators should not allocate new objects/arrays if input is valid
 	Seriously.inputValidators = {
-		color: function(value) {
-			var s, a, i;
+		color: function (value, input, oldValue) {
+			var s, a, i, computed, bg;
+
+			a = oldValue || [];
+
 			if (typeof value === 'string') {
 				//todo: support percentages, decimals
 				s = (/^(rgb|hsl)a?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(,\s*(\d+(\.\d*)?)\s*)?\)/i).exec(value);
 				if (s && s.length) {
 					if (s.length < 3) {
-						return [0,0,0,0];
+						a[0] = a[1] = a[2] = a[3] = 0;
+						return a;
 					}
 
-					a = [0,0,0,1];
+					a[3] = 1;
 					for (i = 0; i < 3; i++) {
 						a[i] = parseFloat(s[i+2]) / 255;
 					}
@@ -3933,7 +4094,7 @@
 						a[3] = parseFloat(s[6]);
 					}
 					if (s[1].toLowerCase() === 'hsl') {
-						return hslToRgb(a[0], a[1], a[2], a[3]);
+						return hslToRgb(a[0], a[1], a[2], a[3], a);
 					}
 					return a;
 				}
@@ -3942,55 +4103,66 @@
 				if (s && s.length) {
 					s = s[1];
 					if (s.length === 3) {
-						a = [
-							parseInt(s[0],16) / 15,
-							parseInt(s[1],16) / 15,
-							parseInt(s[2],16) / 15,
-							1
-						];
+						a[0] = parseInt(s[0], 16) / 15;
+						a[1] = parseInt(s[1], 16) / 15;
+						a[2] = parseInt(s[2], 16) / 15;
+						a[3] = 1;
 					} else if (s.length === 4) {
-						a = [
-							parseInt(s[0],16) / 15,
-							parseInt(s[1],16) / 15,
-							parseInt(s[2],16) / 15,
-							parseInt(s[3],16) / 15
-						];
+						a[0] = parseInt(s[0], 16) / 15;
+						a[1] = parseInt(s[1], 16) / 15;
+						a[2] = parseInt(s[2], 16) / 15;
+						a[3] = parseInt(s[3], 16) / 15;
 					} else if (s.length === 6) {
-						a = [
-							parseInt(s.substr(0,2),16) / 255,
-							parseInt(s.substr(2,2),16) / 255,
-							parseInt(s.substr(4,2),16) / 255,
-							1
-						];
+						a[0] = parseInt(s.substr(0, 2), 16) / 255;
+						a[1] = parseInt(s.substr(2, 2), 16) / 255;
+						a[2] = parseInt(s.substr(4, 2), 16) / 255;
+						a[3] = 1;
 					} else if (s.length === 8) {
-						a = [
-							parseInt(s.substr(0,2),16) / 255,
-							parseInt(s.substr(2,2),16) / 255,
-							parseInt(s.substr(4,2),16) / 255,
-							parseInt(s.substr(6,2),16) / 255
-						];
+						a[0] = parseInt(s.substr(0, 2), 16) / 255;
+						a[1] = parseInt(s.substr(2, 2), 16) / 255;
+						a[2] = parseInt(s.substr(4, 2), 16) / 255;
+						a[3] = parseInt(s.substr(6, 2), 16) / 255;
 					} else {
-						a = [0,0,0,0];
+						a[0] = a[1] = a[2] = a[3] = 0;
 					}
 					return a;
 				}
 
-				a = colorNames[value.toLowerCase()];
-				if (a) {
+				s = colorNames[value.toLowerCase()];
+				if (s) {
+					for (i = 0; i < 4; i++) {
+						a[i] = s[i];
+					}
 					return a;
 				}
 
-				return [0,0,0,0];
+				if (!colorElement) {
+					colorElement = document.createElement('a');
+				}
+				colorElement.style.backgroundColor = '';
+				colorElement.style.backgroundColor = value;
+				computed = window.getComputedStyle(colorElement);
+				bg = computed.getPropertyValue('background-color') ||
+					computed.getPropertyValue('backgroundColor') ||
+					colorElement.style.backgroundColor;
+				if (bg && bg !== value) {
+					return Seriously.inputValidators.color(bg, input, oldValue);
+				}
+
+				a[0] = a[1] = a[2] = a[3] = 0;
+				return a;
 			}
 
-			if (Array.isArray(value)) {
+			if (isArrayLike(value)) {
 				a = value;
 				if (a.length < 3) {
-					return [0,0,0,0];
+					a[0] = a[1] = a[2] = a[3] = 0;
+					return a;
 				}
 				for (i = 0; i < 3; i++) {
 					if (isNaN(a[i])) {
-						return [0,0,0,0];
+						a[0] = a[1] = a[2] = a[3] = 0;
+						return a;
 					}
 				}
 				if (a.length < 4) {
@@ -4000,14 +4172,27 @@
 			}
 
 			if (typeof value === 'number') {
-				return [value, value, value, 1];
-			//todo: } else if (type === 'Object') {
-				//todo: r, g, b
+				a[0] = a[1] = a[2] = value;
+				a[3] = 1;
+				return a;
 			}
 
-			return [0, 0, 0, 0];
+			if (typeof value === 'object') {
+				for (i = 0; i < 4; i++) {
+					s = colorFields[i];
+					if (value[s] === null || isNaN(value[s])) {
+						a[i] = i === 3 ? 1 : 0;
+					} else {
+						a[i] = value[s];
+					}
+				}
+				return a;
+			}
+
+			a[0] = a[1] = a[2] = a[3] = 0;
+			return a;
 		},
-		number: function(value, input) {
+		number: function (value, input) {
 			if (isNaN(value)) {
 				return input.defaultValue || 0;
 			}
@@ -4028,12 +4213,12 @@
 
 			return value;
 		},
-		'enum': function(value, input) {
+		'enum': function (value, input) {
 			var options = input.options || [],
 				filtered;
 
 			filtered = options.filter(function (opt) {
-				return (Array.isArray(opt) && opt.length && opt[0] === value) || opt === value;
+				return (isArrayLike(opt) && opt.length && opt[0] === value) || opt === value;
 			});
 
 			if (filtered.length) {
@@ -4042,29 +4227,36 @@
 
 			return input.defaultValue || '';
 		},
-		vector: function(value) {
-			var a, i, s, vectorFields = ['x','y','z','w'];
+		vector: function (value, input, oldValue) {
+			var a, i, s, n = input.dimensions || 4;
 
-			if ( Array.isArray(value) ) {
-				a = {};
-				for (i = 0; i < 4; i++) {
-					a[vectorFields[i]] = isNaN(value[i]) ? 0 : value[i];
+			a = oldValue || [];
+			if (isArrayLike(value)) {
+				for (i = 0; i < n; i++) {
+					a[i] = value[i] || 0;
 				}
 				return a;
 			}
 
 			if (typeof value === 'object') {
-				a = {};
-				for (i = 0; i < 4; i++) {
+				for (i = 0; i < n; i++) {
 					s = vectorFields[i];
-					a[s] = isNaN(value[s]) ? 0 : value[s];
+					if (value[s] === undefined) {
+						s = colorFields[i];
+					}
+					a[i] = value[s] || 0;
 				}
 				return a;
 			}
 
-			return { x: 0, y: 0, z: 0, w: 0 };
+			value = parseFloat(value) || 0;
+			for (i = 0; i < n; i++) {
+				a[i] = value;
+			}
+
+			return a;
 		},
-		'boolean': function(value) {
+		'boolean': function (value) {
 			if (!value) {
 				return false;
 			}
@@ -4122,20 +4314,18 @@
 	};
 
 	if (window.Float32Array) {
-		defaultTransform = new Float32Array([
+		identity = new Float32Array([
 			1, 0, 0, 0,
 			0, 1, 0, 0,
 			0, 0, 1, 0,
 			0, 0, 0, 1
 		]);
-		//todo: set scale
-	//	mat4.perspective(90, 1, 1, 100, new Float32Array(defaultTransform));
 	}
 
 	//check for plugins loaded out of order
 	if (window.Seriously) {
 		if (typeof window.Seriously === 'object') {
-			(function() {
+			(function () {
 				var i;
 				for (i in window.Seriously) {
 					if (window.Seriously.hasOwnProperty(i) &&
@@ -4154,21 +4344,20 @@
 
 	//expose Seriously to the global object
 	Seriously.util = {
+		mat4: mat4,
 		checkSource: checkSource,
 		hslToRgb: hslToRgb,
 		colors: colorNames,
 		setTimeoutZero: setTimeoutZero,
 		ShaderProgram: ShaderProgram,
 		FrameBuffer: FrameBuffer,
-		requestAnimationFrame: function(callback) {
-			requestAnimFrame(callback);
-		},
+		requestAnimationFrame: requestAnimationFrame,
 		shader: {
 			makeNoise: 'float makeNoise(float u, float v, float timer) {\n' +
 						'	float x = u * v * mod(timer * 1000.0, 100.0);\n' +
 						'	x = mod(x, 13.0) * mod(x, 127.0);\n' +
 						'	float dx = mod(x, 0.01);\n' +
-						'	return clamp(0.1 + dx * 100.0, 0.0,1.0);\n' +
+						'	return clamp(0.1 + dx * 100.0, 0.0, 1.0);\n' +
 						'}\n',
 			random: '#ifndef RANDOM\n' +
 				'#define RANDOM\n' +
@@ -4178,6 +4367,650 @@
 				'#endif\n'
 		}
 	};
+
+	/*
+	Default transform - 2D
+	Affine transforms
+	- translate
+	- rotate (degrees)
+	- scale
+	- skew
+
+	todo: move this to a different file when we have a build tool
+	*/
+	Seriously.transform('2d', function (options) {
+		var me = this,
+			degrees = !(options && options.radians),
+
+			centerX = 0,
+			centerY = 0,
+			scaleX = 1,
+			scaleY = 1,
+			translateX = 0,
+			translateY = 0,
+			rotation = 0,
+			skewX = 0,
+			skewY = 0;
+
+		//todo: skew order
+		//todo: invert?
+
+		function recompute() {
+			var matrix = me.matrix,
+				angle,
+				s, c,
+				m00,
+				m01,
+				m02,
+				m03,
+				m10,
+				m11,
+				m12,
+				m13;
+
+			function translate(x, y) {
+				matrix[12] = matrix[0] * x + matrix[4] * y + matrix[12];
+				matrix[13] = matrix[1] * x + matrix[5] * y + matrix[13];
+				matrix[14] = matrix[2] * x + matrix[6] * y + matrix[14];
+				matrix[15] = matrix[3] * x + matrix[7] * y + matrix[15];
+			}
+
+			if (!translateX &&
+					!translateY &&
+					!rotation &&
+					!skewX &&
+					!skewY &&
+					scaleX === 1 &&
+					scaleY === 1
+					) {
+				me.transformed = false;
+				return;
+			}
+
+			//calculate transformation matrix
+			mat4.identity(matrix);
+
+			translate(translateX + centerX, translateY + centerY);
+
+			//skew
+			if (skewX) {
+				matrix[4] = skewX / me.width;
+			}
+			if (skewY) {
+				matrix[1] = skewY / me.height;
+			}
+
+			if (rotation) {
+				m00 = matrix[0];
+				m01 = matrix[1];
+				m02 = matrix[2];
+				m03 = matrix[3];
+				m10 = matrix[4];
+				m11 = matrix[5];
+				m12 = matrix[6];
+				m13 = matrix[7];
+
+				//rotate
+				angle = -(degrees ? rotation * Math.PI / 180 : rotation);
+				//...rotate
+				s = Math.sin(angle);
+				c = Math.cos(angle);
+				matrix[0] = m00 * c + m10 * s;
+				matrix[1] = m01 * c + m11 * s;
+				matrix[2] = m02 * c + m12 * s;
+				matrix[3] = m03 * c + m13 * s;
+				matrix[4] = m10 * c - m00 * s;
+				matrix[5] = m11 * c - m01 * s;
+				matrix[6] = m12 * c - m02 * s;
+				matrix[7] = m13 * c - m03 * s;
+			}
+
+			//scale
+			if (scaleX !== 1) {
+				matrix[0] *= scaleX;
+				matrix[1] *= scaleX;
+				matrix[2] *= scaleX;
+				matrix[3] *= scaleX;
+			}
+			if (scaleY !== 1) {
+				matrix[4] *= scaleY;
+				matrix[5] *= scaleY;
+				matrix[6] *= scaleY;
+				matrix[7] *= scaleY;
+			}
+
+			translate(-centerX, -centerY);
+
+			me.transformed = true;
+		}
+
+		return {
+			inputs: {
+				reset: {
+					method: function () {
+						centerX = 0;
+						centerY = 0;
+						scaleX = 1;
+						scaleY = 1;
+						translateX = 0;
+						translateY = 0;
+						rotation = 0;
+						skewX = 0;
+						skewY = 0;
+
+						if (me.transformed) {
+							me.transformed = false;
+							return true;
+						}
+
+						return false;
+					}
+				},
+				translate: {
+					method: function (x, y) {
+						if (isNaN(x)) {
+							x = translateX;
+						}
+
+						if (isNaN(y)) {
+							y = translateY;
+						}
+
+						if (x === translateX && y === translateY) {
+							return false;
+						}
+
+						translateX = x;
+						translateY = y;
+
+						recompute();
+						return true;
+					},
+					type: [
+						'number',
+						'number'
+					]
+				},
+				translateX: {
+					get: function () {
+						return translateX;
+					},
+					set: function (x) {
+						if (x === translateX) {
+							return false;
+						}
+
+						translateX = x;
+
+						recompute();
+						return true;
+					},
+					type: 'number'
+				},
+				translateY: {
+					get: function () {
+						return translateY;
+					},
+					set: function (y) {
+						if (y === translateY) {
+							return false;
+						}
+
+						translateY = y;
+
+						recompute();
+						return true;
+					},
+					type: 'number'
+				},
+				rotation: {
+					get: function () {
+						return rotation;
+					},
+					set: function (angle) {
+						if (angle === rotation) {
+							return false;
+						}
+
+						//todo: fmod 360deg or Math.PI * 2 radians
+						rotation = angle;
+
+						recompute();
+						return true;
+					},
+					type: 'number'
+				},
+				center: {
+					method: function (x, y) {
+						if (isNaN(x)) {
+							x = centerX;
+						}
+
+						if (isNaN(y)) {
+							y = centerY;
+						}
+
+						if (x === centerX && y === centerY) {
+							return false;
+						}
+
+						centerX = x;
+						centerY = y;
+
+						recompute();
+						return true;
+					},
+					type: [
+						'number',
+						'number'
+					]
+				},
+				centerX: {
+					get: function () {
+						return centerX;
+					},
+					set: function (x) {
+						if (x === centerX) {
+							return false;
+						}
+
+						centerX = x;
+
+						recompute();
+						return true;
+					},
+					type: 'number'
+				},
+				centerY: {
+					get: function () {
+						return centerY;
+					},
+					set: function (y) {
+						if (y === centerY) {
+							return false;
+						}
+
+						centerY = y;
+
+						recompute();
+						return true;
+					},
+					type: 'number'
+				},
+				skew: {
+					method: function (x, y) {
+						if (isNaN(x)) {
+							x = skewX;
+						}
+
+						if (isNaN(y)) {
+							y = skewY;
+						}
+
+						if (x === skewX && y === skewY) {
+							return false;
+						}
+
+						skewX = x;
+						skewY = y;
+
+						recompute();
+						return true;
+					},
+					type: [
+						'number',
+						'number'
+					]
+				},
+				skewX: {
+					get: function () {
+						return skewX;
+					},
+					set: function (x) {
+						if (x === skewX) {
+							return false;
+						}
+
+						skewX = x;
+
+						recompute();
+						return true;
+					},
+					type: 'number'
+				},
+				skewY: {
+					get: function () {
+						return skewY;
+					},
+					set: function (y) {
+						if (y === skewY) {
+							return false;
+						}
+
+						skewY = y;
+
+						recompute();
+						return true;
+					},
+					type: 'number'
+				},
+				scale: {
+					method: function (x, y) {
+						var newX, newY;
+
+						if (isNaN(x)) {
+							newX = scaleX;
+						} else {
+							newX = x;
+						}
+
+						/*
+						if only one value is specified, set both x and y to the same scale
+						*/
+						if (isNaN(y)) {
+							if (isNaN(x)) {
+								return false;
+							}
+
+							newY = newX;
+						} else {
+							newY = y;
+						}
+
+						if (newX === scaleX && newY === scaleY) {
+							return false;
+						}
+
+						scaleX = newX;
+						scaleY = newY;
+
+						recompute();
+						return true;
+					},
+					type: [
+						'number',
+						'number'
+					]
+				},
+				scaleX: {
+					get: function () {
+						return scaleX;
+					},
+					set: function (x) {
+						if (x === scaleX) {
+							return false;
+						}
+
+						scaleX = x;
+
+						recompute();
+						return true;
+					},
+					type: 'number'
+				},
+				scaleY: {
+					get: function () {
+						return scaleY;
+					},
+					set: function (y) {
+						if (y === scaleY) {
+							return false;
+						}
+
+						scaleY = y;
+
+						recompute();
+						return true;
+					},
+					type: 'number'
+				}
+			}
+		};
+	}, {
+		title: '2D Transform',
+		description: 'Translate, Rotate, Scale, Skew'
+	});
+
+	/*
+	todo: move this to a different file when we have a build tool
+	*/
+	Seriously.transform('flip', function () {
+		var me = this,
+			horizontal = true;
+
+		function recompute() {
+			var matrix = me.matrix;
+
+			//calculate transformation matrix
+			//mat4.identity(matrix);
+
+			//scale
+			if (horizontal) {
+				matrix[0] = -1;
+				matrix[5] = 1;
+			} else {
+				matrix[0] = 1;
+				matrix[5] = -1;
+			}
+		}
+
+		mat4.identity(me.matrix);
+		recompute();
+
+		me.transformDirty = true;
+
+		me.transformed = true;
+
+		return {
+			inputs: {
+				direction: {
+					get: function () {
+						return horizontal ? 'horizontal' : 'vertical';
+					},
+					set: function (d) {
+						var horiz;
+						if (d === 'vertical') {
+							horiz = false;
+						} else {
+							horiz = true;
+						}
+
+						if (horiz === horizontal) {
+							return false;
+						}
+
+						horizontal = horiz;
+						recompute();
+						return true;
+					},
+					type: 'string'
+				}
+			}
+		};
+	}, {
+		title: 'Flip',
+		description: 'Flip Horizontal/Vertical'
+	});
+
+	/*
+	Reformat
+	todo: move this to a different file when we have a build tool
+	*/
+	Seriously.transform('reformat', function () {
+		var me = this,
+			forceWidth,
+			forceHeight,
+			mode = 'contain';
+
+		function recompute() {
+			var matrix = me.matrix,
+				width = forceWidth || me.width,
+				height = forceHeight || me.height,
+				scaleX,
+				scaleY,
+				source = me.source,
+				sourceWidth = source && source.width || 1,
+				sourceHeight = source && source.height || 1,
+				aspectIn,
+				aspectOut;
+
+			if (mode === 'distort' || width === sourceWidth && height === sourceHeight) {
+				me.transformed = false;
+				return;
+			}
+
+			aspectIn = sourceWidth / sourceHeight;
+
+			aspectOut = width / height;
+
+			if (mode === 'width' || mode === 'contain' && aspectOut <= aspectIn) {
+				scaleX = 1;
+				scaleY = aspectOut / aspectIn;
+			} else if (mode === 'height' || mode === 'contain' && aspectOut > aspectIn) {
+				scaleX = aspectIn / aspectOut;
+				scaleY = 1;
+			} else {
+				//mode === 'cover'
+				if (aspectOut > aspectIn) {
+					scaleX = 1;
+					scaleY = aspectOut / aspectIn;
+				} else {
+					scaleX = aspectIn / aspectOut;
+					scaleY = 1;
+				}
+			}
+
+			if (scaleX === 1 && scaleY === 1) {
+				me.transformed = false;
+				return;
+			}
+
+			//calculate transformation matrix
+			mat4.identity(matrix);
+
+			//scale
+			if (scaleX !== 1) {
+				matrix[0] *= scaleX;
+				matrix[1] *= scaleX;
+				matrix[2] *= scaleX;
+				matrix[3] *= scaleX;
+			}
+			if (scaleY !== 1) {
+				matrix[4] *= scaleY;
+				matrix[5] *= scaleY;
+				matrix[6] *= scaleY;
+				matrix[7] *= scaleY;
+			}
+			me.transformed = true;
+		}
+
+		function getWidth() {
+			return forceWidth || me.source && me.source.width || 1;
+		}
+
+		function getHeight() {
+			return forceHeight || me.source && me.source.height || 1;
+		}
+
+		this.resize = function () {
+			var width = getWidth(),
+				height = getHeight(),
+				i;
+
+			if (this.width !== width || this.height !== height) {
+				this.width = width;
+				this.height = height;
+
+				if (this.uniforms && this.uniforms.resolution) {
+					this.uniforms.resolution[0] = width;
+					this.uniforms.resolution[1] = height;
+				}
+
+				if (this.frameBuffer && this.frameBuffer.resize) {
+					this.frameBuffer.resize(width, height);
+				}
+
+				for (i = 0; i < this.targets.length; i++) {
+					this.targets[i].resize();
+				}
+			}
+
+			this.setTransformDirty();
+
+			recompute();
+		};
+
+		return {
+			inputs: {
+				width: {
+					get: getWidth,
+					set: function (x) {
+						if (x === forceWidth) {
+							return false;
+						}
+
+						forceWidth = x;
+
+						this.resize();
+
+						//don't need to run setTransformDirty again
+						return false;
+					},
+					type: 'number'
+				},
+				height: {
+					get: getHeight,
+					set: function (y) {
+						if (y === forceHeight) {
+							return false;
+						}
+
+						forceHeight = y;
+
+						this.resize();
+
+						//don't need to run setTransformDirty again
+						return false;
+					},
+					type: 'number'
+				},
+				mode: {
+					get: function () {
+						return mode;
+					},
+					set: function (m) {
+						if (m === mode) {
+							return false;
+						}
+
+						mode = m;
+
+						recompute();
+						return true;
+					},
+					type: 'enum',
+					options: [
+						'cover',
+						'contain',
+						'distort',
+						'width',
+						'height'
+					]
+				}
+			}
+		};
+	}, {
+		title: 'Reformat',
+		description: 'Change output dimensions'
+	});
+
+	/*
+	todo: additional transform node types
+	- perspective
+	- matrix
+	- crop? - maybe not - probably would just scale.
+	- camera shake?
+	*/
 
 	/*
 	 * simplex noise shaders
@@ -4218,10 +5051,10 @@
 		'		0.366025403784439, // 0.5*(sqrt(3.0)-1.0)\n' +
 		'		-0.577350269189626, // -1.0 + 2.0 * C.x\n' +
 		'		0.024390243902439); // 1.0 / 41.0\n' +
-		'	vec2 i = floor(v + dot(v, C.yy) );\n' +
+		'	vec2 i = floor(v + dot(v, C.yy));\n' +
 		'	vec2 x0 = v - i + dot(i, C.xx);\n' +
 		'	vec2 i1;\n' +
-		'	//i1.x = step( x0.y, x0.x ); // x0.x > x0.y ? 1.0 : 0.0\n' +
+		'	//i1.x = step(x0.y, x0.x); // x0.x > x0.y ? 1.0 : 0.0\n' +
 		'	//i1.y = 1.0 - i1.x;\n' +
 		'	i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);\n' +
 		'	// x0 = x0 - 0.0 + 0.0 * C.xx ;\n' +
@@ -4230,15 +5063,15 @@
 		'	vec4 x12 = x0.xyxy + C.xxzz;\n' +
 		'	x12.xy -= i1;\n' +
 		'	i = mod289(i); // Avoid truncation effects in permutation\n' +
-		'	vec3 p = permute( permute( i.y + vec3(0.0, i1.y, 1.0 )) + i.x + vec3(0.0, i1.x, 1.0 ));\n' +
-		'	vec3 m = max(0.5 - vec3(dot(x0,x0), dot(x12.xy,x12.xy), dot(x12.zw,x12.zw)), 0.0);\n' +
+		'	vec3 p = permute(permute(i.y + vec3(0.0, i1.y, 1.0)) + i.x + vec3(0.0, i1.x, 1.0));\n' +
+		'	vec3 m = max(0.5 - vec3(dot(x0, x0), dot(x12.xy, x12.xy), dot(x12.zw, x12.zw)), 0.0);\n' +
 		'	m = m*m ;\n' +
 		'	m = m*m ;\n' +
 		'	vec3 x = 2.0 * fract(p * C.www) - 1.0;\n' +
 		'	vec3 h = abs(x) - 0.5;\n' +
 		'	vec3 ox = floor(x + 0.5);\n' +
 		'	vec3 a0 = x - ox;\n' +
-		'	m *= 1.79284291400159 - 0.85373472095314 * ( a0*a0 + h*h );\n' +
+		'	m *= 1.79284291400159 - 0.85373472095314 * (a0*a0 + h*h);\n' +
 		'	vec3 g;\n' +
 		'	g.x = a0.x * x0.x + h.x * x0.y;\n' +
 		'	g.yz = a0.yz * x12.xz + h.yz * x12.yw;\n' +
@@ -4253,14 +5086,14 @@
 		'	const vec4 D = vec4(0.0, 0.5, 1.0, 2.0);\n' +
 
 		// First corner
-		'	vec3 i = floor(v + dot(v, C.yyy) );\n' +
+		'	vec3 i = floor(v + dot(v, C.yyy));\n' +
 		'	vec3 x0 = v - i + dot(i, C.xxx) ;\n' +
 
 		// Other corners
 		'	vec3 g = step(x0.yzx, x0.xyz);\n' +
 		'	vec3 l = 1.0 - g;\n' +
-		'	vec3 i1 = min( g.xyz, l.zxy );\n' +
-		'	vec3 i2 = max( g.xyz, l.zxy );\n' +
+		'	vec3 i1 = min(g.xyz, l.zxy);\n' +
+		'	vec3 i2 = max(g.xyz, l.zxy);\n' +
 
 		'	// x0 = x0 - 0.0 + 0.0 * C.xxx;\n' +
 		'	// x1 = x0 - i1 + 1.0 * C.xxx;\n' +
@@ -4272,53 +5105,53 @@
 
 		// Permutations
 		'	i = mod289(i);\n' +
-		'	vec4 p = permute( permute( permute(\n' +
-		'						i.z + vec4(0.0, i1.z, i2.z, 1.0 ))\n' +
-		'						+ i.y + vec4(0.0, i1.y, i2.y, 1.0 ))\n' +
-		'						+ i.x + vec4(0.0, i1.x, i2.x, 1.0 ));\n' +
+		'	vec4 p = permute(permute(permute(\n' +
+		'						i.z + vec4(0.0, i1.z, i2.z, 1.0))\n' +
+		'						+ i.y + vec4(0.0, i1.y, i2.y, 1.0))\n' +
+		'						+ i.x + vec4(0.0, i1.x, i2.x, 1.0));\n' +
 
 		// Gradients: 7x7 points over a square, mapped onto an octahedron.
 		// The ring size 17*17 = 289 is close to a multiple of 49 (49*6 = 294)
 		'	float n_ = 0.142857142857; // 1.0/7.0\n' +
 		'	vec3 ns = n_ * D.wyz - D.xzx;\n' +
 
-		'	vec4 j = p - 49.0 * floor(p * ns.z * ns.z); // mod(p,7*7)\n' +
+		'	vec4 j = p - 49.0 * floor(p * ns.z * ns.z); // mod(p, 7 * 7)\n' +
 
 		'	vec4 x_ = floor(j * ns.z);\n' +
-		'	vec4 y_ = floor(j - 7.0 * x_ ); // mod(j,N)\n' +
+		'	vec4 y_ = floor(j - 7.0 * x_); // mod(j, N)\n' +
 
-		'	vec4 x = x_ *ns.x + ns.yyyy;\n' +
-		'	vec4 y = y_ *ns.x + ns.yyyy;\n' +
+		'	vec4 x = x_ * ns.x + ns.yyyy;\n' +
+		'	vec4 y = y_ * ns.x + ns.yyyy;\n' +
 		'	vec4 h = 1.0 - abs(x) - abs(y);\n' +
 
-		'	vec4 b0 = vec4( x.xy, y.xy );\n' +
-		'	vec4 b1 = vec4( x.zw, y.zw );\n' +
+		'	vec4 b0 = vec4(x.xy, y.xy);\n' +
+		'	vec4 b1 = vec4(x.zw, y.zw);\n' +
 
-		'	//vec4 s0 = vec4(lessThan(b0,0.0))*2.0 - 1.0;\n' +
-		'	//vec4 s1 = vec4(lessThan(b1,0.0))*2.0 - 1.0;\n' +
-		'	vec4 s0 = floor(b0)*2.0 + 1.0;\n' +
-		'	vec4 s1 = floor(b1)*2.0 + 1.0;\n' +
+		'	//vec4 s0 = vec4(lessThan(b0, 0.0)) * 2.0 - 1.0;\n' +
+		'	//vec4 s1 = vec4(lessThan(b1, 0.0)) * 2.0 - 1.0;\n' +
+		'	vec4 s0 = floor(b0) * 2.0 + 1.0;\n' +
+		'	vec4 s1 = floor(b1) * 2.0 + 1.0;\n' +
 		'	vec4 sh = -step(h, vec4(0.0));\n' +
 
-		'	vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy ;\n' +
-		'	vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww ;\n' +
+		'	vec4 a0 = b0.xzyw + s0.xzyw * sh.xxyy ;\n' +
+		'	vec4 a1 = b1.xzyw + s1.xzyw * sh.zzww ;\n' +
 
-		'	vec3 p0 = vec3(a0.xy,h.x);\n' +
-		'	vec3 p1 = vec3(a0.zw,h.y);\n' +
-		'	vec3 p2 = vec3(a1.xy,h.z);\n' +
-		'	vec3 p3 = vec3(a1.zw,h.w);\n' +
+		'	vec3 p0 = vec3(a0.xy, h.x);\n' +
+		'	vec3 p1 = vec3(a0.zw, h.y);\n' +
+		'	vec3 p2 = vec3(a1.xy, h.z);\n' +
+		'	vec3 p3 = vec3(a1.zw, h.w);\n' +
 
 		//Normalise gradients
-		'	vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2, p2), dot(p3,p3)));\n' +
+		'	vec4 norm = taylorInvSqrt(vec4(dot(p0, p0), dot(p1, p1), dot(p2, p2), dot(p3, p3)));\n' +
 		'	p0 *= norm.x;\n' +
 		'	p1 *= norm.y;\n' +
 		'	p2 *= norm.z;\n' +
 		'	p3 *= norm.w;\n' +
 
 		// Mix final noise value
-		'	vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);\n' +
+		'	vec4 m = max(0.6 - vec4(dot(x0, x0), dot(x1, x1), dot(x2, x2), dot(x3, x3)), 0.0);\n' +
 		'	m = m * m;\n' +
-		'	return 42.0 * dot( m*m, vec4( dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3) ) );\n' +
+		'	return 42.0 * dot(m*m, vec4(dot(p0, x0), dot(p1, x1), dot(p2, x2), dot(p3, x3)));\n' +
 		'}\n' +
 		'#endif\n';
 
@@ -4327,9 +5160,9 @@
 		'vec4 grad4(float j, vec4 ip)\n' +
 		'	{\n' +
 		'	const vec4 ones = vec4(1.0, 1.0, 1.0, -1.0);\n' +
-		'	vec4 p,s;\n' +
+		'	vec4 p, s;\n' +
 		'\n' +
-		'	p.xyz = floor( fract (vec3(j) * ip.xyz) * 7.0) * ip.z - 1.0;\n' +
+		'	p.xyz = floor(fract (vec3(j) * ip.xyz) * 7.0) * ip.z - 1.0;\n' +
 		'	p.w = 1.5 - dot(abs(p.xyz), ones.xyz);\n' +
 		'	s = vec4(lessThan(p, vec4(0.0)));\n' +
 		'	p.xyz = p.xyz + (s.xyz*2.0 - 1.0) * s.www;\n' +
@@ -4348,28 +5181,28 @@
 		'						-0.447213595499958); // -1 + 4 * G4\n' +
 		'\n' +
 		// First corner
-		'	vec4 i = floor(v + dot(v, vec4(F4)) );\n' +
+		'	vec4 i = floor(v + dot(v, vec4(F4)));\n' +
 		'	vec4 x0 = v - i + dot(i, C.xxxx);\n' +
 		'\n' +
 		// Other corners
 		'\n' +
 		// Rank sorting originally contributed by Bill Licea-Kane, AMD (formerly ATI)
 		'	vec4 i0;\n' +
-		'	vec3 isX = step( x0.yzw, x0.xxx );\n' +
-		'	vec3 isYZ = step( x0.zww, x0.yyz );\n' +
-		// i0.x = dot( isX, vec3( 1.0 ) );
+		'	vec3 isX = step(x0.yzw, x0.xxx);\n' +
+		'	vec3 isYZ = step(x0.zww, x0.yyz);\n' +
+		// i0.x = dot(isX, vec3(1.0));
 		'	i0.x = isX.x + isX.y + isX.z;\n' +
 		'	i0.yzw = 1.0 - isX;\n' +
-		// i0.y += dot( isYZ.xy, vec2( 1.0 ) );
+		// i0.y += dot(isYZ.xy, vec2(1.0));
 		'	i0.y += isYZ.x + isYZ.y;\n' +
 		'	i0.zw += 1.0 - isYZ.xy;\n' +
 		'	i0.z += isYZ.z;\n' +
 		'	i0.w += 1.0 - isYZ.z;\n' +
 		'\n' +
 			// i0 now contains the unique values 0,1,2,3 in each channel
-		'	vec4 i3 = clamp( i0, 0.0, 1.0 );\n' +
-		'	vec4 i2 = clamp( i0-1.0, 0.0, 1.0 );\n' +
-		'	vec4 i1 = clamp( i0-2.0, 0.0, 1.0 );\n' +
+		'	vec4 i3 = clamp(i0, 0.0, 1.0);\n' +
+		'	vec4 i2 = clamp(i0-1.0, 0.0, 1.0);\n' +
+		'	vec4 i1 = clamp(i0-2.0, 0.0, 1.0);\n' +
 		'\n' +
 		'	vec4 x1 = x0 - i1 + C.xxxx;\n' +
 		'	vec4 x2 = x0 - i2 + C.yyyy;\n' +
@@ -4378,12 +5211,12 @@
 		'\n' +
 		// Permutations
 		'	i = mod289(i);\n' +
-		'	float j0 = permute( permute( permute( permute(i.w) + i.z) + i.y) + i.x);\n' +
-		'	vec4 j1 = permute( permute( permute( permute (\n' +
-		'					i.w + vec4(i1.w, i2.w, i3.w, 1.0 ))\n' +
-		'					+ i.z + vec4(i1.z, i2.z, i3.z, 1.0 ))\n' +
-		'					+ i.y + vec4(i1.y, i2.y, i3.y, 1.0 ))\n' +
-		'					+ i.x + vec4(i1.x, i2.x, i3.x, 1.0 ));\n' +
+		'	float j0 = permute(permute(permute(permute(i.w) + i.z) + i.y) + i.x);\n' +
+		'	vec4 j1 = permute(permute(permute(permute (\n' +
+		'					i.w + vec4(i1.w, i2.w, i3.w, 1.0))\n' +
+		'					+ i.z + vec4(i1.z, i2.z, i3.z, 1.0))\n' +
+		'					+ i.y + vec4(i1.y, i2.y, i3.y, 1.0))\n' +
+		'					+ i.x + vec4(i1.x, i2.x, i3.x, 1.0));\n' +
 		'\n' +
 		// Gradients: 7x7x6 points over a cube, mapped onto a 4-cross polytope
 		// 7*7*6 = 294, which is close to the ring size 17*17 = 289.
@@ -4396,20 +5229,20 @@
 		'	vec4 p4 = grad4(j1.w, ip);\n' +
 		'\n' +
 		// Normalise gradients
-		'	vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2, p2), dot(p3,p3)));\n' +
+		'	vec4 norm = taylorInvSqrt(vec4(dot(p0, p0), dot(p1, p1), dot(p2, p2), dot(p3, p3)));\n' +
 		'	p0 *= norm.x;\n' +
 		'	p1 *= norm.y;\n' +
 		'	p2 *= norm.z;\n' +
 		'	p3 *= norm.w;\n' +
-		'	p4 *= taylorInvSqrt(dot(p4,p4));\n' +
+		'	p4 *= taylorInvSqrt(dot(p4, p4));\n' +
 		'\n' +
 		// Mix contributions from the five corners
-		'	vec3 m0 = max(0.6 - vec3(dot(x0,x0), dot(x1,x1), dot(x2,x2)), 0.0);\n' +
-		'	vec2 m1 = max(0.6 - vec2(dot(x3,x3), dot(x4,x4) ), 0.0);\n' +
+		'	vec3 m0 = max(0.6 - vec3(dot(x0, x0), dot(x1, x1), dot(x2, x2)), 0.0);\n' +
+		'	vec2 m1 = max(0.6 - vec2(dot(x3, x3), dot(x4, x4)), 0.0);\n' +
 		'	m0 = m0 * m0;\n' +
 		'	m1 = m1 * m1;\n' +
-		'	return 49.0 * ( dot(m0*m0, vec3( dot( p0, x0 ), dot( p1, x1 ), dot( p2, x2 )))\n' +
-		'							+ dot(m1*m1, vec2( dot( p3, x3 ), dot( p4, x4 ) ) ) ) ;\n' +
+		'	return 49.0 * (dot(m0*m0, vec3(dot(p0, x0), dot(p1, x1), dot(p2, x2)))\n' +
+		'							+ dot(m1*m1, vec2(dot(p3, x3), dot(p4, x4)))) ;\n' +
 		'}\n' +
 		'#endif\n';
 

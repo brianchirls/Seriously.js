@@ -1,18 +1,18 @@
+/* global define, require */
 (function (root, factory) {
 	'use strict';
 
 	if (typeof exports === 'object') {
 		// Node/CommonJS
-		factory(root.require('seriously'));
-	} else if (typeof root.define === 'function' && root.define.amd) {
+		factory(require('seriously'));
+	} else if (typeof define === 'function' && define.amd) {
 		// AMD. Register as an anonymous module.
-		root.define(['seriously'], factory);
+		define(['seriously'], factory);
 	} else {
-		var Seriously = root.Seriously;
-		if (!Seriously) {
-			Seriously = { plugin: function (name, opt) { this[name] = opt; } };
+		if (!root.Seriously) {
+			root.Seriously = { plugin: function (name, opt) { this[name] = opt; } };
 		}
-		factory(Seriously);
+		factory(root.Seriously);
 	}
 }(this, function (Seriously, undefined) {
 	'use strict';
@@ -31,12 +31,13 @@
 				'varying vec4 vPosition;\n' +
 				'\n' +
 				'uniform sampler2D source;\n' +
-				'uniform float resolution;\n' +
+				'uniform vec2 resolution;\n' +
 				'\n' +
-				'float n0 = 97.0 / resolution;\n' +
-				'float n1 = 15.0 / resolution;\n' +
-				'float n2 = 97.0 / resolution;\n' +
-				'float n3 = 9.7 / resolution;\n' +
+				'float res = resolution.x;\n' +
+				'float n0 = 97.0 / res;\n' +
+				'float n1 = 15.0 / res;\n' +
+				'float n2 = 97.0 / res;\n' +
+				'float n3 = 9.7 / res;\n' +
 				'float total = n2 + ( 4.0 * n0 ) + ( 4.0 * n1 );\n' +
 				'const vec3 div3 = vec3(1.0 / 3.0);\n' +
 				'\n' +
@@ -72,21 +73,15 @@
 				'}\n';
 			return shaderSource;
 		},
-		inPlace: true,
+		inPlace: false,
 		inputs: {
 			source: {
 				type: 'image',
 				uniform: 'source',
 				shaderDirty: false
-			},
-			resolution: {
-				type: 'number',
-				uniform: 'resolution',
-				min: 1,
-				defaultValue: 640
 			}
 		},
 		title: 'Sketch',
 		description: 'Pencil/charcoal sketch'
 	});
-}))
+}));

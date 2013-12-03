@@ -26,18 +26,28 @@ Full documentation is in progress at the [wiki](https://github.com/brianchirls/S
 - Ascii Text
 - Bleach Bypass
 - Blend
+- Brightness/Contrast
 - Channel Mapping
 - Chroma Key
-- Color generator
+- Color Complements
+- Color Generator
 - [Color Cube](http://www.youtube.com/watch?v=rfQ8rKGTVlg&t=24m30s)
 - [Daltonize](http://www.daltonize.org/p/about.html)
+- Directional Blur
+- Dither
 - Edge Detect
 - Emboss
 - Exposure Adjust
 - Fader
+- False Color
+- Film Grain
+- Gaussian Blur
 - Hex Tiles
+- Highlights/Shadows
 - Hue/Saturation Adjust
 - Invert
+- Kaleidoscope
+- Linear Transfer
 - Luma Key
 - Night Vision
 - Ripple
@@ -48,6 +58,7 @@ Full documentation is in progress at the [wiki](https://github.com/brianchirls/S
 - Tone Adjust
 - TV Glitch
 - Vignette
+- White Balance
 
 ### Requirements
 
@@ -60,7 +71,7 @@ in the near future. There are no public plans for Internet Explorer to
 support WebGL.
 
 Even though a browser may support WebGL, the ability to run it depends
-on the system's graphics card. Serioulsy.js is heavily optimized, so most
+on the system's graphics card. Seriously.js is heavily optimized, so most
 modern desktops and notebooks should be sufficient. Older systems may
 run slower, especially when using high-resolution videos.
 

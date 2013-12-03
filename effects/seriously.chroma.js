@@ -1,18 +1,18 @@
+/* global define, require */
 (function (root, factory) {
 	'use strict';
 
 	if (typeof exports === 'object') {
 		// Node/CommonJS
-		factory(root.require('seriously'));
-	} else if (typeof root.define === 'function' && root.define.amd) {
+		factory(require('seriously'));
+	} else if (typeof define === 'function' && define.amd) {
 		// AMD. Register as an anonymous module.
-		root.define(['seriously'], factory);
+		define(['seriously'], factory);
 	} else {
-		var Seriously = root.Seriously;
-		if (!Seriously) {
-			Seriously = { plugin: function (name, opt) { this[name] = opt; } };
+		if (!root.Seriously) {
+			root.Seriously = { plugin: function (name, opt) { this[name] = opt; } };
 		}
-		factory(Seriously);
+		factory(root.Seriously);
 	}
 }(this, function (Seriously, undefined) {
 	'use strict';
@@ -26,108 +26,115 @@
 	*/
 	Seriously.plugin('chroma', {
 		shader: function (inputs, shaderSource) {
-			shaderSource.vertex = '#ifdef GL_ES\n' +
-				'precision mediump float;\n' +
-				'#endif \n' +
-				'\n' +
-				'attribute vec4 position;\n' +
-				'attribute vec2 texCoord;\n' +
-				'\n' +
-				'uniform vec3 srsSize;\n' +
-				'uniform mat4 projection;\n' +
-				'uniform mat4 transform;\n' +
-				'\n' +
-				'varying vec2 vTexCoord;\n' +
-				'varying vec4 vPosition;\n' +
-				'\n' +
-				'uniform vec4 screen;\n' +
-				'uniform float balance;\n' +
-				'varying float screenSat;\n' +
-				'varying vec3 screenPrimary;\n' +
-				'\n' +
-				'void main(void) {\n' +
-				'	float fmin = min(min(screen.r, screen.g), screen.b);    //Min. value of RGB\n' +
-				'	float fmax = max(max(screen.r, screen.g), screen.b);    //Max. value of RGB\n' +
-				'	float secondaryComponents;\n' +
-				'\n' +
-				//'	luminance = (fmax + fmin) / 2.0; // Luminance\n' +
-				//'	screenSat = fmax - fmin; // Saturation\n' +
-				'	screenPrimary = step(fmax, screen.rgb);\n' +
-				'	secondaryComponents = dot(1.0 - screenPrimary, screen.rgb);\n' +
-				'	screenSat = fmax - mix(secondaryComponents - fmin, secondaryComponents / 2.0, balance);\n' +
-				'\n' +
-			'	vec4 pos = position * vec4(srsSize.x / srsSize.y, 1.0, 1.0, 1.0);\n' +
-			'	gl_Position = transform * pos;\n' +
-			'	gl_Position.z -= srsSize.z;\n' +
-			'	gl_Position = projection * gl_Position;\n' +
-			'	gl_Position.z = 0.0;\n' + //prevent near clipping
-			'	vTexCoord = vec2(texCoord.s, texCoord.t);\n' +
-				'}\n';
-			shaderSource.fragment = '#ifdef GL_ES\n' +
-				'precision mediump float;\n' +
-				'#endif\n' +
-				'\n' +
-				'varying vec2 vTexCoord;\n' +
-				'varying vec4 vPosition;\n' +
-				'\n' +
-				'uniform sampler2D source;\n' +
-				'uniform vec4 screen;\n' +
-				'uniform float screenWeight;\n' +
-				'uniform float balance;\n' +
-				'uniform float clipBlack;\n' +
-				'uniform float clipWhite;\n' +
-				'uniform bool mask;\n' +
-				'\n' +
-				'varying float screenSat;\n' +
-				'varying vec3 screenPrimary;\n' +
-				'\n' +
-				'vec4 sourcePixel;\n' +
-				'\n' +
-				'const mat3 yuv = mat3(\n' +
-				'	54.213, 182.376, 18.411,\n' +
-				'	-54.213, -182.376, 236.589,\n' +
-				'	200.787, -182.376, -18.411\n' +
-				');\n' +
-				'\n' +
-				'float round(float n) {\n' +
-				'	return floor(n) + step(0.5, fract(n));\n' +
-				'}\n' +
-				'\n' +
-				'void main(void) {\n' +
-				'	float pixelSat, luminance, secondaryComponents;\n' +
-				'	vec3 pixelPrimary;\n' +
-				'	vec4 pixel = vec4(0.0);\n' +
-				'	sourcePixel = texture2D(source, vTexCoord);\n' +
+			shaderSource.vertex = [
+				'#ifdef GL_ES',
+				'precision mediump float;',
+				'#endif ',
 
-				'	float fmin = min(min(sourcePixel.r, sourcePixel.g), sourcePixel.b);    //Min. value of RGB\n' +
-				'	float fmax = max(max(sourcePixel.r, sourcePixel.g), sourcePixel.b);    //Max. value of RGB\n' +
-				//'	float delta = fmax - fmin;             //Delta RGB value\n' +
-				'\n' +
-				//'	luminance = (fmax + fmin) / 2.0; // Luminance\n' +
-				//'	luminance = dot(vec3(0.3, 0.59, 0.11), sourcePixel.rgb); // Luminance\n' +
-				'	luminance = fmax; // Luminance\n' +
-				'	pixelPrimary = step(fmax, sourcePixel.rgb);\n' +
-				//'	pixelSat = delta; // Saturation\n' +
-				'	secondaryComponents = dot(1.0 - pixelPrimary, sourcePixel.rgb);\n' +
-				'	pixelSat = fmax - mix(secondaryComponents - fmin, secondaryComponents / 2.0, balance);\n' + // Saturation
-				'	if (pixelSat < 0.1 || luminance < 0.1 || any(notEqual(pixelPrimary, screenPrimary))) {\n' +
-				'		pixel = sourcePixel;\n' +
-				//'		pixel = vec4(1.0);\n' +
+				'attribute vec4 position;',
+				'attribute vec2 texCoord;',
 
-				'	} else if (pixelSat < screenSat) {\n' +
-				'		float alpha = 1.0 - pixelSat / screenSat;\n' +
-				'		alpha = smoothstep(clipBlack, clipWhite, alpha);\n' +
-				//'		float despill = alpha / screenWeight;\n' +
-				'		pixel = vec4((sourcePixel.rgb - (1.0 - alpha) * screen.rgb * screenWeight) / alpha, alpha);\n' +
-				//'		pixel = vec4(vec3(alpha), 1.0);\n' +
-				'	}\n' +
+				'uniform vec2 resolution;',
+				'uniform mat4 transform;',
 
-				'	if (mask) {\n' +
-				'		gl_FragColor = vec4(vec3(pixel.a), 1.0);\n' +
-				'	} else {\n' +
-				'		gl_FragColor = pixel;\n' +
-				'	}\n' +
-				'}\n';
+				'varying vec2 vTexCoord;',
+				'varying vec4 vPosition;',
+
+				'uniform vec4 screen;',
+				'uniform float balance;',
+				'varying float screenSat;',
+				'varying vec3 screenPrimary;',
+
+				'void main(void) {',
+				'	float fmin = min(min(screen.r, screen.g), screen.b);    //Min. value of RGB',
+				'	float fmax = max(max(screen.r, screen.g), screen.b);    //Max. value of RGB',
+				'	float secondaryComponents;',
+
+				//'	luminance = (fmax + fmin) / 2.0; // Luminance',
+				//'	screenSat = fmax - fmin; // Saturation',
+				'	screenPrimary = step(fmax, screen.rgb);',
+				'	secondaryComponents = dot(1.0 - screenPrimary, screen.rgb);',
+				'	screenSat = fmax - mix(secondaryComponents - fmin, secondaryComponents / 2.0, balance);',
+
+				// first convert to screen space
+				'	vec4 screenPosition = vec4(position.xy * resolution / 2.0, position.z, position.w);',
+				'	screenPosition = transform * screenPosition;',
+
+				// convert back to OpenGL coords
+				'	gl_Position = screenPosition;',
+				'	gl_Position.xy = screenPosition.xy * 2.0 / resolution;',
+				'	gl_Position.z = screenPosition.z * 2.0 / (resolution.x / resolution.y);',
+				'	vTexCoord = texCoord;',
+				'	vPosition = gl_Position;',
+				'}'
+			].join('\n');
+			shaderSource.fragment = [
+				'#ifdef GL_ES',
+				'precision mediump float;',
+				'#endif',
+
+				'varying vec2 vTexCoord;',
+				'varying vec4 vPosition;',
+
+				'uniform sampler2D source;',
+				'uniform vec4 screen;',
+				'uniform float screenWeight;',
+				'uniform float balance;',
+				'uniform float clipBlack;',
+				'uniform float clipWhite;',
+				'uniform bool mask;',
+
+				'varying float screenSat;',
+				'varying vec3 screenPrimary;',
+
+				'vec4 sourcePixel;',
+
+				'const mat3 yuv = mat3(',
+				'	54.213, 182.376, 18.411,',
+				'	-54.213, -182.376, 236.589,',
+				'	200.787, -182.376, -18.411',
+				');',
+
+				'float round(float n) {',
+				'	return floor(n) + step(0.5, fract(n));',
+				'}',
+
+				'void main(void) {',
+				'	float pixelSat, luminance, secondaryComponents;',
+				'	vec3 pixelPrimary;',
+				'	vec4 pixel = vec4(0.0);',
+				'	sourcePixel = texture2D(source, vTexCoord);',
+
+				'	float fmin = min(min(sourcePixel.r, sourcePixel.g), sourcePixel.b);    //Min. value of RGB',
+				'	float fmax = max(max(sourcePixel.r, sourcePixel.g), sourcePixel.b);    //Max. value of RGB',
+				//'	float delta = fmax - fmin;             //Delta RGB value',
+
+				//'	luminance = (fmax + fmin) / 2.0; // Luminance',
+				//'	luminance = dot(vec3(0.3, 0.59, 0.11), sourcePixel.rgb); // Luminance',
+				'	luminance = fmax; // Luminance',
+				'	pixelPrimary = step(fmax, sourcePixel.rgb);',
+				//'	pixelSat = delta; // Saturation',
+				'	secondaryComponents = dot(1.0 - pixelPrimary, sourcePixel.rgb);',
+				'	pixelSat = fmax - mix(secondaryComponents - fmin, secondaryComponents / 2.0, balance);', // Saturation
+				'	if (pixelSat < 0.1 || luminance < 0.1 || any(notEqual(pixelPrimary, screenPrimary))) {',
+				'		pixel = sourcePixel;',
+				//'		pixel = vec4(1.0);',
+
+				'	} else if (pixelSat < screenSat) {',
+				'		float alpha = 1.0 - pixelSat / screenSat;',
+				'		alpha = smoothstep(clipBlack, clipWhite, alpha);',
+				//'		float despill = alpha / screenWeight;',
+				'		pixel = vec4((sourcePixel.rgb - (1.0 - alpha) * screen.rgb * screenWeight) / alpha, alpha);',
+				//'		pixel = vec4(vec3(alpha), 1.0);',
+				'	}',
+
+				'	if (mask) {',
+				'		gl_FragColor = vec4(vec3(pixel.a), 1.0);',
+				'	} else {',
+				'		gl_FragColor = pixel;',
+				'	}',
+				'}'
+			].join('\n');
 			return shaderSource;
 		},
 		inPlace: true,

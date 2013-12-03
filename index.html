@@ -5,20 +5,30 @@
 		<title>Seriously.js</title>
 		<!--<script type="text/javascript" src="lib/webgl-debug.js"></script> -->
 		<script type="text/javascript" src="seriously.js"></script>
+		<script type="text/javascript" src="transforms/seriously.transform3d.js"></script>
 		<script type="text/javascript" src="effects/seriously.ascii.js"></script>
 		<script type="text/javascript" src="effects/seriously.bleach-bypass.js"></script>
 		<script type="text/javascript" src="effects/seriously.blend.js"></script>
+		<script type="text/javascript" src="effects/seriously.brightness-contrast.js"></script>
 		<script type="text/javascript" src="effects/seriously.chroma.js"></script>
 		<script type="text/javascript" src="effects/seriously.color.js"></script>
+		<script type="text/javascript" src="effects/seriously.colorcomplements.js"></script>
 		<script type="text/javascript" src="effects/seriously.daltonize.js"></script>
+		<script type="text/javascript" src="effects/seriously.dither.js"></script>
 		<script type="text/javascript" src="effects/seriously.edge.js"></script>
 		<script type="text/javascript" src="effects/seriously.emboss.js"></script>
 		<script type="text/javascript" src="effects/seriously.exposure.js"></script>
+		<script type="text/javascript" src="effects/seriously.falsecolor.js"></script>
+		<script type="text/javascript" src="effects/seriously.highlights-shadows.js"></script>
+		<script type="text/javascript" src="effects/seriously.kaleidoscope.js"></script>
 		<script type="text/javascript" src="effects/seriously.lumakey.js"></script>
 		<script type="text/javascript" src="effects/seriously.fader.js"></script>
+		<script type="text/javascript" src="effects/seriously.filmgrain.js"></script>
+		<script type="text/javascript" src="effects/seriously.blur.js"></script>
 		<script type="text/javascript" src="effects/seriously.hue-saturation.js"></script>
 		<script type="text/javascript" src="effects/seriously.hex.js"></script>
 		<script type="text/javascript" src="effects/seriously.invert.js"></script>
+		<script type="text/javascript" src="effects/seriously.directionblur.js"></script>
 		<script type="text/javascript" src="effects/seriously.nightvision.js"></script>
 		<script type="text/javascript" src="effects/seriously.noise.js"></script>
 		<script type="text/javascript" src="effects/seriously.ripple.js"></script>
@@ -37,6 +47,10 @@
 		
 		img, video {
 			display: none;
+		}
+
+		canvas {
+			border: black solid 1px;
 		}
 
 		#transforms input[type=range] {
@@ -108,18 +122,6 @@
 					};
 		}());
 
-		function updateTime() {
-			var i;
-			for (i = 0; i < timeNodes.length; i++) {
-				if ('time' in timeNodes[i]) {
-					timeNodes[i].time = Date.now();
-				} else if ('timer' in timeNodes[i]) {
-					timeNodes[i].timer = Date.now();
-				}
-			}
-			requestAnimFrame(updateTime);
-		}
-
 		//for now, only effects that process a single image
 		for (e in effects) {
 			effect = effects[e];
@@ -146,33 +148,17 @@
 		window.addEventListener('DOMContentLoaded', function() {
 			var s = Seriously(),
 				blend = s.effect('blend'),
-				original = s.effect('split'),
-				source = s.effect('split'),
+				source = s.transform('reformat'),
+				transform2d = s.transform('2d'),
+				transform3d = s.transform('3d'),
+				//perspective = s.transform('perspective'),
 				options = document.getElementById('options'),
 				img = document.getElementById('img'),
 				video = document.getElementById('video'),
 				select = document.getElementById('effects'),
 				active,
-				translateZ, rotateX, rotateY, rotateZ, perspective;
-
-			function updateTransforms() {
-				blend.reset();
-				blend.translate(0, 0, -translateZ.value);
-				blend.rotateX(rotateX.value * Math.PI / 180);
-				blend.rotateY(rotateY.value * Math.PI / 180);
-				blend.rotateZ(rotateZ.value * Math.PI / 180);
-			}
-
-			function updateTimers() {
-				if (active && active.effect.timer !== undefined) {
-					active.effect.timer = Date.now();
-				}
-				if (active && active.effect.time !== undefined) {
-					active.effect.time = Date.now();
-				}
-				setTimeout(updateTimers, 30);
-			}
-			updateTimers();
+				webCamStream,
+				translateZ, rotateX, rotateY, rotateZ;
 
 			for (e in effects) {
 				if (!Seriously.incompatible(e)) {
@@ -184,40 +170,68 @@
 				}
 			}
 
-			source.sourceA = '#colorbars';
-			source.split = 0;
+			source.source = '#colorbars';
+			source.width = 720;
+			source.height = 540;
 
-			original.sourceA = '#colorbars';
-			original.split = 0;
-			original.translate(-1.3, -0.75);
-			original.scale(0.2);
+			transform2d.source = source;
+			transform2d.scale(0.2);
+			transform2d.translate(-260, -200);
+			//todo: translate to lower left corner
 
-			blend.top = original;
+			blend.top = transform2d;
 			blend.bottom = source;
 
-			target = s.target('#canvas');
-			target.source = blend;
+			transform3d.source = blend;
 
-			s.go();
-			updateTime();
+			target = s.target('#canvas');
+			target.source = transform3d;
+
+			s.go(function () {
+				if (active && active.effect.timer !== undefined) {
+					active.effect.timer = Date.now();
+				}
+				if (active && active.effect.time !== undefined) {
+					active.effect.time = Date.now();
+				}
+			});
 
 			translateZ = document.getElementById('translate-z');
-			translateZ.addEventListener('change', updateTransforms);
+			translateZ.addEventListener('input', function () {
+				transform3d.translateZ = -parseFloat(this.value);
+			});
+
 			rotateX = document.getElementById('rotate-x');
-			rotateX.addEventListener('change', updateTransforms);
+			rotateX.addEventListener('input', function () {
+				transform3d.rotationX = parseFloat(this.value);
+			});
+
 			rotateY = document.getElementById('rotate-y');
-			rotateY.addEventListener('change', updateTransforms);
+			rotateY.addEventListener('input', function () {
+				transform3d.rotationY = parseFloat(this.value);
+			});
+
 			rotateZ = document.getElementById('rotate-z');
-			rotateZ.addEventListener('change', updateTransforms);
+			rotateZ.addEventListener('input', function () {
+				transform3d.rotationZ = parseFloat(this.value);
+			});
+
+			/*
 			perspective = document.getElementById('perspective');
-			perspective.addEventListener('change', function () {
+			perspective.addEventListener('input', function () {
 				blend.perspective(this.value);
 			});
+			*/
 
 			document.getElementById('colorbutton').addEventListener('click', function() {
 				video.pause();
-				original.sourceA = '#colorbars';
-				source.sourceA = '#colorbars';
+				if (webCamStream && webCamStream.stop) {
+					webCamStream.stop();
+				}
+				webCamStream = null;
+				source.source = '#colorbars';
+				target.height = source.original.naturalHeight;
+				target.width = source.original.naturalWidth;
 			});
 
 			target.original.addEventListener('dragover', function(event) {
@@ -226,7 +240,6 @@
 			});
 
 			target.original.addEventListener('drop', function(event) {
-console.log('Drop!');
 				event.preventDefault();
 				var reader = new FileReader,
 					file = event.dataTransfer.files[0],
@@ -235,16 +248,15 @@ console.log('Drop!');
 				
 				reader.onload = function(event) {
 					function resize() {
-						console.log('resize!');
-						//output.width = element.width;
-						target.height = target.original.width * element.height / element.width;
+						target.height = element.videoHeight || element.naturalHeight || element.height;
+						target.width = element.videoWidth || element.naturalWidth || element.width;
 						if (element.play) {
 							element.currentTime = 0;
 							element.play();
 						}
 						target.render();
 					}
-console.log(event.target.result);
+
 					var element;
 					if (medium === 'image') {
 						element = img;
@@ -256,14 +268,14 @@ console.log(event.target.result);
 						if (element.videoWidth) {
 							resize();
 						} else {
-							element.addEventListener('loadedmetadata', resize);						}
+							element.addEventListener('loadedmetadata', resize);
+						}
 						//element.play();
 					} else {
 						return false;
 					}
 					
-					original.sourceA = element;
-					source.sourceA = element;
+					source.source = element;
 				};
 
 				if (medium === 'image' || medium === 'video') {
@@ -276,7 +288,8 @@ console.log(event.target.result);
 			gUM && document.getElementById('camera').addEventListener('click', function () {
 				gUM.call(navigator, { video: true }, function(stream) {
 					function resize() {
-						target.height = target.original.width * video.videoHeight / video.videoWidth;
+						target.height = video.videoHeight;
+						target.width = video.videoWidth;
 					}
 
 					if (window.webkitURL) {
@@ -284,14 +297,15 @@ console.log(event.target.result);
 					} else {
 						video.src = stream;
 					}
+
+					webCamStream = stream;
 					
 					video.play();
 					if (video.videoWidth) {
 						resize();
 					}
 					video.onloadedmetadata = video.onplay = resize;
-					original.sourceA = video;
-					source.sourceA = video;
+					source.source = video;
 				}, function() {
 					console.log('getUserMedia failed');
 				});

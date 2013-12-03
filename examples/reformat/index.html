@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Seriously.js Reformat Example</title>
+	<style type="text/css">
+		canvas {
+			display: block;
+			margin: 10px;
+			border: black solid 1px;
+		}
+	</style>
+</head>
+<body>
+	<h2>Source Canvas</h2>
+	<canvas id="source" width="400" height="300"></canvas>
+	<h2>Target Canvas</h2>
+	<canvas id="canvas" width="480" height="270"></canvas>
+	<div>
+		<label for="mode">Reformat Mode</label>
+		<select id="mode">
+			<option value="contain" selected>Contain</option>
+			<option value="cover">Cover</option>
+			<option value="distort">Distort</option>
+			<option value="width">Width</option>
+			<option value="height">Height</option>
+		</select>
+	</div>
+
+	<script src="../../seriously.js"></script>
+	<script>
+		(function (Seriously) {
+			// declare our variables
+			var source = document.getElementById('source'),
+				ctx = source.getContext('2d'),
+
+				seriously, // the main object that holds the entire composition
+				reformat, // reformat node
+				target; // a wrapper object for our target canvas
+
+			seriously = new Seriously();
+			reformat = seriously.transform('reformat');
+			target = seriously.target('#canvas');
+
+			//set up reformat parameters
+			reformat.width = 480;
+			reformat.height = 270;
+			//reformat.mode = '#mode';
+			reformat.mode = 'contain';
+			document.getElementById('mode').addEventListener('change', function () {
+				reformat.mode = this.value;
+			}, false);
+
+			// connect all our nodes in the right order
+			reformat.source = '#source';
+			target.source = reformat;
+
+			//draw source image
+			ctx.fillStyle = 'black';
+			ctx.fillRect(0, 0, source.width, source.height);
+			ctx.strokeStyle = 'red';
+			ctx.lineWidth = 8;
+			ctx.beginPath();
+			ctx.arc(source.width / 2, source.height / 2, 120, 0, Math.PI * 2, true);
+			ctx.stroke();
+
+			ctx.strokeStyle = 'blue';
+			ctx.beginPath();
+			ctx.arc(source.width / 2 - 153, source.height / 2, 25, 0, Math.PI * 2, true);
+			ctx.stroke();
+
+			ctx.beginPath();
+			ctx.arc(source.width / 2 + 153, source.height / 2, 25, 0, Math.PI * 2, true);
+			ctx.stroke();
+
+			ctx.strokeStyle = 'green';
+			ctx.lineWidth = 2;
+			ctx.beginPath();
+			ctx.rect(0, 0, source.width, source.height);
+			ctx.stroke();
+
+			//render
+			seriously.go();
+		}(window.Seriously));
+	</script>
+</body>
+</html>

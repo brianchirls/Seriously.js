@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Seriously.js Blur Example</title>
+	<style type="text/css">
+		img {
+			display: none;
+		}
+
+		#controls {
+			display: inline-block;
+			vertical-align: top;
+		}
+
+		#controls input {
+			width: 400px;
+		}
+	</style>
+</head>
+<body>
+	<img src="../../examples/images/robot.jpg" id="robot"/>
+	<canvas id="canvas" width="640" height="619"></canvas>
+	<div id="controls">
+		<div><label for="amount">Blur</label><input type="range" id="amount" min="0" max="1" step="0.001" value="0.5"/></div>
+	</div>
+	<script src="../../lib/require.js"></script>
+	<script>
+		require.config({
+			baseUrl: '../../'
+		});
+
+		require([
+			'seriously',
+			'effects/seriously.blur'
+		], function (Seriously) {
+			// declare our variables
+			var seriously, // the main object that holds the entire composition
+				blur,
+				target; // a wrapper object for our target canvas
+
+			seriously = new Seriously();
+			target = seriously.target('#canvas');
+			blur = seriously.effect('blur');
+			blur.source = seriously.source('#robot');
+
+			blur.amount = '#amount';
+
+			target.source = blur;
+			seriously.go();
+		});
+	</script>
+</body>
+</html>

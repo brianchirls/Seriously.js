@@ -1,18 +1,18 @@
+/* global define, require */
 (function (root, factory) {
 	'use strict';
 
 	if (typeof exports === 'object') {
 		// Node/CommonJS
-		factory(root.require('seriously'));
-	} else if (typeof root.define === 'function' && root.define.amd) {
+		factory(require('seriously'));
+	} else if (typeof define === 'function' && define.amd) {
 		// AMD. Register as an anonymous module.
-		root.define(['seriously'], factory);
+		define(['seriously'], factory);
 	} else {
-		var Seriously = root.Seriously;
-		if (!Seriously) {
-			Seriously = { plugin: function (name, opt) { this[name] = opt; } };
+		if (!root.Seriously) {
+			root.Seriously = { plugin: function (name, opt) { this[name] = opt; } };
 		}
-		factory(Seriously);
+		factory(root.Seriously);
 	}
 }(this, function (Seriously, undefined) {
 	'use strict';
@@ -34,7 +34,7 @@
 					'\n' +
 					'void main(void) {\n' +
 					'	vec4 pixel = texture2D(source, vTexCoord);\n' +
-					'	float darken = 2.0 * abs( fract(vTexCoord.y * lines) - 0.5);\n' +
+					'	float darken = 2.0 * abs( fract(vPosition.y * lines / 2.0) - 0.5);\n' +
 					'	darken = clamp(darken - width + 0.5, 0.0, 1.0);\n' +
 					'	darken = 1.0 - ((1.0 - darken) * intensity);\n' +
 					'	gl_FragColor = vec4(pixel.rgb * darken, 1.0);\n' +
