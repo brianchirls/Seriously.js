@@ -1280,6 +1280,11 @@
 			} else if (this.sources && this.sources.source) {
 				width = this.sources.source.width;
 				height = this.sources.source.height;
+			} else if (this.inputs && this.inputs.width) {
+				width = this.inputs.width;
+				height = this.inputs.height || width;
+			} else if (this.inputs && this.inputs.height) {
+				width = height = this.inputs.height;
 			} else {
 				//this node will be responsible for calculating its own size
 				width = 1;
