@@ -58,14 +58,13 @@
 
 				progress -= (Date.now() - lastDraw) / 2000;
 				progress = Math.max(0, progress);
-				console.log(progress);
 				if (progress) {
 					amount = easeInOut(progress);
 					a.translateX = 640 * amount;
 					b.translateX = -640 * (1 - amount);
 					moblur.amount = 4 - Math.abs(amount - 0.5) * 8;
 					target.source = moblur;
-					Seriously.util.requestAnimationFrame(draw);
+					requestAnimationFrame(draw);
 				} else {
 					a.reset();
 					b.reset();
