@@ -1621,6 +1621,7 @@
 
 			//todo: set up frame buffer(s), inputs, transforms, stencils, draw method. allow plugin to override
 
+			this.uniforms.transform = identity;
 			this.inputs = {};
 			for (name in this.effect.inputs) {
 				if (this.effect.inputs.hasOwnProperty(name)) {
@@ -1831,7 +1832,7 @@
 					sourceKeys = Object.keys(this.sources);
 					if (this.inPlace === true && sourceKeys.length === 1) {
 						source = this.sources[sourceKeys[0]];
-						this.uniforms.transform = source.cumulativeMatrix || identity;
+						this.uniforms.transform = source && source.cumulativeMatrix || identity;
 					} else {
 						this.uniforms.transform = identity;
 					}
@@ -3754,7 +3755,7 @@
 			rafId = null;
 		};
 
-		this.render = function (options) {
+		this.render = function () {
 			var i;
 			for (i = 0; i < targets.length; i++) {
 				targets[i].render(options);
