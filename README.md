@@ -53,6 +53,7 @@ Full documentation is in progress at the [wiki](https://github.com/brianchirls/S
 - Ripple
 - Scanlines
 - Sepia tone
+- Simplex Noise
 - Sketch
 - Split
 - Tone Adjust

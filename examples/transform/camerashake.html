@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Seriously.js Camera Shake Example</title>
+	<style type="text/css">
+		canvas {
+			display: block;
+			margin: auto;
+			border: black solid 1px;
+		}
+
+		#robot {
+			display: none;
+		}
+
+		input[type=range] {
+			width: 400px;
+		}
+
+		label {
+			display: block;
+		}
+
+		#controls {
+			width: 960px;
+			margin: auto;
+		}
+	</style>
+</head>
+<body>
+	<img id="robot" src="../images/robot.jpg"/>
+	<canvas id="canvas" width="960" height="540"></canvas>
+	<div id="controls">
+		<label><input id="amplitudeX" type="range" min="0" max="20" step="1" value="8"/> Amplitude X</label>
+		<label><input id="amplitudeY" type="range" min="0" max="20" step="1" value="8"/> Amplitude Y</label>
+		<label><input id="rotation" type="range" min="0" max="20" step="1" value="2"/> Rotation</label>
+		<label><input id="frequency" type="range" min="0" max="10" step="0.01" value="1"/> Frequency</label>
+		<label><input id="octaves" type="range" min="1" max="4" step="1" value="1"/> Octaves</label>
+	</div>
+
+	<script src="../../seriously.js"></script>
+	<script src="../../transforms/seriously.camerashake.js"></script>
+	<script>
+		(function (Seriously) {
+			// declare our variables
+			var source = document.getElementById('source'),
+				seriously, // the main object that holds the entire composition
+				shake, // camerashake node
+				reformat,
+				scale,
+				target; // a wrapper object for our target canvas
+
+			seriously = new Seriously();
+			shake = seriously.transform('camerashake');
+			target = seriously.target('#canvas');
+			reformat = seriously.transform('reformat');
+			scale = seriously.transform('2d');
+
+			//set up shake parameters
+			//shake.amplitudeY = '#amplitudeY';
+			document.getElementById('amplitudeX').addEventListener('input', function () {
+				shake.amplitudeX = this.value;
+			}, false);
+
+			document.getElementById('amplitudeY').addEventListener('input', function () {
+				shake.amplitudeY = this.value;
+			}, false);
+
+			document.getElementById('rotation').addEventListener('input', function () {
+				shake.rotation = this.value;
+			}, false);
+
+			document.getElementById('frequency').addEventListener('input', function () {
+				shake.frequency = this.value;
+			}, false);
+
+			document.getElementById('octaves').addEventListener('input', function () {
+				shake.octaves = this.value;
+			}, false);
+
+			// connect all our nodes in the right order
+			reformat.source = '#robot';
+			reformat.width = 960;
+			reformat.height = 540;
+			reformat.mode = 'cover';
+
+			scale.source = reformat;
+			scale.translateY = -80;
+			scale.scale(1.2);
+
+			shake.source = scale;
+			shake.amplitudeX = 8;
+			shake.amplitudeY = 8;
+			shake.frequency = 1;
+			shake.rotation = 2;
+
+			target.source = shake;
+
+			//render
+			seriously.go(function () {
+				shake.time = Date.now() / 200;
+			});
+		}(window.Seriously));
+	</script>
+</body>
+</html>
