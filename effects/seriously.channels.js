@@ -38,8 +38,7 @@
 		var sources = [],
 			shaders = [],
 			matrices = [],
-			me = this,
-			options = {};
+			me = this;
 
 		function validateChannel(value, input, name) {
 			var val;

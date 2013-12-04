@@ -192,7 +192,7 @@
 		}
 	},
 
-	requestAnimFrame = (function (){
+	requestAnimationFrame = (function (){
 		var lastTime = 0;
 		return  window.requestAnimationFrame ||
 				window.webkitRequestAnimationFrame ||
@@ -993,6 +993,8 @@
 			var i, node, media,
 				keepRunning = false;
 
+			rafId = null;
+
 			if (preCallbacks.length) {
 				keepRunning = true;
 				for (i = 0; i < preCallbacks.length; i++) {
@@ -1029,10 +1031,9 @@
 				}
 			}
 
-			if (keepRunning) {
-				rafId = requestAnimFrame(renderDaemon);
-			} else {
-				rafId = null;
+			//rafId may have been set again by a callback or in target.setDirty()
+			if (keepRunning && !rafId) {
+				rafId = requestAnimationFrame(renderDaemon);
 			}
 		}
 
@@ -3092,7 +3093,7 @@
 			this.dirty = true;
 
 			if (this.auto && !rafId) {
-				renderDaemon();
+				rafId = requestAnimationFrame(renderDaemon);
 			}
 		};
 
@@ -4350,7 +4351,7 @@
 		setTimeoutZero: setTimeoutZero,
 		ShaderProgram: ShaderProgram,
 		FrameBuffer: FrameBuffer,
-		requestAnimationFrame: requestAnimFrame,
+		requestAnimationFrame: requestAnimationFrame,
 		shader: {
 			makeNoise: 'float makeNoise(float u, float v, float timer) {\n' +
 						'	float x = u * v * mod(timer * 1000.0, 100.0);\n' +
