@@ -2628,6 +2628,8 @@
 				this.framebuffer.resize(this.width, this.height);
 			}
 
+			this.setDirty();
+
 			for (i = 0; i < this.targets.length; i++) {
 				target = this.targets[i];
 				target.resize();
