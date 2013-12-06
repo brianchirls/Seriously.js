@@ -4,15 +4,15 @@
 
 	if (typeof exports === 'object') {
 		// Node/CommonJS
-		factory(require('seriously'), require('jsep'));
+		factory(require('seriously'));
 	} else if (typeof define === 'function' && define.amd) {
 		// AMD. Register as an anonymous module.
-		define(['seriously', 'jsep'], factory);
+		define(['seriously'], factory);
 	} else {
 		if (!root.Seriously) {
 			root.Seriously = { plugin: function (name, opt) { this[name] = opt; } };
 		}
-		factory(root.Seriously, root.jsep);
+		factory(root.Seriously);
 	}
 }(this, function (Seriously, jsep, undefined) {
 	'use strict';
@@ -142,7 +142,9 @@
 			'<': true,
 			'>': true
 		},
-		objRegex = /(\w+)(\.\w+)?/;
+		objRegex = /(\w+)(\.\w+)?/,
+
+		jsep;
 
 	['E', 'LN2', 'LN10', 'LOG2E', 'LOG10E', 'PI', 'SQRT1_2', 'SQRT2'].forEach(function (key) {
 		symbols[key] = key;
@@ -459,4 +461,9 @@
 		inPlace: false,
 		title: 'Expression'
 	});
+
+	/*! jsep - v0.2.1 - 2013-12-06 5:34:35 PM */
+	!function(a){"use strict";var b=["-","!","~","+"],c=["+","-","*","/","%","&&","||","&","|","<<",">>","===","==","!==","!=",">=","<=","<",">"],d=c.length,e={"true":!0,"false":!1,"null":null},f="this",g=function(a){switch(a){case"||":return 1;case"&&":return 2;case"|":return 3;case"^":return 4;case"&":return 5;case"==":case"!=":case"===":case"!==":return 6;case"<":case">":case"<=":case">=":return 7;case"<<":case">>":case">>>":return 8;case"+":case"-":return 9;case"*":case"/":case"%":return 11}return 0},h=function(a,b,c){var d="||"===a||"&&"===a?s:r;return{type:d,operator:a,left:b,right:c}},i=function(a){return a>=48&&57>=a},j=function(a){return 36===a||95===a||a>=65&&90>=a||a>=97&&122>=a||a>=48&&57>=a},k="Compound",l="Identifier",m="MemberExpression",n="Literal",o="ThisExpression",p="CallExpression",q="UnaryExpression",r="BinaryExpression",s="LogicalExpression",t=(new RegExp("^['\"]"),new RegExp("^(\\d+(\\.\\d+)?)"),function(a){var r=0,s=a.length,t=function(){for(var b,c,d=[];s>r;)if(b=a[r],";"===b||","===b)r++;else if(c=v())d.push(c);else if(s>r)throw new Error("Unexpected '"+a[r]+"' at character "+r);return 1===d.length?d[0]:{type:k,body:d}},u=function(){var b,e,f,g;x();a:for(e=0;d>e;e++){for(b=c[e],g=b.length,f=0;g>f;f++)if(b[f]!==a[r+f])continue a;return r+=g,b}return!1},v=function(){var a,b,c,d,e,f,i,j;if(f=w(),b=u(),c=g(b),0===c)return f;if(e={value:b,prec:c},i=w(),!i)throw new Error("Expected expression after "+b+" at character "+r);for(d=[f,e,i];(b=u())&&(c=g(b),0!==c);){for(e={value:b,prec:c};d.length>2&&c<=d[d.length-2].prec;)i=d.pop(),b=d.pop().value,f=d.pop(),a=h(b,f,i),d.push(a);if(a=w(),!a)throw new Error("Expected expression after "+b+" at character "+r);d.push(e),d.push(a)}for(j=d.length-1,a=d[j];j>1;)a=h(d[j-1].value,d[j-2],a),j-=2;return a},w=function(){var c,d;return x(),c=a.charCodeAt(r),i(c)||46===c?y():39===c||34===c?z():j(c)?C():(d=b.indexOf(c))>=0?(r++,{type:q,operator:b[d],argument:w(),prefix:!0}):40===c?(r++,D()):!1},x=function(){for(var b=a.charCodeAt(r);32===b||9===b;)b=a.charCodeAt(++r)},y=function(){for(var b="";i(a.charCodeAt(r));)b+=a[r++];if("."===a[r])for(b+=a[r++];i(a.charCodeAt(r));)b+=a[r++];return{type:n,value:parseFloat(b),raw:b}},z=function(){for(var b,c="",d=a[r++],e=!1;s>r;){if(b=a[r++],b===d){e=!0;break}if("\\"===b)switch(b=a[r++]){case"n":c+="\n";break;case"r":c+="\r";break;case"t":c+="	";break;case"b":c+="\b";break;case"f":c+="\f";break;case"v":c+=""}else c+=b}if(!e)throw new Error('Unclosed quote after "'+c+'"');return{type:n,value:c,raw:d+c+d}},A=function(){for(var b,c,d=r;s>r&&(b=a.charCodeAt(r),j(b));)r++;return c=a.slice(d,r),e.hasOwnProperty(c)?{type:n,value:e[c],raw:c}:c===f?{type:o}:{type:l,name:c}},B=function(){for(var b,c,d=[];s>r;){if(x(),b=a[r],")"===b){r++;break}if(","===b)r++;else{if(c=v(),!c||c.type===k)throw new Error("Expected comma at character "+r);d.push(c)}}return d},C=function(){var b,c,d;for(c=A(),b=a[r];"."===b||"["===b||"("===b;){if("."===b)r++,c={type:m,computed:!1,object:c,property:A()};else if("["===b){if(d=r,r++,c={type:m,computed:!0,object:c,property:v()},x(),b=a[r],"]"!==b)throw new Error("Unclosed [ at character "+r);r++}else"("===b&&(r++,c={type:p,arguments:B(),callee:c});b=a[r]}return c},D=function(){var b=v();if(x(),")"===a[r])return r++,b;throw new Error("Unclosed ( at character "+r)};return t()});if(t.version="0.2.1","undefined"!=typeof exports)"undefined"!=typeof module&&module.exports&&(exports=module.exports=t),exports.do_parse=t;else{var u=a.jsep;a.jsep=t,t.noConflict=function(){var b=a.jsep;return a.jsep=u,b}}}(this || window);
+
+	jsep = window.jsep.noConflict();
 }));
