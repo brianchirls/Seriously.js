@@ -149,6 +149,7 @@
 		};
 
 		return {
+			commonShader: true,
 			shader: function (inputs, shaderSource) {
 				shaderSource.vertex = [
 					'precision mediump float;',

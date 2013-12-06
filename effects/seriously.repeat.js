@@ -101,6 +101,7 @@
 				initialize();
 				this.uniforms.transform = transform;
 			},
+			commonShader: true,
 			shader: function (inputs, shaderSource) {
 				shaderSource.vertex = [
 					'precision mediump float;',

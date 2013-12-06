@@ -22,6 +22,7 @@
 	//todo: find a way to not invert every single texture
 
 	Seriously.plugin('colorcube', {
+		commonShader: true,
 		shader: function (inputs, shaderSource) {
 			shaderSource.fragment = '#ifdef GL_ES\n' +
 				'precision mediump float;\n' +

@@ -885,6 +885,7 @@
 			glCanvas,
 			gl,
 			rectangleModel,
+			commonShaders = {},
 			baseShader,
 			baseVertexShader, baseFragmentShader,
 			Node, SourceNode, EffectNode, TransformNode, TargetNode,
@@ -960,12 +961,9 @@
 
 			for (i = 0; i < effects.length; i++) {
 				node = effects[i];
-
 				node.gl = gl;
-
-				if (node.initialized) {
-					node.buildShader();
-				}
+				node.initialize();
+				node.buildShader();
 			}
 
 			for (i = 0; i < sources.length; i++) {
@@ -1636,7 +1634,12 @@
 			}
 
 			if (gl) {
-				this.buildShader();
+				this.initialize();
+				if (this.effect.commonShader) {
+					//this effect is unlikely to need to be modified again
+					//by changing parameters
+					this.buildShader();
+				}
 			}
 
 			this.inPlace = this.effect.inPlace;
@@ -1653,6 +1656,8 @@
 		EffectNode.prototype.initialize = function () {
 			if (!this.initialized) {
 				var that = this;
+
+				this.baseShader = baseShader;
 
 				if (this.shape) {
 					this.model = makeGlModel(this.shape, this.gl);
@@ -1729,7 +1734,15 @@
 		EffectNode.prototype.buildShader = function () {
 			var shader, effect = this.effect;
 			if (this.shaderDirty) {
-				if (effect.shader) {
+				if (effect.commonShader && commonShaders[this.hook]) {
+					if (!this.shader) {
+						commonShaders[this.hook].count++;
+					}
+					this.shader = commonShaders[this.hook].shader;
+				} else if (effect.shader) {
+					if (this.shader && !effect.commonShader) {
+						this.shader.destroy();
+					}
 					shader = effect.shader.call(this, this.inputs, {
 						vertex: baseVertexShader,
 						fragment: baseFragmentShader
@@ -1741,6 +1754,13 @@
 						this.shader = new ShaderProgram(gl, shader.vertex, shader.fragment);
 					} else {
 						this.shader = baseShader;
+					}
+
+					if (effect.commonShader) {
+						commonShaders[this.hook] = {
+							count: 1,
+							shader: this.shader
+						};
 					}
 				} else {
 					this.shader = baseShader;
@@ -2297,7 +2317,13 @@
 			delete this.effect;
 
 			//shader
-			if (this.shader && this.shader.destroy && this.shader !== baseShader) {
+			if (commonShaders[hook]) {
+				commonShaders[hook].count--;
+				if (!commonShaders[hook].count) {
+					delete commonShaders[hook];
+				}
+			}
+			if (this.shader && this.shader.destroy && this.shader !== baseShader && !commonShaders[hook]) {
 				this.shader.destroy();
 			}
 			delete this.shader;

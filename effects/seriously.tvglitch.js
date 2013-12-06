@@ -98,8 +98,9 @@
 				particleFrameBuffer = new Seriously.util.FrameBuffer(gl, 1, this.height / 2);
 				parent();
 			},
+			commonShader: true,
 			shader: function (inputs, shaderSource) {
-				//baseShader = new Seriously.util.ShaderProgram(this.gl, shaderSource.vertex, shaderSource.fragment);
+				//baseShader = this.baseShader;
 
 				shaderSource.fragment = '#ifdef GL_ES\n\n' +
 					'precision mediump float;\n\n' +

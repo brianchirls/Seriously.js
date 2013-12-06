@@ -67,9 +67,12 @@ http://v002.info/plugins/v002-blurs/
 					return;
 				}
 
+				baseShader = this.baseShader;
+
 				fbHorizontal = new Seriously.util.FrameBuffer(gl, this.width, this.height);
 				fbVertical = new Seriously.util.FrameBuffer(gl, this.width, this.height);
 			},
+			commonShader: true,
 			shader: function (inputs, shaderSource) {
 				var gl = this.gl,
 					/*
@@ -78,8 +81,6 @@ http://v002.info/plugins/v002-blurs/
 					*/
 					maxVaryings = gl.getParameter(gl.MAX_VARYING_VECTORS),
 					defineVaryings = (maxVaryings >= 10 ? '#define USE_VARYINGS' : '');
-
-				baseShader = new Seriously.util.ShaderProgram(gl, shaderSource.vertex, shaderSource.fragment);
 
 				shaderSource.vertex = [
 					defineVaryings,

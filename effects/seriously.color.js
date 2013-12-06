@@ -18,6 +18,7 @@
 	'use strict';
 
 	Seriously.plugin('color', {
+		commonShader: true,
 		shader: function(inputs, shaderSource, utilities) {
 			shaderSource.fragment = '#ifdef GL_ES\n\n' +
 				'precision mediump float;\n\n' +

@@ -20,6 +20,7 @@
 	/* inspired by http://lab.adjazent.com/2009/01/09/more-pixel-bender/ */
 
 	Seriously.plugin('sketch', {
+		commonShader: true,
 		shader: function (inputs, shaderSource) {
 			shaderSource.fragment = '#ifdef GL_ES\n\n' +
 				'precision mediump float;\n\n' +

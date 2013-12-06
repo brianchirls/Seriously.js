@@ -53,6 +53,7 @@
 * 
 	*/
 	Seriously.plugin('daltonize', {
+		commonShader: true,
 		shader: function (inputs, shaderSource) {
 			//Vertex shader
 			shaderSource.vertex = '#ifdef GL_ES\n' +

@@ -86,10 +86,11 @@
 				scaledBuffer = new Seriously.util.FrameBuffer(gl, 1, 1);
 
 				this.uniforms.transform = identity;
-			},
-			shader: function (inputs, shaderSource) {
-				baseShader = new Seriously.util.ShaderProgram(this.gl, shaderSource.vertex, shaderSource.fragment);
 
+				baseShader = this.baseShader;
+			},
+			commonShader: true,
+			shader: function (inputs, shaderSource) {
 				shaderSource.fragment = '#ifdef GL_ES\n\n' +
 					'precision mediump float;\n\n' +
 					'#endif\n\n' +

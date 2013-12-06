@@ -21,6 +21,7 @@
 	// http://www.techrepublic.com/blog/howdoi/how-do-i-convert-images-to-grayscale-and-sepia-tone-using-c/120
 
 	Seriously.plugin('sepia', {
+		commonShader: true,
 		shader: function (inputs, shaderSource) {
 			shaderSource.fragment = '#ifdef GL_ES\n\n' +
 				'precision mediump float;\n\n' +
