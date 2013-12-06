@@ -4268,6 +4268,21 @@
 			}
 
 			return true;
+		},
+		'string': function (value) {
+			if (typeof value === 'string') {
+				return value;
+			}
+
+			if (value !== 0 && !value) {
+				return '';
+			}
+
+			if (value.toString) {
+				return value.toString();
+			}
+
+			return String(value);
 		}
 		//todo: date/time
 	};
