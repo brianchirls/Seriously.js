@@ -3257,6 +3257,110 @@
 				self = this,
 				key;
 
+			function setInput(inputName, def, input) {
+				var key, lookup, value;
+
+				lookup = me.inputElements[inputName];
+
+				//todo: there is some duplicate code with Effect here. Consolidate.
+				if (typeof input === 'string' && isNaN(input)) {
+					if (def.type === 'enum') {
+						if (def.options && def.options.filter) {
+							key = String(input).toLowerCase();
+
+							//todo: possible memory leak on this function?
+							value = def.options.filter(function (e) {
+								return (typeof e === 'string' && e.toLowerCase() === key) ||
+									(e.length && typeof e[0] === 'string' && e[0].toLowerCase() === key);
+							});
+
+							value = value.length;
+						}
+
+						if (!value) {
+							input = getElement(input, ['select']);
+						}
+
+					} else if (def.type === 'number' || def.type === 'boolean') {
+						input = getElement(input, ['input', 'select']);
+					} else if (def.type === 'image') {
+						input = getElement(input, ['canvas', 'img', 'video']);
+					}
+				}
+
+				if (input instanceof HTMLInputElement || input instanceof HTMLSelectElement) {
+					value = input.value;
+
+					if (lookup && lookup.element !== input) {
+						lookup.element.removeEventListener('change', lookup.listener, true);
+						lookup.element.removeEventListener('input', lookup.listener, true);
+						delete me.inputElements[inputName];
+						lookup = null;
+					}
+
+					if (!lookup) {
+						lookup = {
+							element: input,
+							listener: (function (name, element) {
+								return function () {
+									var oldValue, newValue;
+
+									if (input.type === 'checkbox') {
+										//special case for check box
+										oldValue = input.checked;
+									} else {
+										oldValue = element.value;
+									}
+
+									if (def.set.call(me, oldValue)) {
+										me.setTransformDirty();
+									}
+
+									newValue = def.get.call(me);
+
+									//special case for color type
+									/*
+									no colors on transform nodes just yet. maybe later
+									if (def.type === 'color') {
+										newValue = arrayToHex(newValue);
+									}
+									*/
+
+									//if input validator changes our value, update HTML Element
+									//todo: make this optional...somehow
+									if (newValue !== oldValue) {
+										element.value = newValue;
+									}
+								};
+							}(inputName, input))
+						};
+
+						me.inputElements[inputName] = lookup;
+						if (input.type === 'range') {
+							input.addEventListener('input', lookup.listener, true);
+							input.addEventListener('change', lookup.listener, true);
+						} else {
+							input.addEventListener('change', lookup.listener, true);
+						}
+					}
+
+					if (lookup && value.type === 'checkbox') {
+						value = value.checked;
+					}
+				} else {
+					if (lookup) {
+						lookup.element.removeEventListener('change', lookup.listener, true);
+						lookup.element.removeEventListener('input', lookup.listener, true);
+						delete me.inputElements[inputName];
+					}
+					value = input;
+				}
+
+				if (def.set.call(me, value)) {
+					me.setTransformDirty();
+				}
+			}
+
 			function setProperty(name, def) {
 				// todo: validate value passed to 'set'
 				Object.defineProperty(self, name, {
@@ -3266,9 +3370,7 @@
 						return def.get.call(me);
 					},
 					set: function (val) {
-						if (def.set.call(me, val)) {
-							me.setTransformDirty();
-						}
+						setInput(name, def, val);
 					}
 				});
 			}
@@ -3280,6 +3382,8 @@
 					}
 				};
 			}
+
+			this.inputElements = {};
 
 			//priveleged accessor methods
 			Object.defineProperties(this, {
@@ -4616,7 +4720,7 @@
 						}
 
 						//todo: fmod 360deg or Math.PI * 2 radians
-						rotation = angle;
+						rotation = parseFloat(angle);
 
 						recompute();
 						return true;
