@@ -2448,7 +2448,7 @@
 		/*
 			possible sources: img, video, canvas (2d or 3d), texture, ImageData, array, typed array
 		*/
-		SourceNode = function (source, options) {
+		SourceNode = function (hook, source, options) {
 			var opts = options || {},
 				flip = opts.flip === undefined ? true : opts.flip,
 				width = opts.width,
@@ -2461,16 +2461,39 @@
 
 			Node.call(this);
 
+			if (typeof hook !== 'string' || !source) {
+				if (!options || typeof options !== 'object') {
+					options = source;
+				}
+				source = hook;
+			}
+
 			if (typeof source === 'string' && isNaN(source)) {
 				source = getElement(source, ['canvas', 'img', 'video']);
 			}
 
-			if (source instanceof HTMLElement) {
+			// forced source type?
+			if (typeof hook === 'string' && seriousSources[hook]) {
+				plugin = seriousSources[hook].definition.call(this, source, options, true);
+				if (plugin) {
+					this.hook = key;
+					matchedType = true;
+					deferTexture = plugin.deferTexture;
+					this.plugin = plugin;
+					if (plugin.source) {
+						source = plugin.source;
+					}
+				}
+			}
+
+			//todo: could probably stand to re-work and re-indent this whole block now that we have plugins
+			if (!plugin && source instanceof HTMLElement) {
 				if (source.tagName === 'CANVAS') {
 					this.width = source.width;
 					this.height = source.height;
 
 					this.render = this.renderImageCanvas;
+					matchedType = true;
 				} else if (source.tagName === 'IMG') {
 					this.width = source.naturalWidth || 1;
 					this.height = source.naturalHeight || 1;
@@ -2487,6 +2510,7 @@
 					}
 
 					this.render = this.renderImageCanvas;
+					matchedType = true;
 				} else if (source.tagName === 'VIDEO') {
 					this.width = source.videoWidth || 1;
 					this.height = source.videoHeight || 1;
@@ -2503,11 +2527,9 @@
 					}
 
 					this.render = this.renderVideo;
-				} else {
-					throw 'Not a valid HTML element: ' + source.tagName + ' (must be img, video or canvas)';
+					matchedType = true;
 				}
-				matchedType = true;
-			} else if (source instanceof WebGLTexture) {
+			} else if (!plugin && source instanceof WebGLTexture) {
 				if (gl && !gl.isTexture(source)) {
 					throw 'Not a valid WebGL texture.';
 				}
@@ -2537,11 +2559,12 @@
 
 				//todo: if WebGLTexture source is from a different context render it and copy it over
 				this.render = function () {};
-			} else {
+			} else if (!plugin) {
 				for (key in seriousSources) {
-					if (seriousSources.hasOwnProperty(key)) {
+					if (seriousSources.hasOwnProperty(key) && seriousSources[key]) {
 						plugin = seriousSources[key].definition.call(this, source, options);
 						if (plugin) {
+							this.hook = key;
 							matchedType = true;
 							deferTexture = plugin.deferTexture;
 							this.plugin = plugin;
