@@ -4151,6 +4151,33 @@
 		return source;
 	};
 
+	Seriously.removeSource = function (hook) {
+		var all, source, plugin;
+
+		if (!hook) {
+			return this;
+		}
+
+		plugin = seriousSources[hook];
+
+		if (!plugin) {
+			return this;
+		}
+
+		all = allSourcesByHook[hook];
+		if (all) {
+			while (all.length) {
+				source = all.shift();
+				source.destroy();
+			}
+			delete allSourcesByHook[hook];
+		}
+
+		delete seriousSources[hook];
+
+		return this;
+	};
+
 	Seriously.transform = function (hook, definition, meta) {
 		var transform;
 
