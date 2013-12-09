@@ -35,9 +35,11 @@
 	incompatibility,
 	seriousEffects = {},
 	seriousTransforms = {},
+	seriousSources = {},
 	timeouts = [],
 	allEffectsByHook = {},
 	allTransformsByHook = {},
+	allSourcesByHook = {},
 	identity,
 	nop = function () {},
 
@@ -2453,7 +2455,9 @@
 				height = opts.height,
 				deferTexture = false,
 				that = this,
-				matchedType = false;
+				matchedType = false,
+				key,
+				plugin;
 
 			Node.call(this);
 
@@ -2503,43 +2507,6 @@
 					throw 'Not a valid HTML element: ' + source.tagName + ' (must be img, video or canvas)';
 				}
 				matchedType = true;
-
-			} else if (source instanceof Object && source.data &&
-				source.width && source.height &&
-				source.width * source.height * 4 === source.data.length
-				) {
-
-				//Because of this bug, Firefox doesn't recognize ImageData, so we have to duck type
-				//https://bugzilla.mozilla.org/show_bug.cgi?id=637077
-
-				this.width = source.width;
-				this.height = source.height;
-				matchedType = true;
-
-				this.render = this.renderImageCanvas;
-			} else if (isArrayLike(source)) {
-				if (!width || !height) {
-					throw 'Height and width must be provided with an Array';
-				}
-
-				if (width * height * 4 !== source.length) {
-					throw 'Array length must be height x width x 4.';
-				}
-
-				this.width = width;
-				this.height = height;
-
-				matchedType = true;
-
-				//use opposite default for flip
-				if (opts.flip === undefined) {
-					flip = false;
-				}
-
-				if (!(source instanceof Uint8Array)) {
-					source = new Uint8Array(source);
-				}
-				this.render = this.renderTypedArray;
 			} else if (source instanceof WebGLTexture) {
 				if (gl && !gl.isTexture(source)) {
 					throw 'Not a valid WebGL texture.';
@@ -2570,6 +2537,22 @@
 
 				//todo: if WebGLTexture source is from a different context render it and copy it over
 				this.render = function () {};
+			} else {
+				for (key in seriousSources) {
+					if (seriousSources.hasOwnProperty(key)) {
+						plugin = seriousSources[key].definition.call(this, source, options);
+						if (plugin) {
+							matchedType = true;
+							deferTexture = plugin.deferTexture;
+							this.plugin = plugin;
+							if (plugin.source) {
+								source = plugin.source;
+							}
+
+							break;
+						}
+					}
+				}
 			}
 
 			if (!matchedType) {
@@ -2577,7 +2560,9 @@
 			}
 
 			this.source = source;
-			this.flip = flip;
+			if (this.flip === undefined) {
+				this.flip = flip;
+			}
 
 			this.targets = [];
 
@@ -2665,6 +2650,27 @@
 			}
 		};
 
+		SourceNode.prototype.render = function () {
+			var media = this.source;
+
+			if (!gl || !media) {
+				return;
+			}
+
+			if (!this.initialized) {
+				this.initialize();
+			}
+
+			if (!this.allowRefresh) {
+				return;
+			}
+
+			if (this.plugin && this.plugin.render &&
+					this.plugin.render.call(this, gl)) {
+				this.dirty = false;
+			}
+		};
+
 		SourceNode.prototype.renderVideo = function () {
 			var video = this.source;
 
@@ -2737,35 +2743,12 @@
 			}
 		};
 
-		SourceNode.prototype.renderTypedArray = function () {
-			var media = this.source;
-
-			if (!gl || !media || !media.length) {
-				return;
-			}
-
-			if (!this.initialized) {
-				this.initialize();
-			}
-
-			//this.currentTime = media.currentTime || 0;
-
-			if (!this.allowRefresh) {
-				return;
-			}
-
-			if (this.dirty) {
-				gl.bindTexture(gl.TEXTURE_2D, this.texture);
-				gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, this.flip);
-				gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, this.width, this.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, media);
-
-				this.lastRenderTime = Date.now() / 1000;
-				this.dirty = false;
-			}
-		};
-
 		SourceNode.prototype.destroy = function () {
 			var i, key, item;
+
+			if (this.plugin && this.plugin.destroy) {
+				this.plugin.destroy.call(this);
+			}
 
 			if (this.gl && this.texture) {
 				this.gl.deleteTexture(this.texture);
@@ -4133,6 +4116,39 @@
 		delete seriousEffects[hook];
 
 		return this;
+	};
+
+	Seriously.source = function (hook, definition, meta) {
+		var source;
+
+		if (seriousSources[hook]) {
+			console.log('Source [' + hook + '] already loaded');
+			return;
+		}
+
+		if (meta === undefined && typeof definition === 'object') {
+			meta = definition;
+		}
+
+		if (!meta && !definition) {
+			return;
+		}
+
+		source = extend({}, meta);
+
+		if (typeof definition === 'function') {
+			source.definition = definition;
+		}
+
+		if (!source.title) {
+			source.title = hook;
+		}
+
+
+		seriousSources[hook] = source;
+		allSourcesByHook[hook] = [];
+
+		return source;
 	};
 
 	Seriously.transform = function (hook, definition, meta) {
