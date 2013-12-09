@@ -4107,7 +4107,7 @@
 		all = allEffectsByHook[hook];
 		if (all) {
 			while (all.length) {
-				effect = all[0];
+				effect = all.shift();
 				effect.destroy();
 			}
 			delete allEffectsByHook[hook];
@@ -4207,7 +4207,7 @@
 		all = allTransformsByHook[hook];
 		if (all) {
 			while (all.length) {
-				transform = all[0];
+				transform = all.shift();
 				transform.destroy();
 			}
 			delete allTransformsByHook[hook];
