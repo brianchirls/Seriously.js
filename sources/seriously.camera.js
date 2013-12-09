@@ -44,9 +44,10 @@
 		function initialize() {
 			me.width = video.videoWidth;
 			me.height = video.videoHeight;
-			me.resize();
-			me.initialize();
+			me.ready();
 		}
+
+		//todo: support options for video resolution, etc.
 
 		if (force) {
 			if (!getUserMedia) {

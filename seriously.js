@@ -2502,10 +2502,11 @@
 						deferTexture = true;
 
 						source.addEventListener('load', function () {
-							that.width = source.naturalWidth;
-							that.height = source.naturalHeight;
-							that.resize();
-							that.initialize();
+							if (!that.isDestroyed) {
+								that.width = source.naturalWidth;
+								that.height = source.naturalHeight;
+								that.ready();
+							}
 						}, true);
 					}
 
@@ -2519,10 +2520,11 @@
 						deferTexture = true;
 
 						source.addEventListener('loadedmetadata', function () {
-							that.width = source.videoWidth;
-							that.height = source.videoHeight;
-							that.resize();
-							that.initialize();
+							if (!that.isDestroyed) {
+								that.width = source.videoWidth;
+								that.height = source.videoHeight;
+								that.ready();
+							}
 						}, true);
 					}
 
@@ -2590,8 +2592,7 @@
 			this.targets = [];
 
 			if (!deferTexture) {
-				this.resize();
-				this.initialize();
+				that.ready();
 			}
 
 			this.pub = new Source(this);
@@ -2606,11 +2607,13 @@
 		extend(SourceNode, Node);
 
 		SourceNode.prototype.initialize = function () {
-			if (!gl || this.texture) {
+			var texture;
+
+			if (!gl || this.texture || !this.isReady) {
 				return;
 			}
 
-			var texture = gl.createTexture();
+			texture = gl.createTexture();
 			gl.bindTexture(gl.TEXTURE_2D, texture);
 			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
 			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
@@ -2673,10 +2676,18 @@
 			}
 		};
 
+		SourceNode.prototype.ready = function () {
+			if (!this.isReady) {
+				this.isReady = true;
+				this.resize();
+				this.initialize();
+			}
+		};
+
 		SourceNode.prototype.render = function () {
 			var media = this.source;
 
-			if (!gl || !media) {
+			if (!gl || !media || !this.isReady) {
 				return;
 			}
 
@@ -2697,7 +2708,7 @@
 		SourceNode.prototype.renderVideo = function () {
 			var video = this.source;
 
-			if (!gl || !video || !video.videoHeight || !video.videoWidth || video.readyState < 2) {
+			if (!gl || !video || !video.videoHeight || !video.videoWidth || video.readyState < 2 || !this.isReady) {
 				return;
 			}
 
@@ -2737,7 +2748,7 @@
 		SourceNode.prototype.renderImageCanvas = function () {
 			var media = this.source;
 
-			if (!gl || !media || !media.height || !media.width) {
+			if (!gl || !media || !this.isReady) {
 				return;
 			}
 
