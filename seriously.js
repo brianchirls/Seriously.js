@@ -2498,7 +2498,7 @@
 					this.width = source.naturalWidth || 1;
 					this.height = source.naturalHeight || 1;
 
-					if (!source.complete) {
+					if (!source.complete || !source.naturalWidth) {
 						deferTexture = true;
 
 						source.addEventListener('load', function () {
