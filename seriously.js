@@ -1185,6 +1185,10 @@
 				return false;
 			}
 
+			if (node === original) {
+				return true;
+			}
+
 			sources = node.sources;
 
 			for (i in sources) {

@@ -359,6 +359,32 @@
 		Seriously.removePlugin('removeme');
 	});
 
+	test('Graph Loop', 1, function () {
+		var seriously,
+			effect,
+			error = false;
+
+		Seriously.plugin('removeme', {
+			inputs: {
+				source: {
+					type: 'image'
+				}
+			}
+		});
+		seriously = new Seriously();
+		effect = seriously.effect('removeme');
+
+		try {
+			effect.source = effect;
+		} catch (e) {
+			error = true;
+		}
+
+		ok(error, 'Setting effect source to itself throws an error');
+
+		seriously.destroy();
+		Seriously.removePlugin('removeme');
+	});
 
 	module('Source');
 	/*
@@ -570,7 +596,6 @@
 
 		s.destroy();
 		Seriously.removePlugin('testNumberInput');
-
 	});
 
 	test('Color', function () {
