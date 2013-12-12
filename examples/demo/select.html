@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Seriously.js Switch Example</title>
+		<style type="text/css">
+			#canvas {
+				margin: auto;
+				display: block;
+				position: absolute;
+				top: 0;
+				left: 0;
+			}
+
+			#container {
+				position: relative;
+			}
+
+			#container > div {
+				position: absolute;
+				left: 0;
+				cursor: pointer;
+			}
+		</style>
+	</head>
+	<body>
+		<div id="container">
+			<canvas id="canvas" width="960" height="540"></canvas>
+		</div>
+		<img id="source" src="../images/robot.jpg" style="display: none"/>
+		<script src="../../lib/require.js"></script>
+		<script>
+		(function () {
+			require.config({
+				baseUrl: '../../'
+			});
+
+			var effects = [
+				'ascii',
+				'bleach-bypass',
+				'blur',
+				'daltonize',
+				'kaleidoscope'
+			];
+
+			require([
+				'seriously',
+				'effects/seriously.select',
+				'effects/seriously.layers'
+			], function (Seriously) {
+				// declare our variables
+				var seriously, // the main object that holds the entire composition
+					select,
+					target, // a wrapper object for our target canvas
+					main,
+					mainMove,
+					thumbnail,
+					thumbnailSize,
+					thumbnails = [],
+					transforms = [],
+					reformats = [],
+					container = document.getElementById('container');
+
+				seriously = new Seriously();
+				target = seriously.target('#canvas');
+				layers = seriously.effect('layers', {
+					count: effects.length + 1
+				});
+				select = seriously.effect('select', {
+					count: effects.length
+				});
+
+				main = seriously.transform('reformat');
+
+				thumbnailSize = target.height / effects.length;
+				thumbnail = seriously.transform('reformat');
+				thumbnail.mode = 'cover';
+				thumbnail.source = '#source';
+				thumbnail.width = thumbnailSize;
+				thumbnail.height = thumbnailSize;
+
+				/*
+				Connect all the fixed nodes
+				*/
+				main.source = select;
+				main.mode = 'cover';
+				main.height = target.height;
+				main.width = target.width;
+
+				layers.source0 = main;
+				target.source = layers;
+
+				//create and connect the images and thumbnails
+				effects.forEach(function (name, i) {
+					var layer = i + 1;
+					require(['effects/seriously.' + name], function () {
+						var thumbnailEffect,
+							effect,
+							transform,
+							reformat,
+							div;
+
+						// set up thumbnail
+						thumbnailEffect = seriously.effect(name);
+						thumbnails[i] = thumbnailEffect;
+						thumbnailEffect.source = thumbnail;
+
+						transform = seriously.transform('2d');
+						transforms[i] = transform;
+						transform.translateY = (target.height - thumbnailSize) / 2 - thumbnailSize * i;
+						transform.translateX = -(target.width - thumbnailSize) / 2;
+						transform.source = thumbnailEffect;
+
+						layers['source' + layer] = transform;
+						layers['opacity' + layer] = 0.6;
+
+						//set up main effect
+						reformat = seriously.transform('reformat');
+						reformat.mode = 'cover';
+						reformat.width = target.width;
+						reformat.height = target.height;
+						reformat.source = '#source';
+						effect = seriously.effect(name);
+						effect.source = reformat;
+						select['source' + i] = effect;
+
+						//use divs for mouse tracking 'cause it's easiest
+						div = document.createElement('div');
+						div.style.width = div.style.height = thumbnailSize + 'px';
+						div.style.top = (thumbnailSize * i) + 'px';
+						div.addEventListener('mouseover', function () {
+							layers['opacity' + layer] = 1;
+						});
+						div.addEventListener('mouseout', function () {
+							layers['opacity' + layer] = 0.6;
+						});
+						div.addEventListener('click', function () {
+							select.active = i;
+						});
+						container.appendChild(div);
+					});
+				}, function (err) {
+					console.log('unable to load effect: ' + name);
+				});
+
+				seriously.go();
+			});
+		}());
+		</script>
+	</body>
+</html>
