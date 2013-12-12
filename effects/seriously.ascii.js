@@ -121,26 +121,24 @@
 
 				return shaderSource;
 			},
-			draw: function (shader, model, uniforms, frameBuffer, parent) {
+			resize: function () {
 				//set up scaledBuffer if (width or height have changed)
-				if (height !== this.height || width !== this.width) {
-					height = this.height;
-					width = this.width;
-					scaledWidth = Math.ceil(width / 8);
-					scaledHeight = Math.ceil(height / 8);
+				height = this.height;
+				width = this.width;
+				scaledWidth = Math.ceil(width / 8);
+				scaledHeight = Math.ceil(height / 8);
 
-					unif.resolution = uniforms.resolution;
-					unif.transform = identity;
+				unif.resolution = this.uniforms.resolution;
+				unif.transform = identity;
 
-					scaledBuffer.resize(scaledWidth, scaledHeight);
+				scaledBuffer.resize(scaledWidth, scaledHeight);
 
-					//so it stays blocky
-					gl.bindTexture(gl.TEXTURE_2D, scaledBuffer.texture);
-					gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-				}
-
-
-				parent(baseShader, model, uniforms, scaledBuffer.frameBuffer, false, {
+				//so it stays blocky
+				gl.bindTexture(gl.TEXTURE_2D, scaledBuffer.texture);
+				gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+			},
+			draw: function (shader, model, uniforms, frameBuffer, draw) {
+				draw(baseShader, model, uniforms, scaledBuffer.frameBuffer, false, {
 					width: scaledWidth,
 					height: scaledHeight,
 					blend: false
@@ -149,7 +147,7 @@
 				unif.source = scaledBuffer.texture;
 				unif.background = uniforms.background;
 
-				parent(shader, model, unif, frameBuffer);
+				draw(shader, model, unif, frameBuffer);
 			},
 			destroy: function () {
 				if (scaledBuffer) {
