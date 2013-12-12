@@ -2671,11 +2671,13 @@
 
 			this.setDirty();
 
-			for (i = 0; i < this.targets.length; i++) {
-				target = this.targets[i];
-				target.resize();
-				if (target.setTransformDirty) {
-					target.setTransformDirty();
+			if (this.targets) {
+				for (i = 0; i < this.targets.length; i++) {
+					target = this.targets[i];
+					target.resize();
+					if (target.setTransformDirty) {
+						target.setTransformDirty();
+					}
 				}
 			}
 		};
