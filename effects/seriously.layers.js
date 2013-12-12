@@ -190,7 +190,7 @@
 					'		gl_FragColor = vec4(0.0);',
 					'	} else {',
 					'		gl_FragColor = texture2D(source, vTexCoord);',
-					'		gl_FragColor.a *= opacity;',
+					'		gl_FragColor *= opacity;',
 					'	}',
 					'}'
 				].join('\n');

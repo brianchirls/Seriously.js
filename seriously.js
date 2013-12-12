@@ -379,7 +379,7 @@
 
 		canvas = document.createElement('canvas');
 		try {
-			testContext = canvas.getContext('experimental-webgl');
+			testContext = canvas.getContext('webgl');
 			canvas.addEventListener('webglcontextlost', function (event) {
 				/*
 				If/When context is lost, just clear testContext and create
@@ -562,6 +562,7 @@
 		} else {
 			this.texture = gl.createTexture();
 			gl.bindTexture(gl.TEXTURE_2D, this.texture);
+			gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
 			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
 			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
 			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
@@ -1086,13 +1087,13 @@
 			if (!options || options.blend === undefined || options.blend) {
 				gl.enable(gl.BLEND);
 				gl.blendFunc(
-					options && options.srcRGB || gl.SRC_ALPHA,
+					options && options.srcRGB || gl.ONE,
 					options && options.dstRGB || gl.ONE_MINUS_SRC_ALPHA
 				);
 
 				/*
 				gl.blendFuncSeparate(
-					options && options.srcRGB || gl.SRC_ALPHA,
+					options && options.srcRGB || gl.ONE,
 					options && options.dstRGB || gl.ONE_MINUS_SRC_ALPHA,
 					options && options.srcAlpha || gl.SRC_ALPHA,
 					options && options.dstAlpha || gl.DST_ALPHA
@@ -2619,6 +2620,7 @@
 
 			texture = gl.createTexture();
 			gl.bindTexture(gl.TEXTURE_2D, texture);
+			gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
 			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
 			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
 			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
@@ -2706,7 +2708,7 @@
 			}
 
 			if (this.plugin && this.plugin.render &&
-					this.plugin.render.call(this, gl)) {
+					this.plugin.render.call(this, gl, draw, rectangleModel, baseShader)) {
 				this.dirty = false;
 			}
 		};
@@ -2732,6 +2734,7 @@
 
 				gl.bindTexture(gl.TEXTURE_2D, this.texture);
 				gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, this.flip);
+				gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
 				try {
 					gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, video);
 				} catch (securityError) {
@@ -2769,6 +2772,7 @@
 			if (this.dirty) {
 				gl.bindTexture(gl.TEXTURE_2D, this.texture);
 				gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, this.flip);
+				gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
 				try {
 					gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, media);
 				} catch (securityError) {
@@ -3014,14 +3018,14 @@
 				//todo: try to get a webgl context. if not, get a 2d context, and set up a different render function
 				try {
 					if (window.WebGLDebugUtils) {
-						context = window.WebGLDebugUtils.makeDebugContext(target.getContext('experimental-webgl', {
+						context = window.WebGLDebugUtils.makeDebugContext(target.getContext('webgl', {
 							alpha: true,
 							premultipliedAlpha: false,
 							preserveDrawingBuffer: true,
 							stencil: true
 						}));
 					} else {
-						context = target.getContext('experimental-webgl', {
+						context = target.getContext('webgl', {
 							alpha: true,
 							premultipliedAlpha: false,
 							preserveDrawingBuffer: true,
@@ -3033,14 +3037,13 @@
 
 				if (!context) {
 					try {
-						context = target.getContext('webgl', {
+						context = target.getContext('experimental-webgl', {
 							alpha: true,
 							premultipliedAlpha: false,
 							preserveDrawingBuffer: true,
 							stencil: true
 						});
 					} catch (error) {
-
 					}
 				}
 
