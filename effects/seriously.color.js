@@ -43,6 +43,7 @@
 			}
 		},
 		title: 'Color',
-		description: 'Generate color'
+		description: 'Generate color',
+		categories: ['generator']
 	});
 }));
