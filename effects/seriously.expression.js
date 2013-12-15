@@ -14,7 +14,7 @@
 		}
 		factory(root.Seriously);
 	}
-}(this, function (Seriously, jsep, undefined) {
+}(this, function (Seriously, undefined) {
 	'use strict';
 
 	function formatFloat(n) {
@@ -37,7 +37,7 @@
 			b: 'b',
 			c: 'c',
 			d: 'd',
-			luma: 'luma' //todo: multiple dependencies
+			luma: ['luma', 'rgba']
 
 			/*
 			todo:
@@ -50,29 +50,85 @@
 			*/
 		},
 		definitions = {
-			and: [
-				'float and(float a, float b) {',
-				'	if (a == 0.0) {',
-				'		return 0.0;',
-				'	}',
-				'	return b;',
-				'}'
-			].join('\n'),
-			or: [
-				'float or(float a, float b) {',
-				'	if (a != 0.0) {',
-				'		return a;',
-				'	}',
-				'	return b;',
-				'}'
-			].join('\n')
-		},
-		declarations = {
 			dim: 'vec2 dim = vTexCoord * resolution;',
 			rgba: 'vec4 rgba = texture2D(source, vTexCoord);',
-			luma: 'float luma = dot(rgba, vec3(0.2125,0.7154,0.0721));'
+			luma: 'float luma = dot(rgba.rgb, vec3(0.2125,0.7154,0.0721));',
+			atan2: {
+				source: '#define atan2(x, y) atan(x / y)',
+				global: true
+			},
+			and: {
+				source: [
+					'float and(float a, float b) {',
+					'	if (a == 0.0) {',
+					'		return 0.0;',
+					'	}',
+					'	return b;',
+					'}'
+				].join('\n'),
+				global: true
+			},
+			or: {
+				source: [
+					'float or(float a, float b) {',
+					'	if (a != 0.0) {',
+					'		return a;',
+					'	}',
+					'	return b;',
+					'}'
+				].join('\n'),
+				global: true
+			},
+			luminance: {
+				source: [
+					'const vec3 lumaCoeffs = vec3(0.2125,0.7154,0.0721);',
+					'float luminance(float r, float g, float b) {',
+					'	return dot(vec3(r, g, b), vec3(0.2125,0.7154,0.0721));',
+					'}'
+				].join('\n'),
+				global: true
+			},
+			saturation: {
+				source: [
+					'float saturation(float r, float g, float b) {',
+					'	float lo = min(r, min(g, b));',
+					'	float hi = max(r, max(g, b));',
+					'	float l = (lo + hi) / 2.0;',
+					'	float d = hi - lo;',
+					'	return l > 0.5 ? d / (2.0 - hi - lo) : d / (hi + lo);',
+					'}'
+				].join('\n'),
+				global: true
+			},
+			lightness: {
+				source: [
+					'float lightness(float r, float g, float b) {',
+					'	float lo = min(r, min(g, b));',
+					'	float hi = max(r, max(g, b));',
+					'	return (lo + hi) / 2.0;',
+					'}'
+				].join('\n'),
+				global: true
+			},
+			hue: {
+				source: [
+					'float hue(float r, float g, float b) {',
+					'	float h;',
+					'	if (r > g && r > b) {', //red is max
+					'		h = (g - b) / d + (g < b ? 6.0 : 0.0);',
+					'	} else if (g > r && g > b) {', //green is max
+					'		h = (b - r) / d + 2.0;',
+					'	} else {', //blue is max
+					'		h = (r - g) / d + 4.0;',
+					'	}',
+					'	return h / 6.0;',
+					'}'
+				].join('\n'),
+				global: true
+			}
 		},
 		functions = {
+			//built-in shader functions
 			radians: 1,
 			degrees: 1,
 			sin: 1,
@@ -81,7 +137,6 @@
 			asin: 1,
 			acos: 1,
 			atan: 1,
-			//atan2: 2, //todo: define this
 			pow: 2,
 			exp: 1,
 			log: 1,
@@ -104,11 +159,18 @@
 
 			//custom logic functions
 			and: 2,
-			or: 2
+			or: 2,
+
+			//custom functions
+			atan2: 2,
+			hue: 3,
+			saturation: 3,
+			lightness: 3,
+			luminance: 3
 
 			/*
 			todo:
-			noise, random, hue, sat, lightness, hslRed, hslGreen, hslBlue,
+			noise, random, hslRed, hslGreen, hslBlue,
 			int, sinh, cosh, tanh, mantissa, hypot, lerp, step
 			noise with multiple octaves (See fBm)
 			*/
@@ -142,14 +204,47 @@
 			'<': true,
 			'>': true
 		},
-		objRegex = /(\w+)(\.\w+)?/,
+		pair,
+		key,
+		def,
 
 		jsep;
 
 	['E', 'LN2', 'LN10', 'LOG2E', 'LOG10E', 'PI', 'SQRT1_2', 'SQRT2'].forEach(function (key) {
 		symbols[key] = key;
-		declarations[key] = 'const float ' + key + ' = ' + Math[key] + ';';
+		definitions[key] = {
+			source: 'const float ' + key + ' = ' + Math[key] + ';',
+			global: true
+		};
 	});
+
+	//clean up lookup tables
+	for (key in symbols) {
+		if (symbols.hasOwnProperty(key)) {
+			def = symbols[key];
+			if (typeof def === 'string') {
+				def = [def];
+			}
+
+			pair = def[0].split('.');
+			if (pair.length > 1) {
+				def.push(pair[0]);
+			}
+			symbols[key] = def;
+		}
+	}
+
+	for (key in definitions) {
+		if (definitions.hasOwnProperty(key)) {
+			def = definitions[key];
+			if (typeof def === 'string') {
+				definitions[key] = {
+					source: def,
+					global: false
+				};
+			}
+		}
+	}
 
 	Seriously.plugin('expression', function () {
 		var me = this;
@@ -186,6 +281,8 @@
 					expr,
 					key,
 					statements,
+					globalDefinitions = [],
+					nonGlobalDefinitions = [],
 					cs = [],
 					tree;
 
@@ -257,16 +354,18 @@
 					}
 
 					if (tree.type === 'Identifier') {
-						x = symbols[tree.name];
-						if (!x) {
+						args = symbols[tree.name];
+						if (!args) {
 							throw new Error('Expression Error: Unknown identifier "' + tree.name + '"');
 						}
 
-						args = objRegex.exec(x);
-						if (args && declarations[args[1]]) {
-							deps[args[1]] = true;
+						for (i = args.length - 1; i >= 0; i--) {
+							x = args[i];
+							if (definitions[x]) {
+								deps[x] = true;
+							}
 						}
-						return x;
+						return args[0];
 					}
 
 					if (tree.type === 'Literal') {
@@ -331,30 +430,15 @@
 					}
 				}
 
-				statements = [
-					'precision mediump float;',
-					'varying vec2 vTexCoord;',
-					'varying vec4 vPosition;',
-
-					'uniform sampler2D source;',
-					'uniform float a, b, c, d;',
-					'uniform vec2 resolution;',
-				];
-
 				for (key in dependencies) {
 					if (dependencies.hasOwnProperty(key)) {
-						if (definitions[key]) {
-							statements.push(definitions[key]);
-						}
-					}
-				}
-
-				statements.push('void main(void) {');
-
-				for (key in dependencies) {
-					if (dependencies.hasOwnProperty(key)) {
-						if (declarations[key]) {
-							statements.push('\t' + declarations[key]);
+						deps = definitions[key];
+						if (deps) {
+							if (deps.global) {
+								globalDefinitions.push(deps.source);
+							} else {
+								nonGlobalDefinitions.push('\t' + deps.source);
+							}
 						}
 					}
 				}
@@ -375,12 +459,22 @@
 					}
 				}
 
-				statements.push(
+				statements = [
+					'precision mediump float;',
+					'varying vec2 vTexCoord;',
+					'varying vec4 vPosition;',
+
+					'uniform sampler2D source;',
+					'uniform float a, b, c, d;',
+					'uniform vec2 resolution;',
+					globalDefinitions.join('\n'),
+					'void main(void) {',
+					nonGlobalDefinitions.join('\n'),
 					'\tgl_FragColor = vec4(',
 					'\t\t' + cs.join(',\n\t\t'),
 					'\t);',
 					'}'
-				);
+				];
 
 				shaderSource.fragment = statements.join('\n');
 
