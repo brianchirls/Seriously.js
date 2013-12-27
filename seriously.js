@@ -41,6 +41,7 @@
 	allTransformsByHook = {},
 	allSourcesByHook = {},
 	identity,
+	maxSeriouslyId = 0,
 	nop = function () {},
 
 	/*
@@ -874,7 +875,8 @@
 		}
 
 		//initialize object, private properties
-		var seriously = this,
+		var id = ++maxSeriouslyId,
+			seriously = this,
 			nodes = [],
 			nodesById = {},
 			nodeId = 0,
@@ -4009,6 +4011,16 @@
 
 			return false;
 		};
+
+		Object.defineProperties(this, {
+			id: {
+				enumerable: true,
+				configurable: true,
+				get: function () {
+					return id;
+				}
+			}
+		});
 
 		//todo: load, save, find
 
