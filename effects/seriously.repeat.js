@@ -70,6 +70,9 @@
 				}
 			}
 
+			width = Math.floor(width);
+			height = Math.floor(height);
+
 			if (source) {
 				this.uniforms.resolution[0] = source.width;
 				this.uniforms.resolution[1] = source.height;

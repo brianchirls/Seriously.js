@@ -1299,6 +1299,9 @@
 				height = 1;
 			}
 
+			width = Math.floor(width);
+			height = Math.floor(height);
+
 			if (this.width !== width || this.height !== height) {
 				this.width = width;
 				this.height = height;
@@ -5190,6 +5193,7 @@
 				width: {
 					get: getWidth,
 					set: function (x) {
+						x = Math.floor(x);
 						if (x === forceWidth) {
 							return false;
 						}
@@ -5206,6 +5210,7 @@
 				height: {
 					get: getHeight,
 					set: function (y) {
+						y = Math.floor(y);
 						if (y === forceHeight) {
 							return false;
 						}
