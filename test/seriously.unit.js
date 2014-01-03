@@ -64,7 +64,9 @@
 		ok(s instanceof Seriously, 'Create Seriously instance with new');
 		s.destroy();
 
+		/*jshint ignore:start*/
 		s = Seriously();
+		/*jshint ignore:end*/
 		ok(s instanceof Seriously, 'Create Seriously instance without new');
 		s.destroy();
 	});
@@ -909,14 +911,14 @@
 						},
 						set: function(x) {
 							prop = x;
-							equal(prop, id, "Transform setter runs successfully #" + id);
+							equal(prop, id, 'Transform setter runs successfully #' + id);
 							return true;
 						}
 					},
 					method: {
 						method: function(x) {
 							prop = x;
-							equal(prop, id, "Transform method runs successfully #" + id);
+							equal(prop, id, 'Transform method runs successfully #' + id);
 							return true;
 						}
 					}
@@ -938,7 +940,7 @@
 
 		transform1.property = 1;
 		transform2.method(2);
-		equal(transform2.property, 2, "Transform getter runs successfully");
+		equal(transform2.property, 2, 'Transform getter runs successfully');
 
 		canvas = document.createElement('canvas');
 		target = seriously.target(canvas);
