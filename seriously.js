@@ -16,7 +16,7 @@
 			}
 			return Seriously;
 		});
-	} else {
+	} else if (typeof root.Seriously !== 'function') {
 		// Browser globals
 		root.Seriously = factory(root);
 	}
@@ -4585,9 +4585,6 @@
 					}
 				}
 			}());
-		} else {
-			//seriously has already been loaded, so don't replace it
-			return;
 		}
 	}
 
