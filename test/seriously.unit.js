@@ -1,7 +1,7 @@
 /*jslint devel: true, bitwise: true, browser: true, white: true, nomen: true, plusplus: true, maxerr: 50, indent: 4 */
-/* global module, test, asyncTest, expect, ok, equal, start, Seriously */
+/* global module, test, asyncTest, expect, ok, equal, start, Seriously, require */
 (function () {
-	"use strict";
+	'use strict';
 
 	function compare(a, b) {
 		var i;
@@ -40,6 +40,8 @@
 			skipIds = true;
 		}
 		document.body.removeChild(p);
+
+		window.globalProperties.push('requirejs', 'require', 'define');
 
 		for (p in window) {
 			if (!skipIds || document.getElementById(p) !== window[p] &&
@@ -1127,5 +1129,49 @@
 		fail.addEventListener('load', function() {
 			checkImageFail(this);
 		}, false);
+	});
+
+	/*
+	use require for loading plugins
+	*/
+	module('Effect Plugins');
+	asyncTest('invert', 2, function () {
+		require([
+			'seriously',
+			'effects/seriously.invert',
+			'sources/seriously.array'
+		], function (Seriously) {
+			var seriously,
+				effect,
+				target,
+				canvas,
+				source,
+				pixels;
+
+			seriously = new Seriously();
+			source = seriously.source([255, 128, 100, 200], {
+				width: 1,
+				height: 1
+			});
+
+			canvas = document.createElement('canvas');
+			canvas.width = canvas.height = 1;
+			target = seriously.target(canvas);
+
+			effect = seriously.effect('invert');
+
+			ok(effect, 'Invert effect successfully created');
+
+			target.source = effect;
+			effect.source = source;
+
+			pixels = target.readPixels(0, 0, 1, 1);
+			ok(pixels && compare(pixels, [0, 127, 155, 200]), 'Invert effect rendered accurately.');
+
+			seriously.destroy();
+			Seriously.removePlugin('invert');
+
+			start();
+		});
 	});
 }());
