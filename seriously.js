@@ -3586,6 +3586,10 @@
 
 			Node.prototype.resize.call(this);
 
+			if (this.plugin.resize) {
+				this.plugin.resize.call(this);
+			}
+
 			for (i = 0; i < this.targets.length; i++) {
 				this.targets[i].resize();
 			}
