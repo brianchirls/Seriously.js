@@ -2800,8 +2800,8 @@
 				this.plugin.destroy.call(this);
 			}
 
-			if (this.gl && this.texture) {
-				this.gl.deleteTexture(this.texture);
+			if (gl && this.texture) {
+				gl.deleteTexture(this.texture);
 			}
 
 			//targets
@@ -3280,6 +3280,8 @@
 			if (i >= 0) {
 				targets.splice(i, 1);
 			}
+
+			//todo: if this.gl === gl, clear out context so we can start over
 
 			Node.prototype.destroy.call(this);
 		};
