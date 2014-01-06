@@ -2755,7 +2755,7 @@
 				try {
 					gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, video);
 				} catch (securityError) {
-					if (securityError.name === 'SECURITY_ERR') {
+					if (securityError.code === window.DOMException.SECURITY_ERR) {
 						this.allowRefresh = false;
 						console.log('Unable to access cross-domain image');
 					}
@@ -2793,7 +2793,7 @@
 				try {
 					gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, media);
 				} catch (securityError) {
-					if (securityError.name === 'SECURITY_ERR') {
+					if (securityError.code === window.DOMException.SECURITY_ERR) {
 						this.allowRefresh = false;
 						console.log('Unable to access cross-domain image');
 					}
