@@ -92,11 +92,14 @@
 			expected = 'webgl';
 		} else {
 			try {
-				gl = canvas.getContext('experimental-webgl');
-			} catch (expError) {
+				gl = canvas.getContext('webgl');
+			} catch (webglError) {
+			}
+
+			if (!gl) {
 				try {
-					gl = canvas.getContext('webgl');
-				} catch (webglError) {
+					gl = canvas.getContext('experimental-webgl');
+				} catch (expError) {
 				}
 			}
 

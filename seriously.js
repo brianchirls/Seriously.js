@@ -382,6 +382,17 @@
 		canvas = document.createElement('canvas');
 		try {
 			testContext = canvas.getContext('webgl');
+		} catch (webglError) {
+		}
+
+		if (!testContext) {
+			try {
+				testContext = canvas.getContext('experimental-webgl');
+			} catch (expWebglError) {
+			}
+		}
+
+		if (testContext) {
 			canvas.addEventListener('webglcontextlost', function (event) {
 				/*
 				If/When context is lost, just clear testContext and create
@@ -392,7 +403,7 @@
 					testContext = undefined;
 				}
 			}, false);
-		} catch (webglError) {
+		} else {
 			console.log('Unable to access WebGL.');
 		}
 
