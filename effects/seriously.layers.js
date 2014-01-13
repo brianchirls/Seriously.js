@@ -140,6 +140,7 @@
 					this.frameBuffer.resize(width, height);
 				}
 
+				this.emit('resize');
 				this.setDirty();
 			}
 

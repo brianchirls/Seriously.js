@@ -1060,6 +1060,119 @@
 		seriously.destroy();
 	});
 
+	module('Events');
+	asyncTest('ready/unready events', 9, function () {
+		var seriously,
+			effect,
+			canvas,
+			target,
+			immediate,
+			deferred,
+			proceeded = false;
+
+		function fail() {
+			ok(false, 'Removed callback should not run');
+		}
+
+		function finish() {
+			if (!effect.ready && !target.ready && !seriously.isDestroyed()) {
+				//clean up
+				seriously.destroy();
+				Seriously.removePlugin('testReady');
+				Seriously.removeSource('deferred');
+				Seriously.removeSource('immediate');
+				start();
+			}
+		}
+
+		function proceed() {
+			if (effect.isReady() && deferred.isReady() && target.isReady() && !proceeded) {
+				proceeded = true;
+				setTimeout(function () {
+					effect.compare = seriously.source('deferred', 1);
+				}, 10);
+			}
+		}
+
+		Seriously.source('deferred', function (source) {
+			var me = this;
+			if (!proceeded) {
+				setTimeout(function () {
+					me.setReady();
+				}, 0);
+			}
+
+			return {
+				deferTexture: true,
+				source: source,
+				render: function () {}
+			};
+		}, {
+			title: 'delete me'
+		});
+
+		Seriously.source('immediate', function () {
+			return {
+				render: function () {}
+			};
+		}, {
+			title: 'delete me'
+		});
+
+		Seriously.plugin('testReady', {
+			inputs: {
+				source: {
+					type: 'image'
+				},
+				compare: {
+					type: 'image',
+				}
+			},
+			title: 'testReady'
+		});
+
+		seriously = new Seriously();
+
+		immediate = seriously.source('immediate');
+		deferred = seriously.source('deferred', 0);
+
+		effect = seriously.effect('testReady');
+		effect.source = immediate;
+		effect.compare = deferred;
+
+		canvas = document.createElement('canvas');
+		target = seriously.target(canvas);
+		target.source = effect;
+
+		ok(immediate.isReady(), 'Immediately ready source is ready');
+		ok(!deferred.isReady(), 'Deferred source is not yet ready');
+		ok(!effect.isReady(), 'Connected effect is not yet ready');
+		ok(!target.isReady(), 'Connected target is not yet ready');
+
+		deferred.on('ready', fail);
+		deferred.off('ready', fail);
+		deferred.on('ready', function () {
+			ok(deferred.isReady(), 'Deferred source becomes ready');
+			proceed();
+		});
+		effect.on('ready', function () {
+			ok(effect.isReady(), 'Connected effect becomes ready');
+			proceed();
+		});
+		target.on('ready', function () {
+			ok(target.isReady(), 'Connected target becomes ready');
+			proceed();
+		});
+		effect.on('unready', function () {
+			ok(!effect.isReady(), 'Connected effect is no longer ready');
+			finish();
+		});
+		target.on('unready', function () {
+			ok(!target.isReady(), 'Connected target is no longer ready');
+			finish();
+		});
+	});
+
 	module('Alias');
 
 	module('Utilities');

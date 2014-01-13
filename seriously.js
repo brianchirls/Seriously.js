@@ -1220,6 +1220,7 @@
 		}
 
 		Node = function () {
+			this.ready = false;
 			this.width = 1;
 			this.height = 1;
 
@@ -1235,10 +1236,40 @@
 
 			this.seriously = seriously;
 
+			this.listeners = {};
+
 			this.id = nodeId;
 			nodes.push(this);
 			nodesById[nodeId] = this;
 			nodeId++;
+		};
+
+		Node.prototype.setReady = function () {
+			var i;
+
+			if (!this.ready) {
+				this.emit('ready');
+				this.ready = true;
+				if (this.targets) {
+					for (i = 0; i < this.targets.length; i++) {
+						this.targets[i].setReady();
+					}
+				}
+			}
+		};
+
+		Node.prototype.setUnready = function () {
+			var i;
+
+			if (this.ready) {
+				this.emit('unready');
+				this.ready = false;
+				if (this.targets) {
+					for (i = 0; i < this.targets.length; i++) {
+						this.targets[i].setUnready();
+					}
+				}
+			}
 		};
 
 		Node.prototype.setDirty = function () {
@@ -1246,6 +1277,7 @@
 			var i;
 
 			if (!this.dirty) {
+				this.emit('dirty');
 				this.dirty = true;
 				if (this.targets) {
 					for (i = 0; i < this.targets.length; i++) {
@@ -1318,6 +1350,7 @@
 				this.width = width;
 				this.height = height;
 
+				this.emit('resize');
 				this.setDirty();
 			}
 
@@ -1331,11 +1364,67 @@
 			}
 		};
 
+		Node.prototype.on = function (eventName, callback) {
+			var listeners,
+				index = -1;
+
+			if (!eventName || typeof callback !== 'function') {
+				return;
+			}
+
+			listeners = this.listeners[eventName];
+			if (listeners) {
+				index = listeners.indexOf(callback);
+			} else {
+				listeners = this.listeners[eventName] = [];
+			}
+
+			if (index < 0) {
+				listeners.push(callback);
+			}
+		};
+
+		Node.prototype.off = function (eventName, callback) {
+			var listeners,
+				index = -1;
+
+			if (!eventName || typeof callback !== 'function') {
+				return;
+			}
+
+			listeners = this.listeners[eventName];
+			if (listeners) {
+				index = listeners.indexOf(callback);
+				if (index >= 0) {
+					listeners.splice(index, 1);
+				}
+			}
+		};
+
+		Node.prototype.emit = function (eventName) {
+			var i,
+				listeners = this.listeners[eventName];
+
+			if (listeners && listeners.length) {
+				for (i = 0; i < listeners.length; i++) {
+					setTimeoutZero(listeners[i]);
+				}
+			}
+		};
+
 		Node.prototype.destroy = function () {
-			var i;
+			var i,
+				key;
 
 			delete this.gl;
 			delete this.seriously;
+
+			//remove all listeners
+			for (key in this.listeners) {
+				if (this.listeners.hasOwnProperty(key)) {
+					delete this.listeners[key];
+				}
+			}
 
 			//clear out uniforms
 			for (i in this.uniforms) {
@@ -1576,6 +1665,14 @@
 				return me.readPixels(x, y, width, height, dest);
 			};
 
+			this.on = function (eventName, callback) {
+				me.on(eventName, callback);
+			};
+
+			this.off = function (eventName, callback) {
+				me.off(eventName, callback);
+			};
+
 			this.alias = function (inputName, aliasName) {
 				me.alias(inputName, aliasName);
 				return this;
@@ -1607,10 +1704,15 @@
 			this.isDestroyed = function () {
 				return me.isDestroyed;
 			};
+
+			this.isReady = function () {
+				return me.ready;
+			};
 		};
 
 		EffectNode = function (hook, options) {
-			var key, name, input;
+			var key, name, input,
+				hasImage = false;
 
 			Node.call(this, options);
 
@@ -1654,6 +1756,9 @@
 					if (input.uniform) {
 						this.uniforms[input.uniform] = input.defaultValue;
 					}
+					if (input.type === 'image') {
+						hasImage = true;
+					}
 				}
 			}
 
@@ -1666,6 +1771,7 @@
 				}
 			}
 
+			this.ready = !hasImage;
 			this.inPlace = this.effect.inPlace;
 
 			this.pub = new Effect(this);
@@ -1718,6 +1824,61 @@
 				this.targets[i].resize();
 			}
 		};
+
+		EffectNode.prototype.setReady = function () {
+			var i,
+				input,
+				key;
+
+			if (!this.ready) {
+				for (key in this.effect.inputs) {
+					if (this.effect.inputs.hasOwnProperty(key)) {
+						input = this.effect.inputs[key];
+						if (input.type === 'image' &&
+								(!this.sources[key] || !this.sources[key].ready)) {
+							return;
+						}
+					}
+				}
+
+				this.ready = true;
+				this.emit('ready');
+				if (this.targets) {
+					for (i = 0; i < this.targets.length; i++) {
+						this.targets[i].setReady();
+					}
+				}
+			}
+		};
+
+		EffectNode.prototype.setUnready = function () {
+			var i,
+				input,
+				key;
+
+			if (this.ready) {
+				for (key in this.effect.inputs) {
+					if (this.effect.inputs.hasOwnProperty(key)) {
+						input = this.effect.inputs[key];
+						if (input.type === 'image' &&
+								(!this.sources[key] || !this.sources[key].ready)) {
+							this.ready = false;
+							break;
+						}
+					}
+				}
+
+				if (!this.ready) {
+					this.emit('unready');
+					if (this.targets) {
+						for (i = 0; i < this.targets.length; i++) {
+							this.targets[i].setUnready();
+						}
+					}
+				}
+			}
+		};
+
 
 		EffectNode.prototype.setTarget = function (target) {
 			var i;
@@ -1832,8 +1993,10 @@
 
 				if (typeof effect.draw === 'function') {
 					effect.draw.call(this, this.shader, this.model, this.uniforms, frameBuffer, drawFn);
+					this.emit('render');
 				} else if (frameBuffer) {
 					draw(this.shader, this.model, this.uniforms, frameBuffer, this);
+					this.emit('render');
 				}
 
 				this.dirty = false;
@@ -1900,6 +2063,12 @@
 
 				if (input.shaderDirty) {
 					this.shaderDirty = true;
+				}
+
+				if (value && value.ready) {
+					this.setReady();
+				} else {
+					this.setUnready();
 				}
 
 				this.setDirty();
@@ -2443,6 +2612,14 @@
 				return me.readPixels(x, y, width, height, dest);
 			};
 
+			this.on = function (eventName, callback) {
+				me.on(eventName, callback);
+			};
+
+			this.off = function (eventName, callback) {
+				me.off(eventName, callback);
+			};
+
 			this.destroy = function () {
 				var i,
 					descriptor;
@@ -2464,6 +2641,10 @@
 
 			this.isDestroyed = function () {
 				return me.isDestroyed;
+			};
+
+			this.isReady = function () {
+				return me.ready;
 			};
 		};
 
@@ -2527,7 +2708,7 @@
 							if (!that.isDestroyed) {
 								that.width = source.naturalWidth;
 								that.height = source.naturalHeight;
-								that.ready();
+								that.setReady();
 							}
 						}, true);
 					}
@@ -2545,7 +2726,7 @@
 							if (!that.isDestroyed) {
 								that.width = source.videoWidth;
 								that.height = source.videoHeight;
-								that.ready();
+								that.setReady();
 							}
 						}, true);
 					}
@@ -2614,7 +2795,7 @@
 			this.targets = [];
 
 			if (!deferTexture) {
-				that.ready();
+				that.setReady();
 			}
 
 			this.pub = new Source(this);
@@ -2631,7 +2812,7 @@
 		SourceNode.prototype.initialize = function () {
 			var texture;
 
-			if (!gl || this.texture || !this.isReady) {
+			if (!gl || this.texture || !this.ready) {
 				return;
 			}
 
@@ -2688,6 +2869,7 @@
 				this.framebuffer.resize(this.width, this.height);
 			}
 
+			this.emit('resize');
 			this.setDirty();
 
 			if (this.targets) {
@@ -2701,18 +2883,27 @@
 			}
 		};
 
-		SourceNode.prototype.ready = function () {
-			if (!this.isReady) {
-				this.isReady = true;
+		SourceNode.prototype.setReady = function () {
+			var i;
+			if (!this.ready) {
+				this.ready = true;
 				this.resize();
 				this.initialize();
+
+				this.emit('ready');
+				if (this.targets) {
+					for (i = 0; i < this.targets.length; i++) {
+						this.targets[i].setReady();
+					}
+				}
+
 			}
 		};
 
 		SourceNode.prototype.render = function () {
 			var media = this.source;
 
-			if (!gl || !media || !this.isReady) {
+			if (!gl || !media || !this.ready) {
 				return;
 			}
 
@@ -2726,14 +2917,16 @@
 
 			if (this.plugin && this.plugin.render &&
 					this.plugin.render.call(this, gl, draw, rectangleModel, baseShader)) {
+
 				this.dirty = false;
+				this.emit('render');
 			}
 		};
 
 		SourceNode.prototype.renderVideo = function () {
 			var video = this.source;
 
-			if (!gl || !video || !video.videoHeight || !video.videoWidth || video.readyState < 2 || !this.isReady) {
+			if (!gl || !video || !video.videoHeight || !video.videoWidth || video.readyState < 2 || !this.ready) {
 				return;
 			}
 
@@ -2768,13 +2961,14 @@
 				this.lastRenderFrame = video.mozPresentedFrames;
 				this.lastRenderTimeStamp = Date.now();
 				this.dirty = false;
+				this.emit('render');
 			}
 		};
 
 		SourceNode.prototype.renderImageCanvas = function () {
 			var media = this.source;
 
-			if (!gl || !media || !this.isReady) {
+			if (!gl || !media || !this.ready) {
 				return;
 			}
 
@@ -2801,6 +2995,7 @@
 
 				this.lastRenderTime = Date.now() / 1000;
 				this.dirty = false;
+				this.emit('render');
 			}
 		};
 
@@ -2943,6 +3138,14 @@
 				return me.readPixels(x, y, width, height, dest);
 			};
 
+			this.on = function (eventName, callback) {
+				me.on(eventName, callback);
+			};
+
+			this.off = function (eventName, callback) {
+				me.off(eventName, callback);
+			};
+
 			this.go = function (options) {
 				me.go(options);
 			};
@@ -2976,6 +3179,10 @@
 
 			this.isDestroyed = function () {
 				return me.isDestroyed;
+			};
+
+			this.isReady = function () {
+				return me.ready;
 			};
 		};
 
@@ -3024,7 +3231,7 @@
 					target = opts.context.canvas;
 				} else {
 					//todo: search all canvases for matching contexts?
-					throw "Must provide a canvas with WebGLFramebuffer target";
+					throw 'Must provide a canvas with WebGLFramebuffer target';
 				}
 			}
 
@@ -3156,6 +3363,12 @@
 				this.source = newSource;
 				newSource.setTarget(this);
 
+				if (newSource && newSource.ready) {
+					this.setReady();
+				} else {
+					this.setUnready();
+				}
+
 				this.setDirty();
 			}
 		};
@@ -3176,6 +3389,7 @@
 				this.height = this.target.height;
 				this.uniforms.resolution[0] = this.width;
 				this.uniforms.resolution[1] = this.height;
+				this.emit('resize');
 				this.setTransformDirty();
 			}
 
@@ -3236,12 +3450,14 @@
 
 				draw(baseShader, rectangleModel, this.uniforms, this.frameBuffer.frameBuffer, this);
 
+				this.emit('render');
 				this.dirty = false;
 			}
 		};
 
 		TargetNode.prototype.renderSecondaryWebGL = function () {
 			if (this.dirty && this.source) {
+				this.emit('render');
 				this.source.render();
 
 				var width = this.source.width,
@@ -3473,6 +3689,14 @@
 				return this;
 			};
 
+			this.on = function (eventName, callback) {
+				me.on(eventName, callback);
+			};
+
+			this.off = function (eventName, callback) {
+				me.off(eventName, callback);
+			};
+
 			this.destroy = function () {
 				var i,
 					descriptor;
@@ -3496,6 +3720,10 @@
 			this.isDestroyed = function () {
 				return me.isDestroyed;
 			};
+
+			this.isReady = function () {
+				return me.ready;
+			};
 		};
 
 		TransformNode = function (hook, options) {
@@ -3505,6 +3733,7 @@
 			this.matrix = new Float32Array(16);
 			this.cumulativeMatrix = new Float32Array(16);
 
+			this.ready = false;
 			this.width = 1;
 			this.height = 1;
 
@@ -3523,6 +3752,7 @@
 			this.inputElements = {};
 			this.inputs = {};
 			this.methods = {};
+			this.listeners = {};
 
 			this.texture = null;
 			this.frameBuffer = null;
@@ -3629,6 +3859,11 @@
 			this.source = newSource;
 			newSource.setTarget(this);
 
+			if (newSource && newSource.ready) {
+				this.setReady();
+			} else {
+				this.setUnready();
+			}
 			this.resize();
 		};
 
@@ -3825,6 +4060,12 @@
 
 			Node.prototype.destroy.call(this);
 		};
+
+		TransformNode.prototype.setReady = Node.prototype.setReady;
+		TransformNode.prototype.setUnready = Node.prototype.setUnready;
+		TransformNode.prototype.on = Node.prototype.on;
+		TransformNode.prototype.off = Node.prototype.off;
+		TransformNode.prototype.emit = Node.prototype.emit;
 
 		/*
 		Initialize Seriously object based on options

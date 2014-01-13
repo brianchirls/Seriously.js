@@ -89,6 +89,7 @@
 					this.frameBuffer.resize(this.width, this.height);
 				}
 
+				this.emit('resize');
 				this.setDirty();
 			}
 

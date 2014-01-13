@@ -141,6 +141,7 @@
 				this.width = width;
 				this.height = height;
 
+				this.emit('resize');
 				this.setDirty();
 			}
 
