@@ -22,6 +22,12 @@
 			edge, // edge detection effect
 			target; // a wrapper object for our target canvas
 
+		if (Seriously.incompatible('camera')) {
+			document.body.appendChild(document.createTextNode('Sorry, your browser does not support getUserMedia'));
+			document.querySelector('canvas').style.display = 'none';
+			return;
+		}
+
 		// construct our seriously object
 		seriously = new Seriously();
 

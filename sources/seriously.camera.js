@@ -44,7 +44,7 @@
 		function initialize() {
 			me.width = video.videoWidth;
 			me.height = video.videoHeight;
-			me.ready();
+			me.setReady();
 		}
 
 		//todo: support options for video resolution, etc.
@@ -84,6 +84,7 @@
 
 				video.play();
 			}, function (evt) {
+				//todo: emit error event
 				console.log('Unable to access video camera', evt);
 			});
 
@@ -98,7 +99,9 @@
 			};
 		}
 	}, {
-		//todo: compatible
+		compatible: function () {
+			return !!getUserMedia;
+		},
 		title: 'Camera'
 	});
 }));
