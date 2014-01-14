@@ -39,7 +39,11 @@
 	timeouts = [],
 	allEffectsByHook = {},
 	allTransformsByHook = {},
-	allSourcesByHook = {},
+	allSourcesByHook = {
+		canvas: [],
+		image: [],
+		video: []
+	},
 	identity,
 	maxSeriouslyId = 0,
 	nop = function () {},
@@ -1158,8 +1162,19 @@
 			gl.enable(gl.DEPTH_TEST);
 		}
 
-		function findInputNode(source, options) {
+		function findInputNode(hook, source, options) {
 			var node, i;
+
+			if (typeof hook !== 'string' || !source && source !== 0) {
+				if (!options || typeof options !== 'object') {
+					options = source;
+				}
+				source = hook;
+			}
+
+			if (typeof hook !== 'string' || !seriousSources[hook]) {
+				hook = null;
+			}
 
 			if (source instanceof SourceNode ||
 					source instanceof EffectNode ||
@@ -1179,12 +1194,13 @@
 				}
 
 				for (i = 0; i < sources.length; i++) {
-					if (sources[i].source === source) {
-						return sources[i];
+					node = sources[i];
+					if ((!hook || hook === node.hook) && node.compare && node.compare(source, options)) {
+						return node;
 					}
 				}
 
-				node = new SourceNode(source, options);
+				node = new SourceNode(hook, source, options);
 			}
 
 			return node;
@@ -2662,9 +2678,26 @@
 				key,
 				plugin;
 
+			function sourcePlugin(hook, source, options, force) {
+				var plugin = seriousSources[hook];
+				if (plugin.definition) {
+					plugin = plugin.definition.call(that, source, options, force);
+					if (plugin) {
+						plugin = extend(extend({}, seriousSources[hook]), plugin);
+					} else {
+						return null;
+					}
+				}
+				return plugin;
+			}
+
+			function compareSource(source) {
+				return that.source === source;
+			}
+
 			Node.call(this);
 
-			if (typeof hook !== 'string' || !source) {
+			if (hook && typeof hook !== 'string' || !source && source !== 0) {
 				if (!options || typeof options !== 'object') {
 					options = source;
 				}
@@ -2677,12 +2710,13 @@
 
 			// forced source type?
 			if (typeof hook === 'string' && seriousSources[hook]) {
-				plugin = seriousSources[hook].definition.call(this, source, options, true);
+				plugin = sourcePlugin(hook, source, options, true);
 				if (plugin) {
-					this.hook = key;
+					this.hook = hook;
 					matchedType = true;
 					deferTexture = plugin.deferTexture;
 					this.plugin = plugin;
+					this.compare = plugin.compare;
 					if (plugin.source) {
 						source = plugin.source;
 					}
@@ -2697,6 +2731,8 @@
 
 					this.render = this.renderImageCanvas;
 					matchedType = true;
+					this.hook = 'canvas';
+					this.compare = compareSource;
 				} else if (source.tagName === 'IMG') {
 					this.width = source.naturalWidth || 1;
 					this.height = source.naturalHeight || 1;
@@ -2715,6 +2751,8 @@
 
 					this.render = this.renderImageCanvas;
 					matchedType = true;
+					this.hook = 'image';
+					this.compare = compareSource;
 				} else if (source.tagName === 'VIDEO') {
 					this.width = source.videoWidth || 1;
 					this.height = source.videoHeight || 1;
@@ -2733,6 +2771,8 @@
 
 					this.render = this.renderVideo;
 					matchedType = true;
+					this.hook = 'video';
+					this.compare = compareSource;
 				}
 			} else if (!plugin && source instanceof WebGLTexture) {
 				if (gl && !gl.isTexture(source)) {
@@ -2761,18 +2801,21 @@
 
 				this.texture = source;
 				this.initialized = true;
+				this.hook = 'texture';
+				this.compare = compareSource;
 
 				//todo: if WebGLTexture source is from a different context render it and copy it over
 				this.render = function () {};
 			} else if (!plugin) {
 				for (key in seriousSources) {
 					if (seriousSources.hasOwnProperty(key) && seriousSources[key]) {
-						plugin = seriousSources[key].definition.call(this, source, options);
+						plugin = sourcePlugin(key, source, options, false);
 						if (plugin) {
 							this.hook = key;
 							matchedType = true;
 							deferTexture = plugin.deferTexture;
 							this.plugin = plugin;
+							this.compare = plugin.compare;
 							if (plugin.source) {
 								source = plugin.source;
 							}
@@ -2801,6 +2844,7 @@
 			this.pub = new Source(this);
 
 			sources.push(this);
+			allSourcesByHook[this.hook].push(this);
 
 			if (sources.length && !rafId) {
 				renderDaemon();
@@ -2903,7 +2947,7 @@
 		SourceNode.prototype.render = function () {
 			var media = this.source;
 
-			if (!gl || !media || !this.ready) {
+			if (!gl || !media && media !== 0 || !this.ready) {
 				return;
 			}
 
@@ -3022,6 +3066,11 @@
 			i = sources.indexOf(this);
 			if (i >= 0) {
 				sources.splice(i, 1);
+			}
+
+			i = allSourcesByHook[this.hook].indexOf(this);
+			if (i >= 0) {
+				allSourcesByHook[this.hook].splice(i, 1);
 			}
 
 			for (key in this) {
@@ -4094,9 +4143,8 @@
 			return effectNode.pub;
 		};
 
-		this.source = function (source, options) {
-			var sourceNode = findInputNode(source, options);
-			//var sourceNode = new SourceNode(source, options);
+		this.source = function (hook, source, options) {
+			var sourceNode = findInputNode(hook, source, options);
 			return sourceNode.pub;
 		};
 
@@ -4247,25 +4295,34 @@
 			return isDestroyed;
 		};
 
-		this.incompatible = function (pluginHook) {
-			var i,
+		this.incompatible = function (hook) {
+			var key,
 				plugin,
 				failure = false;
 
-			failure = Seriously.incompatible(pluginHook);
+			failure = Seriously.incompatible(hook);
 
 			if (failure) {
 				return failure;
 			}
 
-			if (!pluginHook) {
-				for (i in allEffectsByHook) {
-					if (allEffectsByHook.hasOwnProperty(i) && allEffectsByHook[i].length) {
-						plugin = seriousEffects[i];
+			if (!hook) {
+				for (key in allEffectsByHook) {
+					if (allEffectsByHook.hasOwnProperty(key) && allEffectsByHook[key].length) {
+						plugin = seriousEffects[key];
 						if (plugin && typeof plugin.compatible === 'function' &&
-							!plugin.compatible.call(this)) {
+								!plugin.compatible.call(this)) {
+							return 'plugin-' + key;
+						}
+					}
+				}
 
-							return 'plugin-' + i;
+				for (key in allSourcesByHook) {
+					if (allSourcesByHook.hasOwnProperty(key) && allSourcesByHook[key].length) {
+						plugin = seriousSources[key];
+						if (plugin && typeof plugin.compatible === 'function' &&
+								!plugin.compatible.call(this)) {
+							return 'source-' + key;
 						}
 					}
 				}
@@ -4333,7 +4390,7 @@
 		].join('\n');
 	}
 
-	Seriously.incompatible = function (pluginHook) {
+	Seriously.incompatible = function (hook) {
 		var canvas, gl, plugin;
 
 		if (incompatibility === undefined) {
@@ -4354,12 +4411,19 @@
 			return incompatibility;
 		}
 
-		if (pluginHook) {
-			plugin = seriousEffects[pluginHook];
+		if (hook) {
+			plugin = seriousEffects[hook];
 			if (plugin && typeof plugin.compatible === 'function' &&
 				!plugin.compatible(gl)) {
 
-				return 'plugin-' + pluginHook;
+				return 'plugin-' + hook;
+			}
+
+			plugin = seriousSources[hook];
+			if (plugin && typeof plugin.compatible === 'function' &&
+				!plugin.compatible(gl)) {
+
+				return 'source-' + hook;
 			}
 		}
 

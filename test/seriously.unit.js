@@ -71,19 +71,29 @@
 		s.destroy();
 	});
 
-	test('Incompatible', function () {
-		var s, e, msg,
-			expected, gl, canvas;
+	test('Incompatible', 4, function () {
+		var seriously,
+			effect,
+			source,
+			msg,
+			expected,
+			gl,
+			canvas;
 
-		expect(2);
-
-		Seriously.plugin('removeme', {
+		Seriously.plugin('incompatibleeffect', {
 			compatible: function () {
 				return false;
 			}
 		});
 
-		s = new Seriously();
+		Seriously.source('incompatiblesource', {
+			compatible: function () {
+				return false;
+			},
+			title: 'delete me'
+		});
+
+		seriously = new Seriously();
 
 		canvas = document.createElement('canvas');
 		if (!canvas) {
@@ -105,21 +115,30 @@
 
 			if (!gl) {
 				expected = 'context';
-			} else {
-				expected = 'plugin-removeme';
 			}
 		}
 
-		msg = s.incompatible('removeme');
-		equal(msg, expected, 'Incompatibity test on plugin');
+		//test effect plugin
+		msg = seriously.incompatible('incompatibleeffect');
+		equal(msg, expected || 'plugin-incompatibleeffect', 'Incompatibity test on effect');
 
-		e = s.effect('removeme');
-		msg = s.incompatible();
-		equal(msg, expected, 'Incompatibity test on network with incompatible plugin');
+		effect = seriously.effect('incompatibleeffect');
+		msg = seriously.incompatible();
+		equal(msg, expected || 'plugin-incompatibleeffect', 'Incompatibity test on network with incompatible effect plugin');
+		effect.destroy();
+
+		//test source plugin
+		msg = seriously.incompatible('incompatiblesource');
+		equal(msg, expected || 'source-incompatiblesource', 'Incompatibity test on source');
+
+		source = seriously.source('incompatiblesource');
+		msg = seriously.incompatible();
+		equal(msg, expected || 'source-incompatiblesource', 'Incompatibity test on network with incompatible source plugin');
 
 		//clean up
-		s.destroy();
-		Seriously.removePlugin('removeme');
+		seriously.destroy();
+		Seriously.removePlugin('incompatibleeffect');
+		Seriously.removeSource('incompatiblesource');
 	});
 
 	module('Plugin');
@@ -536,6 +555,88 @@
 
 		seriously.destroy();
 		Seriously.removePlugin('test');
+	});
+
+	test('Source Plugins', 7, function () {
+		var seriously,
+			funcSource,
+			objSource,
+			altSource1,
+			altSource2,
+			effect,
+			canvas,
+			target;
+
+		Seriously.plugin('temp', {
+			inputs: {
+				a: {
+					type: 'image'
+				},
+				b: {
+					type: 'image'
+				}
+			},
+			title: 'delete me'
+		});
+
+		Seriously.source('func', function (source) {
+			if (!source) {
+				ok(true, 'Source definition function runs');
+			}
+			return {
+				compare: function (source) {
+					return this.source === source;
+				},
+				render: function () {
+					if (!this.source) {
+						ok(true, 'Source render function runs (func)');
+					}
+				},
+				destroy: function () {
+					if (!this.source) {
+						ok(true, 'Source destroy function runs (func)');
+					}
+				}
+			};
+		}, {
+			title: 'delete me'
+		});
+
+		Seriously.source('obj', {
+			render: function () {
+				ok(true, 'Source render function runs (obj)');
+			},
+			destroy: function () {
+				ok(true, 'Source destroy function runs (obj)');
+			},
+			title: 'delete me'
+		});
+
+		seriously = new Seriously();
+
+		canvas = document.createElement('canvas');
+		target = seriously.target(canvas);
+
+		funcSource = seriously.source('func', 0);
+		objSource = seriously.source('obj');
+
+		altSource1 = seriously.source('func', 1);
+		altSource2 = seriously.source('func', 1);
+
+		equal(altSource1, altSource2, 'Matching source objects are the same');
+		ok(funcSource !== altSource1, 'Different source objects are not the same');
+
+		effect = seriously.effect('temp');
+		effect.a = funcSource;
+		effect.b = objSource;
+
+		target.source = effect;
+		target.render();
+
+		seriously.destroy();
+		Seriously.removePlugin('temp');
+		Seriously.removeSource('func');
+		Seriously.removeSource('obj');
 	});
 
 	module('Target');
