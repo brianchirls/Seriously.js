@@ -37,11 +37,6 @@
 			me.resize();
 		}
 
-		function updateAndResize() {
-			update();
-			me.resize();
-		}
-
 		if (typeof options === 'number' && options >= 2) {
 			count = options;
 		} else {
