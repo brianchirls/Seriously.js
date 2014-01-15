@@ -45,10 +45,7 @@
 			reformat.width = 480;
 			reformat.height = 270;
 			//reformat.mode = '#mode';
-			reformat.mode = 'contain';
-			document.getElementById('mode').addEventListener('change', function () {
-				reformat.mode = this.value;
-			}, false);
+			reformat.mode = '#mode';
 
 			// connect all our nodes in the right order
 			reformat.source = '#source';

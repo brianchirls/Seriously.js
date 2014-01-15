@@ -24,6 +24,7 @@
 	*/
 
 	Seriously.plugin('hex', {
+		commonShader: true,
 		shader: function (inputs, shaderSource) {
 			shaderSource.fragment = '#ifdef GL_ES\n\n' +
 				'precision mediump float;\n\n' +

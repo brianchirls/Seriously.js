@@ -29,6 +29,7 @@ Modified to preserve alpha
 	'use strict';
 
 	Seriously.plugin('filmgrain', {
+		commonShader: true,
 		shader: function (inputs, shaderSource) {
 			shaderSource.fragment = [
 				'#ifdef GL_ES',

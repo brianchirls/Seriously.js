@@ -9,9 +9,12 @@
 		// AMD. Register as an anonymous module.
 		define(['seriously'], factory);
 	} else {
+		/*
+		todo: build out-of-order loading for sources and transforms or remove this
 		if (!root.Seriously) {
 			root.Seriously = { plugin: function (name, opt) { this[name] = opt; } };
 		}
+		*/
 		factory(root.Seriously);
 	}
 }(this, function (Seriously, undefined) {

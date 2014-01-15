@@ -19,6 +19,7 @@
 
 	//http://msdn.microsoft.com/en-us/library/bb313868(v=xnagamestudio.10).aspx
 	Seriously.plugin('ripple', {
+		commonShader: true,
 		shader: function (inputs, shaderSource) {
 			shaderSource.fragment = '#ifdef GL_ES\n\n' +
 				'precision mediump float;\n\n' +

@@ -17,7 +17,7 @@
 }(this, function (Seriously, undefined) {
 	'use strict';
 
-	Seriously.plugin('lumakey', {
+	Seriously.plugin('polar', {
 		commonShader: true,
 		shader: function (inputs, shaderSource) {
 			shaderSource.fragment = '#ifdef GL_ES\n\n' +
@@ -28,53 +28,31 @@
 				'varying vec4 vPosition;\n' +
 				'\n' +
 				'uniform sampler2D source;\n' +
+				'uniform float angle;\n' +
+				'const float PI = ' + Math.PI + ';\n' +
 				'\n' +
-				'uniform float threshold;\n' +
-				'uniform float clipBlack;\n' +
-				'uniform float clipWhite;\n' +
-				'uniform bool invert;\n' +
-				'\n' +
-				'const vec3 lumcoeff = vec3(0.2125,0.7154,0.0721);\n' +
-				'\n' +
-				'void main (void)  {\n' +
-				'	vec4 pixel = texture2D(source, vTexCoord);\n' +
-				'	float luma = dot(pixel.rgb,lumcoeff);\n' +
-				'	float alpha = 1.0 - smoothstep(clipBlack, clipWhite, luma);\n' +
-				'	if (invert) alpha = 1.0 - alpha;\n' +
-				'	gl_FragColor = vec4(pixel.rgb, min(pixel.a, alpha) );\n' +
-				'\n' +
-				'} \n';
+				'void main(void) {\n' +
+				'	vec2 norm = (1.0 - vTexCoord) * 2.0 - 1.0;\n' +
+				'	float theta = mod(PI + atan(norm.x, norm.y) - angle * (PI / 180.0), PI * 2.0);\n' +
+				'	vec2 polar = vec2(theta / (2.0 * PI), length(norm));\n' +
+				'	gl_FragColor = texture2D(source, polar);\n' +
+				'}\n';
 			return shaderSource;
 		},
-		inPlace: true,
+		inPlace: false,
 		inputs: {
 			source: {
 				type: 'image',
 				uniform: 'source',
 				shaderDirty: false
 			},
-			clipBlack: {
+			angle: {
 				type: 'number',
-				uniform: 'clipBlack',
-				defaultValue: 0.9,
-				min: 0,
-				max: 1
-			},
-			clipWhite: {
-				type: 'number',
-				uniform: 'clipWhite',
-				defaultValue: 1,
-				min: 0,
-				max: 1
-			},
-			invert: {
-				type: 'boolean',
-				uniform: 'invert',
-				defaultValue: false
+				uniform: 'angle',
+				defaultValue: 0
 			}
 		},
-		title: 'Luma Key',
-		categories: ['key'],
-		description: ''
+		title: 'Polar Coordinates',
+		description: 'Convert cartesian to polar coordinates'
 	});
 }));

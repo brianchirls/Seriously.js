@@ -20,6 +20,7 @@
 	//inspired by Evan Wallace (https://github.com/evanw/glfx.js)
 
 	Seriously.plugin('hue-saturation', {
+		commonShader: true,
 		shader: function (inputs, shaderSource) {
 			shaderSource.vertex = [
 				'#ifdef GL_ES',

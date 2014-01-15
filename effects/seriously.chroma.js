@@ -25,6 +25,7 @@
 		todo: rename parameters
 	*/
 	Seriously.plugin('chroma', {
+		commonShader: true,
 		shader: function (inputs, shaderSource) {
 			shaderSource.vertex = [
 				'#ifdef GL_ES',
