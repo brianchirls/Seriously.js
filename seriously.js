@@ -2695,6 +2695,24 @@
 				return that.source === source;
 			}
 
+			function initializeVideo() {
+				if (that.isDestroyed) {
+					return;
+				}
+
+				if (source.videoWidth) {
+					that.width = source.videoWidth;
+					that.height = source.videoHeight;
+					if (deferTexture) {
+						that.setReady();
+					}
+				} else {
+					//Workaround for Firefox bug https://bugzilla.mozilla.org/show_bug.cgi?id=926753
+					deferTexture = true;
+					setTimeout(initializeVideo, 50);
+				}
+			}
+
 			Node.call(this);
 
 			if (hook && typeof hook !== 'string' || !source && source !== 0) {
@@ -2754,19 +2772,11 @@
 					this.hook = 'image';
 					this.compare = compareSource;
 				} else if (source.tagName === 'VIDEO') {
-					this.width = source.videoWidth || 1;
-					this.height = source.videoHeight || 1;
-
-					if (!source.readyState) {
+					if (source.readyState) {
+						initializeVideo();
+					} else {
 						deferTexture = true;
-
-						source.addEventListener('loadedmetadata', function () {
-							if (!that.isDestroyed) {
-								that.width = source.videoWidth;
-								that.height = source.videoHeight;
-								that.setReady();
-							}
-						}, true);
+						source.addEventListener('loadedmetadata', initializeVideo, true);
 					}
 
 					this.render = this.renderVideo;

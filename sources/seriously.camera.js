@@ -20,7 +20,10 @@
 }(this, function (Seriously, undefined) {
 	'use strict';
 
-	var getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
+	var getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia,
+
+	// detect browser-prefixed window.URL
+	URL = window.URL || window.webkitURL || window.mozURL || window.msURL;
 
 	Seriously.source('camera', function (source, options, force) {
 		var me = this,
@@ -42,9 +45,18 @@
 		}
 
 		function initialize() {
-			me.width = video.videoWidth;
-			me.height = video.videoHeight;
-			me.setReady();
+			if (destroyed) {
+				return;
+			}
+
+			if (video.videoWidth) {
+				me.width = video.videoWidth;
+				me.height = video.videoHeight;
+				me.setReady();
+			} else {
+				//Workaround for Firefox bug https://bugzilla.mozilla.org/show_bug.cgi?id=926753
+				setTimeout(initialize, 50);
+			}
 		}
 
 		//todo: support options for video resolution, etc.
@@ -66,20 +78,17 @@
 					return;
 				}
 
-				if (window.webkitURL) {
-					video.src = window.webkitURL.createObjectURL(stream);
+				// check for firefox
+				if (video.mozCaptureStream) {
+					video.mozSrcObject = stream;
 				} else {
-					video.src = stream;
+					video.src = (URL && URL.createObjectURL(stream)) || stream;
 				}
 
-				if (video.readyState >= 1) {
+				if (video.readyState) {
 					initialize();
 				} else {
-					video.addEventListener('loadedmetadata', function () {
-						if (!destroyed) {
-							initialize();
-						}
-					}, false);
+					video.addEventListener('loadedmetadata', initialize, false);
 				}
 
 				video.play();
