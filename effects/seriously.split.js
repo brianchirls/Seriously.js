@@ -72,6 +72,7 @@
 					this.frameBuffer.resize(width, height);
 				}
 
+				this.emit('resize');
 				this.setDirty();
 			}
 
@@ -94,10 +95,10 @@
 				initialize();
 				this.uniforms.resolutionA = resolutionA;
 				this.uniforms.resolutionB = resolutionB;
+				baseShader = this.baseShader;
 			},
+			commonShader: true,
 			shader: function (inputs, shaderSource) {
-				baseShader = new Seriously.util.ShaderProgram(this.gl, shaderSource.vertex, shaderSource.fragment);
-
 				shaderSource.vertex = [
 					'#ifdef GL_ES',
 					'precision mediump float;',

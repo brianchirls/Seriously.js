@@ -140,6 +140,7 @@
 					this.frameBuffer.resize(width, height);
 				}
 
+				this.emit('resize');
 				this.setDirty();
 			}
 
@@ -149,6 +150,7 @@
 		};
 
 		return {
+			commonShader: true,
 			shader: function (inputs, shaderSource) {
 				shaderSource.vertex = [
 					'precision mediump float;',
@@ -189,7 +191,7 @@
 					'		gl_FragColor = vec4(0.0);',
 					'	} else {',
 					'		gl_FragColor = texture2D(source, vTexCoord);',
-					'		gl_FragColor.a *= opacity;',
+					'		gl_FragColor *= opacity;',
 					'	}',
 					'}'
 				].join('\n');

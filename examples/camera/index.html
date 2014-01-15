@@ -48,13 +48,13 @@
 					if (video.mozCaptureStream) {
 						video.mozSrcObject = stream;
 					} else {
-						video.src = (URL && URL.createObjectURL( stream )) || stream;
+						video.src = (URL && URL.createObjectURL(stream)) || stream;
 					}
 					video.play();
 				}, 
 				// error callback
 				function(error){
-					console.log("An error occurred: " + (error.message || error.name) + "");
+					console.log('An error occurred: ' + (error.message || error.name));
 				}
 			);
 		}

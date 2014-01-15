@@ -119,7 +119,7 @@
 			},
 			shader: function (inputs, shaderSource) {
 				var auto = inputs.auto;
-				//baseShader = new Seriously.util.ShaderProgram(this.gl, shaderSource.vertex, shaderSource.fragment);
+				//baseShader = this.baseShader;
 				//todo: gl.getExtension('OES_texture_float_linear')
 
 				if (auto && !pyramidShader) {

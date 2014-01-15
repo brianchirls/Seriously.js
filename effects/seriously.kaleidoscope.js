@@ -18,6 +18,7 @@
 	'use strict';
 
 	Seriously.plugin('kaleidoscope', {
+		commonShader: true,
 		shader: function (inputs, shaderSource) {
 			shaderSource.fragment = [
 				'#ifdef GL_ES',

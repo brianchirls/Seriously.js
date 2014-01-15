@@ -45,8 +45,6 @@
 					'varying vec2 vTexCoord;\n' +
 					'varying vec4 vPosition;\n' +
 					'\n' +
-					'uniform sampler2D source;\n' +
-					'\n' +
 					'uniform float amount;\n' +
 					'uniform vec2 noiseScale;\n' +
 					'uniform vec2 noiseOffset;\n' +

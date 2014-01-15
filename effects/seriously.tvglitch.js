@@ -95,11 +95,12 @@
 
 				particleShader = new Seriously.util.ShaderProgram(gl, particleVertex, particleFragment);
 
-				particleFrameBuffer = new Seriously.util.FrameBuffer(gl, 1, this.height / 2);
+				particleFrameBuffer = new Seriously.util.FrameBuffer(gl, 1, Math.max(1, this.height / 2));
 				parent();
 			},
+			commonShader: true,
 			shader: function (inputs, shaderSource) {
-				//baseShader = new Seriously.util.ShaderProgram(this.gl, shaderSource.vertex, shaderSource.fragment);
+				//baseShader = this.baseShader;
 
 				shaderSource.fragment = '#ifdef GL_ES\n\n' +
 					'precision mediump float;\n\n' +
@@ -184,13 +185,15 @@
 
 				return shaderSource;
 			},
+			resize: function () {
+				particleFrameBuffer.resize(1, Math.max(1, this.height / 2));
+			},
 			draw: function (shader, model, uniforms, frameBuffer, parent) {
 				var doParticles = (lastTime !== this.inputs.time),
 					vsyncPeriod;
 
 				if (lastHeight !== this.height) {
 					lastHeight = this.height;
-					//todo: adjust framebuffer height?
 					doParticles = true;
 				}
 

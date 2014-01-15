@@ -18,6 +18,7 @@
 	'use strict';
 
 	Seriously.plugin('linear-transfer', {
+		commonShader: true,
 		shader: function (inputs, shaderSource) {
 			shaderSource.fragment = [
 				'#ifdef GL_ES\n',
