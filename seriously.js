@@ -1631,22 +1631,18 @@
 			}
 
 			Object.defineProperties(this, {
-				inputs: {
+				effect: {
 					enumerable: true,
 					configurable: true,
 					get: function () {
-						return {
-							source: {
-								type: 'image'
-							}
-						};
+						return me.hook;
 					}
 				},
-				original: {
+				title: {
 					enumerable: true,
 					configurable: true,
 					get: function () {
-						return me.source;
+						return me.effect.title || me.hook;
 					}
 				},
 				width: {
@@ -1687,6 +1683,65 @@
 
 			this.off = function (eventName, callback) {
 				me.off(eventName, callback);
+			};
+
+			this.inputs = function (name) {
+				var result,
+					input,
+					inputs,
+					enumOption,
+					i,
+					key;
+
+				inputs = me.effect.inputs;
+
+				if (name) {
+					input = inputs[name];
+					if (!input) {
+						return null;
+					}
+
+					result = {
+						type: input.type,
+						defaultValue: input.defaultValue,
+						title: input.title || name
+					};
+
+					if (input.type === 'number') {
+						result.min = input.min;
+						result.max = input.max;
+						result.step = input.step;
+					} else if (input.type === 'enum') {
+						//make a deep copy
+						result.options = [];
+						if (options) {
+							for (i = 0; i < input.options.length; i++) {
+								enumOption = input.options[i];
+								if (Array.isArray(enumOption)) {
+									result.options.push(enumOption.slice(0));
+								} else {
+									result.options.push(enumOption);
+								}
+							}
+						}
+					} else if (input.type === 'vector') {
+						result.dimensions = input.dimensions;
+					}
+
+					if (input.description) {
+						result.description = input.description;
+					}
+
+					return result;
+				}
+
+				result = {};
+				for (key in inputs) {
+					if (inputs.hasOwnProperty(key)) {
+						result[key] = this.inputs(key);
+					}
+				}
+				return result;
 			};
 
 			this.alias = function (inputName, aliasName) {
