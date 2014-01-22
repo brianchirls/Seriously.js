@@ -2668,6 +2668,20 @@
 					get: function () {
 						return me.id;
 					}
+				},
+				width: {
+					enumerable: true,
+					configurable: true,
+					get: function () {
+						return me.width;
+					}
+				},
+				height: {
+					enumerable: true,
+					configurable: true,
+					get: function () {
+						return me.height;
+					}
 				}
 			});
 
