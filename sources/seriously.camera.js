@@ -28,6 +28,8 @@
 	Seriously.source('camera', function (source, options, force) {
 		var me = this,
 			video,
+			key,
+			opts,
 			destroyed = false,
 			stream;
 
@@ -66,11 +68,22 @@
 				throw 'Camera source type unavailable. Browser does not support getUserMedia';
 			}
 
+			opts = {};
+			if (source) {
+				//copy over constraints
+				for (key in source) {
+					if (source.hasOwnProperty(key)) {
+						opts[key] = source[key];
+					}
+				}
+			}
+			if (!opts.video) {
+				opts.video = true;
+			}
+
 			video = document.createElement('video');
 
-			getUserMedia.call(navigator, {
-				video: true
-			}, function (s) {
+			getUserMedia.call(navigator, opts, function (s) {
 				stream = s;
 
 				if (destroyed) {
