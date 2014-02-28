@@ -429,6 +429,16 @@
 			return false;
 		}
 
+		if (element.naturalWidth === 0 && element.tagName === 'IMG') {
+			console.log('Image not loaded');
+			return false;
+		}
+
+		if (element.readyState === 0 && element.videoWidth === 0 && element.tagName === 'VIDEO') {
+			console.log('Video not loaded');
+			return false;
+		}
+
 		ctx = getTestContext();
 
 		if (ctx) {

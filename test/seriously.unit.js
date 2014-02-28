@@ -1387,8 +1387,12 @@
 
 			canvas = document.createElement('canvas');
 			ctx = canvas.getContext('2d');
-			ctx.drawImage(img, 0, 0);
-			ok(!Seriously.util.checkSource(canvas), 'Cross-origin canvas checks false');
+			if (img.naturalWidth) {
+				ctx.drawImage(img, 0, 0);
+				ok(!Seriously.util.checkSource(canvas), 'Cross-origin canvas checks false');
+			} else {
+				expect(3);
+			}
 
 			tests--;
 			if (!tests) {
@@ -1408,6 +1412,9 @@
 		fail = document.createElement('img');
 		fail.src = 'http://www.mozilla.org/images/template/screen/logo_footer.png';
 		fail.addEventListener('load', function() {
+			checkImageFail(this);
+		}, false);
+		fail.addEventListener('error', function() {
 			checkImageFail(this);
 		}, false);
 	});
