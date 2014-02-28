@@ -781,10 +781,156 @@
 		Seriously.removePlugin('testNumberInput');
 	});
 
-	test('Color', function () {
-		var e, s, val;
-
-		expect(18);
+	test('Color', 159, function () {
+		var e, s, val,
+			name,
+			colorNames = {
+				black: [0 / 255, 0 / 255, 0 / 255, 1],
+				silver: [192 / 255, 192 / 255, 192 / 255, 1],
+				gray: [128 / 255, 128 / 255, 128 / 255, 1],
+				white: [1, 1, 1, 1],
+				maroon: [128 / 255, 0 / 255, 0 / 255, 1],
+				red: [1, 0 / 255, 0 / 255, 1],
+				purple: [128 / 255, 0 / 255, 128 / 255, 1],
+				fuchsia: [1, 0 / 255, 1, 1],
+				green: [0 / 255, 128 / 255, 0 / 255, 1],
+				lime: [0 / 255, 1, 0 / 255, 1],
+				olive: [128 / 255, 128 / 255, 0 / 255, 1],
+				yellow: [1, 1, 0 / 255, 1],
+				navy: [0 / 255, 0 / 255, 128 / 255, 1],
+				blue: [0 / 255, 0 / 255, 1, 1],
+				teal: [0 / 255, 128 / 255, 128 / 255, 1],
+				aqua: [0 / 255, 1, 1, 1],
+				orange: [1, 165 / 255, 0 / 255, 1],
+				aliceblue: [240 / 255, 248 / 255, 1, 1],
+				antiquewhite: [250 / 255, 235 / 255, 215 / 255, 1],
+				aquamarine: [127 / 255, 1, 212 / 255, 1],
+				azure: [240 / 255, 1, 1, 1],
+				beige: [245 / 255, 245 / 255, 220 / 255, 1],
+				bisque: [1, 228 / 255, 196 / 255, 1],
+				blanchedalmond: [1, 235 / 255, 205 / 255, 1],
+				blueviolet: [138 / 255, 43 / 255, 226 / 255, 1],
+				brown: [165 / 255, 42 / 255, 42 / 255, 1],
+				burlywood: [222 / 255, 184 / 255, 135 / 255, 1],
+				cadetblue: [95 / 255, 158 / 255, 160 / 255, 1],
+				chartreuse: [127 / 255, 1, 0 / 255, 1],
+				chocolate: [210 / 255, 105 / 255, 30 / 255, 1],
+				coral: [1, 127 / 255, 80 / 255, 1],
+				cornflowerblue: [100 / 255, 149 / 255, 237 / 255, 1],
+				cornsilk: [1, 248 / 255, 220 / 255, 1],
+				crimson: [220 / 255, 20 / 255, 60 / 255, 1],
+				darkblue: [0 / 255, 0 / 255, 139 / 255, 1],
+				darkcyan: [0 / 255, 139 / 255, 139 / 255, 1],
+				darkgoldenrod: [184 / 255, 134 / 255, 11 / 255, 1],
+				darkgray: [169 / 255, 169 / 255, 169 / 255, 1],
+				darkgreen: [0 / 255, 100 / 255, 0 / 255, 1],
+				darkgrey: [169 / 255, 169 / 255, 169 / 255, 1],
+				darkkhaki: [189 / 255, 183 / 255, 107 / 255, 1],
+				darkmagenta: [139 / 255, 0 / 255, 139 / 255, 1],
+				darkolivegreen: [85 / 255, 107 / 255, 47 / 255, 1],
+				darkorange: [1, 140 / 255, 0 / 255, 1],
+				darkorchid: [153 / 255, 50 / 255, 204 / 255, 1],
+				darkred: [139 / 255, 0 / 255, 0 / 255, 1],
+				darksalmon: [233 / 255, 150 / 255, 122 / 255, 1],
+				darkseagreen: [143 / 255, 188 / 255, 143 / 255, 1],
+				darkslateblue: [72 / 255, 61 / 255, 139 / 255, 1],
+				darkslategray: [47 / 255, 79 / 255, 79 / 255, 1],
+				darkslategrey: [47 / 255, 79 / 255, 79 / 255, 1],
+				darkturquoise: [0 / 255, 206 / 255, 209 / 255, 1],
+				darkviolet: [148 / 255, 0 / 255, 211 / 255, 1],
+				deeppink: [1, 20 / 255, 147 / 255, 1],
+				deepskyblue: [0 / 255, 191 / 255, 1, 1],
+				dimgray: [105 / 255, 105 / 255, 105 / 255, 1],
+				dimgrey: [105 / 255, 105 / 255, 105 / 255, 1],
+				dodgerblue: [30 / 255, 144 / 255, 1, 1],
+				firebrick: [178 / 255, 34 / 255, 34 / 255, 1],
+				floralwhite: [1, 250 / 255, 240 / 255, 1],
+				forestgreen: [34 / 255, 139 / 255, 34 / 255, 1],
+				gainsboro: [220 / 255, 220 / 255, 220 / 255, 1],
+				ghostwhite: [248 / 255, 248 / 255, 1, 1],
+				gold: [1, 215 / 255, 0 / 255, 1],
+				goldenrod: [218 / 255, 165 / 255, 32 / 255, 1],
+				greenyellow: [173 / 255, 1, 47 / 255, 1],
+				grey: [128 / 255, 128 / 255, 128 / 255, 1],
+				honeydew: [240 / 255, 1, 240 / 255, 1],
+				hotpink: [1, 105 / 255, 180 / 255, 1],
+				indianred: [205 / 255, 92 / 255, 92 / 255, 1],
+				indigo: [75 / 255, 0 / 255, 130 / 255, 1],
+				ivory: [1, 1, 240 / 255, 1],
+				khaki: [240 / 255, 230 / 255, 140 / 255, 1],
+				lavender: [230 / 255, 230 / 255, 250 / 255, 1],
+				lavenderblush: [1, 240 / 255, 245 / 255, 1],
+				lawngreen: [124 / 255, 252 / 255, 0 / 255, 1],
+				lemonchiffon: [1, 250 / 255, 205 / 255, 1],
+				lightblue: [173 / 255, 216 / 255, 230 / 255, 1],
+				lightcoral: [240 / 255, 128 / 255, 128 / 255, 1],
+				lightcyan: [224 / 255, 1, 1, 1],
+				lightgoldenrodyellow: [250 / 255, 250 / 255, 210 / 255, 1],
+				lightgray: [211 / 255, 211 / 255, 211 / 255, 1],
+				lightgreen: [144 / 255, 238 / 255, 144 / 255, 1],
+				lightgrey: [211 / 255, 211 / 255, 211 / 255, 1],
+				lightpink: [1, 182 / 255, 193 / 255, 1],
+				lightsalmon: [1, 160 / 255, 122 / 255, 1],
+				lightseagreen: [32 / 255, 178 / 255, 170 / 255, 1],
+				lightskyblue: [135 / 255, 206 / 255, 250 / 255, 1],
+				lightslategray: [119 / 255, 136 / 255, 153 / 255, 1],
+				lightslategrey: [119 / 255, 136 / 255, 153 / 255, 1],
+				lightsteelblue: [176 / 255, 196 / 255, 222 / 255, 1],
+				lightyellow: [1, 1, 224 / 255, 1],
+				limegreen: [50 / 255, 205 / 255, 50 / 255, 1],
+				linen: [250 / 255, 240 / 255, 230 / 255, 1],
+				mediumaquamarine: [102 / 255, 205 / 255, 170 / 255, 1],
+				mediumblue: [0 / 255, 0 / 255, 205 / 255, 1],
+				mediumorchid: [186 / 255, 85 / 255, 211 / 255, 1],
+				mediumpurple: [147 / 255, 112 / 255, 219 / 255, 1],
+				mediumseagreen: [60 / 255, 179 / 255, 113 / 255, 1],
+				mediumslateblue: [123 / 255, 104 / 255, 238 / 255, 1],
+				mediumspringgreen: [0 / 255, 250 / 255, 154 / 255, 1],
+				mediumturquoise: [72 / 255, 209 / 255, 204 / 255, 1],
+				mediumvioletred: [199 / 255, 21 / 255, 133 / 255, 1],
+				midnightblue: [25 / 255, 25 / 255, 112 / 255, 1],
+				mintcream: [245 / 255, 1, 250 / 255, 1],
+				mistyrose: [1, 228 / 255, 225 / 255, 1],
+				moccasin: [1, 228 / 255, 181 / 255, 1],
+				navajowhite: [1, 222 / 255, 173 / 255, 1],
+				oldlace: [253 / 255, 245 / 255, 230 / 255, 1],
+				olivedrab: [107 / 255, 142 / 255, 35 / 255, 1],
+				orangered: [1, 69 / 255, 0 / 255, 1],
+				orchid: [218 / 255, 112 / 255, 214 / 255, 1],
+				palegoldenrod: [238 / 255, 232 / 255, 170 / 255, 1],
+				palegreen: [152 / 255, 251 / 255, 152 / 255, 1],
+				paleturquoise: [175 / 255, 238 / 255, 238 / 255, 1],
+				palevioletred: [219 / 255, 112 / 255, 147 / 255, 1],
+				papayawhip: [1, 239 / 255, 213 / 255, 1],
+				peachpuff: [1, 218 / 255, 185 / 255, 1],
+				peru: [205 / 255, 133 / 255, 63 / 255, 1],
+				pink: [1, 192 / 255, 203 / 255, 1],
+				plum: [221 / 255, 160 / 255, 221 / 255, 1],
+				powderblue: [176 / 255, 224 / 255, 230 / 255, 1],
+				rosybrown: [188 / 255, 143 / 255, 143 / 255, 1],
+				royalblue: [65 / 255, 105 / 255, 225 / 255, 1],
+				saddlebrown: [139 / 255, 69 / 255, 19 / 255, 1],
+				salmon: [250 / 255, 128 / 255, 114 / 255, 1],
+				sandybrown: [244 / 255, 164 / 255, 96 / 255, 1],
+				seagreen: [46 / 255, 139 / 255, 87 / 255, 1],
+				seashell: [1, 245 / 255, 238 / 255, 1],
+				sienna: [160 / 255, 82 / 255, 45 / 255, 1],
+				skyblue: [135 / 255, 206 / 255, 235 / 255, 1],
+				slateblue: [106 / 255, 90 / 255, 205 / 255, 1],
+				slategray: [112 / 255, 128 / 255, 144 / 255, 1],
+				slategrey: [112 / 255, 128 / 255, 144 / 255, 1],
+				snow: [1, 250 / 255, 250 / 255, 1],
+				springgreen: [0 / 255, 1, 127 / 255, 1],
+				steelblue: [70 / 255, 130 / 255, 180 / 255, 1],
+				tan: [210 / 255, 180 / 255, 140 / 255, 1],
+				thistle: [216 / 255, 191 / 255, 216 / 255, 1],
+				tomato: [1, 99 / 255, 71 / 255, 1],
+				turquoise: [64 / 255, 224 / 255, 208 / 255, 1],
+				violet: [238 / 255, 130 / 255, 238 / 255, 1],
+				wheat: [245 / 255, 222 / 255, 179 / 255, 1],
+				whitesmoke: [245 / 255, 245 / 255, 245 / 255, 1],
+				yellowgreen: [154 / 255, 205 / 255, 50 / 255, 1]
+			};
 
 		Seriously.plugin('testColorInput', {
 			inputs: {
@@ -800,50 +946,34 @@
 
 		e.color = 'rgb(10, 20, 30)';
 		val = e.color;
-		ok(compare(val, [10/255, 20/255, 30/255, 1]), 'Set color by rgb');
+		ok(compare(val, [10 / 255, 20 / 255, 30 / 255, 1]), 'Set color by rgb');
 
 		e.color = 'rgba(30, 20, 10, 0.8)';
 		val = e.color;
-		ok(compare(val, [30/255, 20/255, 10/255, 0.8]), 'Set color by rgba');
+		ok(compare(val, [30 / 255, 20 / 255, 10 / 255, 0.8]), 'Set color by rgba');
 
 		//todo: test rgb percentages
 		//todo: test hsl/hsla
 
 		e.color = '#123';
 		val = e.color;
-		ok(compare(val, [1/15, 2/15, 3/15, 1]), 'Set color by 3-character hex');
+		ok(compare(val, [1 / 15, 2 / 15, 3 / 15, 1]), 'Set color by 3-character hex');
 
 		e.color = '#1234';
 		val = e.color;
-		ok(compare(val, [0x1/15, 0x2/15, 0x3/15, 0x4/15]), 'Set color by 4-character hex');
+		ok(compare(val, [0x1 / 15, 0x2 / 15, 0x3 / 15, 0x4 / 15]), 'Set color by 4-character hex');
 
 		e.color = '#123456';
 		val = e.color;
-		ok(compare(val, [0x12/255, 0x34/255, 0x56/255, 1]), 'Set color by 6-character hex');
+		ok(compare(val, [0x12 / 255, 0x34 / 255, 0x56 / 255, 1]), 'Set color by 6-character hex');
 
 		e.color = '#654321AA';
 		val = e.color;
-		ok(compare(val, [0x65/255, 0x43/255, 0x21/255, 0xAA/255]), 'Set color by 8-character hex');
+		ok(compare(val, [0x65 / 255, 0x43 / 255, 0x21 / 255, 0xAA/255]), 'Set color by 8-character hex');
 
 		e.color = '#fffff';
 		val = e.color;
 		ok(compare(val, [0, 0, 0, 0]), 'Set color by bad hex is transparent black');
-
-		e.color = 'lightcyan';
-		val = e.color;
-		ok(compare(val, [224/255, 1, 1, 1]), 'Set color by name (lightcyan)');
-
-		e.color = 'lightblue';
-		val = e.color;
-		ok(compare(val, [173/255, 216/255, 230/255, 1]), 'Set color by name (lightblue)');
-
-		e.color = 'red';
-		val = e.color;
-		ok(compare(val, [1, 0, 0, 1]), 'Set color by name (red)');
-
-		e.color = 'white';
-		val = e.color;
-		ok(compare(val, [1, 1, 1, 1]), 'Set color by name (white)');
 
 		e.color = 'transparent';
 		val = e.color;
@@ -852,6 +982,17 @@
 		e.color = 'garbage';
 		val = e.color;
 		ok(compare(val, [0, 0, 0, 0]), 'Set color by unknown name is transparent black');
+
+		for (name in colorNames) {
+			if (colorNames.hasOwnProperty(name)) {
+				e.color = name;
+				val = e.color;
+				ok(compare(val, colorNames[name]), 'Set color by name (' + name + ')');
+				if (!compare(val, colorNames[name])) {
+					console.log(name + ': ' + JSON.stringify(colorNames[name].map(function (val) { return val * 255; })) + ',');
+				}
+			}
+		}
 
 		e.color = 0.3;
 		val = e.color;

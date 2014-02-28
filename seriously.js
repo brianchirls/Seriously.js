@@ -57,9 +57,21 @@
 		transparent: [0, 0, 0, 0],
 		black: [0, 0, 0, 1],
 		red: [1, 0, 0, 1],
-		green: [0, 1, 0, 1],
+		green: [0, 128 / 255, 0, 1],
 		blue: [0, 0, 1, 1],
-		white: [1, 1, 1, 1]
+		white: [1, 1, 1, 1],
+		silver: [192 / 255, 192 / 255, 192 / 255, 1],
+		gray: [128 / 255, 128 / 255, 128 / 255, 1],
+		maroon: [128 / 255, 0, 0, 1],
+		purple: [128 / 255, 0, 128 / 255, 1],
+		fuchsia: [1, 0, 1, 1],
+		lime: [0, 1, 0, 1],
+		olive: [128 / 255, 128 / 255, 0, 1],
+		yellow: [1, 1, 0, 1],
+		navy: [0, 0, 128 / 255, 1],
+		teal: [0, 128 / 255, 128 / 255, 1],
+		aqua: [0, 1, 1, 1],
+		orange: [1, 165 / 255, 0, 1]
 	},
 
 	vectorFields = ['x', 'y', 'z', 'w'],
@@ -5892,10 +5904,10 @@
 		'	i0.z += isYZ.z;\n' +
 		'	i0.w += 1.0 - isYZ.z;\n' +
 		'\n' +
-			// i0 now contains the unique values 0,1,2,3 in each channel
+			// i0 now contains the unique values 0, 1, 2, 3 in each channel
 		'	vec4 i3 = clamp(i0, 0.0, 1.0);\n' +
-		'	vec4 i2 = clamp(i0-1.0, 0.0, 1.0);\n' +
-		'	vec4 i1 = clamp(i0-2.0, 0.0, 1.0);\n' +
+		'	vec4 i2 = clamp(i0 - 1.0, 0.0, 1.0);\n' +
+		'	vec4 i1 = clamp(i0 - 2.0, 0.0, 1.0);\n' +
 		'\n' +
 		'	vec4 x1 = x0 - i1 + C.xxxx;\n' +
 		'	vec4 x2 = x0 - i2 + C.yyyy;\n' +
