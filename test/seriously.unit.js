@@ -19,6 +19,15 @@
 		return true;
 	}
 
+	function nop() {}
+
+	Seriously.logger = {
+		log: nop,
+		info: nop,
+		warn: nop,
+		error: nop
+	};
+
 	module('Core');
 	test('Core', function () {
 		var p, props = 0,
@@ -180,8 +189,11 @@
 	test('Define plugin with duplicate name', function () {
 		var p, allEffects;
 
-		expect(3);
+		expect(4);
 
+		Seriously.logger.warn = function (s) {
+			equal(s, 'Effect [pluginDuplicate] already loaded', 'Warning logged to console');
+		};
 		p = Seriously.plugin('pluginDuplicate', {
 			title: 'Original'
 		});
@@ -196,6 +208,7 @@
 		allEffects = Seriously.effects();
 		equal(allEffects.pluginDuplicate.title, 'Original', 'Original plugin remains');
 
+		Seriously.logger.warn = nop;
 		Seriously.removePlugin('pluginDuplicate');
 	});
 
@@ -1361,7 +1374,7 @@
 		var pass, fail,
 			tests = 2;
 
-		expect(4);
+		expect(6);
 
 		function checkImagePass(img) {
 			var canvas, ctx;
@@ -1383,6 +1396,10 @@
 		function checkImageFail(img) {
 			var canvas, ctx;
 
+			Seriously.logger.log = function (s) {
+				equal(s, 'Unable to access cross-domain image', 'Warning logged to console');
+			};
+
 			ok(!Seriously.util.checkSource(img), 'Cross-origin image checks false');
 
 			canvas = document.createElement('canvas');
@@ -1391,8 +1408,10 @@
 				ctx.drawImage(img, 0, 0);
 				ok(!Seriously.util.checkSource(canvas), 'Cross-origin canvas checks false');
 			} else {
-				expect(3);
+				expect(4);
 			}
+
+			Seriously.logger.log = nop;
 
 			tests--;
 			if (!tests) {

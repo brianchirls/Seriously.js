@@ -293,6 +293,29 @@
 		return dest;
 	}
 
+	function consoleMethod(name) {
+		var method;
+		if (!console) {
+			return nop;
+		}
+
+		if (typeof console[name] === 'function') {
+			method = console[name];
+		} else if (typeof console.log === 'function') {
+			method = console.log;
+		} else {
+			return nop;
+		}
+
+		if (method.bind) {
+			return method.bind(console);
+		}
+
+		return function () {
+			method.apply(console, arguments);
+		};
+	}
+
 	//http://www.w3.org/TR/css3-color/#hsl-color
 	function hslToRgb(h, s, l, a, out) {
 		function hueToRgb(m1, m2, h) {
@@ -408,7 +431,7 @@
 				}
 			}, false);
 		} else {
-			console.log('Unable to access WebGL.');
+			Seriously.logger.warn('Unable to access WebGL.');
 		}
 
 		return testContext;
@@ -425,17 +448,17 @@
 
 		canvas = document.createElement('canvas');
 		if (!canvas) {
-			console.log('Browser does not support canvas or Seriously.js');
+			Seriously.logger.warn('Browser does not support canvas or Seriously.js');
 			return false;
 		}
 
 		if (element.naturalWidth === 0 && element.tagName === 'IMG') {
-			console.log('Image not loaded');
+			Seriously.logger.warn('Image not loaded');
 			return false;
 		}
 
 		if (element.readyState === 0 && element.videoWidth === 0 && element.tagName === 'VIDEO') {
-			console.log('Video not loaded');
+			Seriously.logger.warn('Video not loaded');
 			return false;
 		}
 
@@ -449,9 +472,9 @@
 				ctx.texImage2D(ctx.TEXTURE_2D, 0, ctx.RGBA, ctx.RGBA, ctx.UNSIGNED_BYTE, element);
 			} catch (textureError) {
 				if (textureError.code === window.DOMException.SECURITY_ERR) {
-					console.log('Unable to access cross-domain image');
+					Seriously.logger.log('Unable to access cross-domain image');
 				} else {
-					console.log('Error: ' + textureError.message);
+					Seriously.logger.error('Error storing image to texture: ' + textureError.message);
 				}
 				ctx.deleteTexture(texture);
 				return false;
@@ -464,9 +487,9 @@
 				ctx.getImageData(0, 0, 1, 1);
 			} catch (drawImageError) {
 				if (drawImageError.code === window.DOMException.SECURITY_ERR) {
-					console.log('Unable to access cross-domain image');
+					Seriously.logger.log('Unable to access cross-domain image');
 				} else {
-					console.log('Error: ' + drawImageError.message);
+					Seriously.logger.error('Error drawing image to canvas: ' + drawImageError.message);
 				}
 				return false;
 			}
@@ -723,7 +746,8 @@
 				for (i = 0; i < source.length; i++) {
 					source[i] = (i + 1) + ":\t" + source[i];
 				}
-				console.log(source.join('\n'));
+				source.unshift('Error compiling ' + (fragment ? 'fragment' : 'vertex') + ' shader:');
+				Seriously.logger.error(source.join('\n'));
 				throw 'Shader error: ' + gl.getShaderInfoLog(shader);
 			}
 
@@ -3083,7 +3107,7 @@
 				} catch (securityError) {
 					if (securityError.code === window.DOMException.SECURITY_ERR) {
 						this.allowRefresh = false;
-						console.log('Unable to access cross-domain image');
+						Seriously.logger.error('Unable to access cross-domain image');
 					}
 				}
 
@@ -3122,7 +3146,7 @@
 				} catch (securityError) {
 					if (securityError.code === window.DOMException.SECURITY_ERR) {
 						this.allowRefresh = false;
-						console.log('Unable to access cross-domain image');
+						Seriously.logger.error('Unable to access cross-domain image');
 					}
 				}
 
@@ -4523,7 +4547,7 @@
 		var effect;
 
 		if (seriousEffects[hook]) {
-			console.log('Effect [' + hook + '] already loaded');
+			Seriously.logger.warn('Effect [' + hook + '] already loaded');
 			return;
 		}
 
@@ -4592,7 +4616,7 @@
 		var source;
 
 		if (seriousSources[hook]) {
-			console.log('Source [' + hook + '] already loaded');
+			Seriously.logger.warn('Source [' + hook + '] already loaded');
 			return;
 		}
 
@@ -4652,7 +4676,7 @@
 		var transform;
 
 		if (seriousTransforms[hook]) {
-			console.log('Transform [' + hook + '] already loaded');
+			Seriously.logger.warn('Transform [' + hook + '] already loaded');
 			return;
 		}
 
@@ -4998,6 +5022,16 @@
 			}());
 		}
 	}
+
+	/*
+
+	*/
+	Seriously.logger = {
+		log: consoleMethod('log'),
+		info: consoleMethod('info'),
+		warn: consoleMethod('warn'),
+		error: consoleMethod('error')
+	};
 
 	//expose Seriously to the global object
 	Seriously.util = {
