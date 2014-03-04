@@ -178,10 +178,10 @@
 		try {
 			s.effect('removeme');
 		} catch (ee) {
-			error = true;
+			error = ee;
 		}
 
-		ok(error, 'Plugin doesn\'t exist; using throws error');
+		equal(error && error.message, 'Unknown effect: removeme', 'Plugin doesn\'t exist; throws error');
 
 		s.destroy();
 	});
@@ -226,19 +226,19 @@
 				}
 			});
 		} catch (e) {
-			error1 = true;
+			error1 = e;
 		}
 
-		ok(error1, 'Defining plugin throws error');
+		equal(error1 && error1.message, 'Reserved effect input name: initialize', 'Defining plugin throws error');
 
 		try {
 			s = new Seriously();
 			s.effect('badPlugin');
 		} catch (ee) {
-			error2 = true;
+			error2 = ee;
 		}
 
-		ok(error2, 'Plugin doesn\'t exist; using throws error');
+		equal(error2 && error2.message, 'Unknown effect: badPlugin', 'Plugin doesn\'t exist; using throws error');
 
 		s.destroy();
 		Seriously.removePlugin('badPlugin');
@@ -416,10 +416,10 @@
 		try {
 			effect.source = effect;
 		} catch (e) {
-			error = true;
+			error = e;
 		}
 
-		ok(error, 'Setting effect source to itself throws an error');
+		equal(error && error.message, 'Attempt to make cyclical connection.', 'Setting effect source to itself throws an error');
 
 		seriously.destroy();
 		Seriously.removePlugin('removeme');

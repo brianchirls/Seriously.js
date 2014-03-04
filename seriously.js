@@ -384,7 +384,7 @@
 		}
 
 		if (typeof fn !== 'function') {
-			throw 'setTimeoutZero argument is not a function';
+			throw new Error('setTimeoutZero argument is not a function');
 		}
 
 		timeouts.push(fn);
@@ -526,7 +526,7 @@
 		for (name in effect.inputs) {
 			if (effect.inputs.hasOwnProperty(name)) {
 				if (reserved.indexOf(name) >= 0 || Object.prototype[name]) {
-					throw 'Reserved effect input name: ' + name;
+					throw new Error('Reserved effect input name: ' + name);
 				}
 
 				input = effect.inputs[name];
@@ -607,7 +607,7 @@
 			status,
 			useFloat = options === true ? options : (options && options.useFloat);
 
-		useFloat = false;//useFloat && !!gl.getExtension("OES_texture_float"); //useFloat is not ready!
+		useFloat = false;//useFloat && !!gl.getExtension('OES_texture_float'); //useFloat is not ready!
 		if (useFloat) {
 			this.type = gl.FLOAT;
 		} else {
@@ -657,23 +657,23 @@
 		status = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
 
 		if (status === gl.FRAMEBUFFER_INCOMPLETE_ATTACHMENT) {
-			throw('Incomplete framebuffer: FRAMEBUFFER_INCOMPLETE_ATTACHMENT');
+			throw new Error('Incomplete framebuffer: FRAMEBUFFER_INCOMPLETE_ATTACHMENT');
 		}
 
 		if (status === gl.FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT) {
-			throw('Incomplete framebuffer: FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT');
+			throw new Error('Incomplete framebuffer: FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT');
 		}
 
 		if (status === gl.FRAMEBUFFER_INCOMPLETE_DIMENSIONS) {
-			throw('Incomplete framebuffer: FRAMEBUFFER_INCOMPLETE_DIMENSIONS');
+			throw new Error('Incomplete framebuffer: FRAMEBUFFER_INCOMPLETE_DIMENSIONS');
 		}
 
 		if (status === gl.FRAMEBUFFER_UNSUPPORTED) {
-			throw('Incomplete framebuffer: FRAMEBUFFER_UNSUPPORTED');
+			throw new Error('Incomplete framebuffer: FRAMEBUFFER_UNSUPPORTED');
 		}
 
 		if (status !== gl.FRAMEBUFFER_COMPLETE) {
-			throw('Incomplete framebuffer: ' + status);
+			throw new Error('Incomplete framebuffer: ' + status);
 		}
 
 		//clean up
@@ -756,11 +756,11 @@
 			if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
 				source = source.split(/[\n\r]/);
 				for (i = 0; i < source.length; i++) {
-					source[i] = (i + 1) + ":\t" + source[i];
+					source[i] = (i + 1) + ':\t' + source[i];
 				}
 				source.unshift('Error compiling ' + (fragment ? 'fragment' : 'vertex') + ' shader:');
 				Seriously.logger.error(source.join('\n'));
-				throw 'Shader error: ' + gl.getShaderInfoLog(shader);
+				throw new Error('Shader error: ' + gl.getShaderInfoLog(shader));
 			}
 
 			return shader;
@@ -828,7 +828,7 @@
 				};
 			}
 
-			throw "Unknown shader uniform type: " + info.type;
+			throw new Error('Unknown shader uniform type: ' + info.type);
 		}
 
 		function makeShaderGetter(loc) {
@@ -844,12 +844,12 @@
 		gl.attachShader(program, vertexShader);
 		shaderError = gl.getShaderInfoLog(vertexShader);
 		if (shaderError) {
-			programError += 'Vertex shader error: ' + shaderError + "\n";
+			programError += 'Vertex shader error: ' + shaderError + '\n';
 		}
 		gl.attachShader(program, fragmentShader);
 		shaderError = gl.getShaderInfoLog(fragmentShader);
 		if (shaderError) {
-			programError += 'Fragment shader error: ' + shaderError + "\n";
+			programError += 'Fragment shader error: ' + shaderError + '\n';
 		}
 		gl.linkProgram(program);
 
@@ -858,7 +858,7 @@
 			gl.deleteProgram(program);
 			gl.deleteShader(vertexShader);
 			gl.deleteShader(fragmentShader);
-			throw 'Could not initialise shader: ' + programError;
+			throw new Error('Could not initialise shader: ' + programError);
 		}
 
 		gl.useProgram(program);
@@ -1232,7 +1232,7 @@
 				node = nodesById[source.id];
 
 				if (!node) {
-					throw 'Cannot connect a foreign node';
+					throw new Error('Cannot connect a foreign node');
 				}
 			} else {
 				if (typeof source === 'string' && isNaN(source)) {
@@ -1359,7 +1359,7 @@
 
 			if (!gl) {
 				//todo: is this the best approach?
-				throw 'Cannot read pixels until a canvas is connected';
+				throw new Error('Cannot read pixels until a canvas is connected');
 			}
 
 			//todo: check on x, y, width, height
@@ -1375,7 +1375,7 @@
 			if (dest === undefined) {
 				dest = new Uint8Array(width * height * 4);
 			} else if (!dest instanceof Uint8Array) {
-				throw 'Incompatible array type';
+				throw new Error('Incompatible array type');
 			}
 
 			gl.bindFramebuffer(gl.FRAMEBUFFER, this.frameBuffer.frameBuffer); //todo: are we sure about this?
@@ -1671,7 +1671,7 @@
 						}
 					} else {
 						//todo: this is temporary. get rid of it.
-						throw 'Cannot overwrite Seriously.' + name;
+						throw new Error('Cannot overwrite Seriously.' + name);
 					}
 				}
 			}
@@ -2141,7 +2141,7 @@
 							}
 
 							if (traceSources(value, this)) {
-								throw 'Attempt to make cyclical connection.';
+								throw new Error('Attempt to make cyclical connection.');
 							}
 
 							this.sources[name] = value;
@@ -2202,7 +2202,7 @@
 			var that = this;
 
 			if (reservedNames.indexOf(aliasName) >= 0) {
-				throw aliasName + ' is a reserved name and cannot be used as an alias.';
+				throw new Error(aliasName + ' is a reserved name and cannot be used as an alias.');
 			}
 
 			if (this.effect.inputs.hasOwnProperty(inputName)) {
@@ -2901,7 +2901,7 @@
 				}
 			} else if (!plugin && source instanceof WebGLTexture) {
 				if (gl && !gl.isTexture(source)) {
-					throw 'Not a valid WebGL texture.';
+					throw new Error('Not a valid WebGL texture.');
 				}
 
 				//different defaults
@@ -2913,7 +2913,7 @@
 					width = height;
 				}/* else {
 					//todo: guess based on dimensions of target canvas
-					//throw 'Must specify width and height when using a WebGL texture as a source';
+					//throw new Error('Must specify width and height when using a WebGL texture as a source');
 				}*/
 
 				this.width = width;
@@ -2952,7 +2952,7 @@
 			}
 
 			if (!matchedType) {
-				throw 'Unknown source type';
+				throw new Error('Unknown source type');
 			}
 
 			this.source = source;
@@ -3387,7 +3387,7 @@
 				}
 
 				if (i >= elements.length) {
-					throw 'not a valid HTML element (must be image, video or canvas)';
+					throw new Error('not a valid HTML element (must be image, video or canvas)');
 				}
 
 				target = element;
@@ -3405,7 +3405,7 @@
 					target = opts.context.canvas;
 				} else {
 					//todo: search all canvases for matching contexts?
-					throw 'Must provide a canvas with WebGLFramebuffer target';
+					throw new Error('Must provide a canvas with WebGLFramebuffer target');
 				}
 			}
 
@@ -3494,7 +3494,7 @@
 			}
 
 			if (!matchedType) {
-				throw 'Unknown target type';
+				throw new Error('Unknown target type');
 			}
 
 			this.target = target;
@@ -4024,7 +4024,7 @@
 			}
 
 			if (traceSources(newSource, this)) {
-				throw 'Attempt to make cyclical connection.';
+				throw new Error('Attempt to make cyclical connection.');
 			}
 
 			if (this.source) {
@@ -4069,7 +4069,7 @@
 				def;
 
 			if (reservedNames.indexOf(aliasName) >= 0) {
-				throw aliasName + ' is a reserved name and cannot be used as an alias.';
+				throw new Error(aliasName + ' is a reserved name and cannot be used as an alias.');
 			}
 
 			if (this.plugin.inputs.hasOwnProperty(inputName)) {
@@ -4261,7 +4261,7 @@
 		*/
 		this.effect = function (hook, options) {
 			if (!seriousEffects[hook]) {
-				throw 'Unknown effect: ' + hook;
+				throw new Error('Unknown effect: ' + hook);
 			}
 
 			var effectNode = new EffectNode(hook, options);
@@ -4283,12 +4283,12 @@
 
 			if (hook) {
 				if (!seriousTransforms[hook]) {
-					throw 'Unknown transforms: ' + hook;
+					throw new Error('Unknown transforms: ' + hook);
 				}
 			} else {
 				hook = options && options.defaultTransform || '2d';
 				if (!seriousTransforms[hook]) {
-					throw 'No transform specified';
+					throw new Error('No transform specified');
 				}
 			}
 
