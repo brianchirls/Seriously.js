@@ -1300,6 +1300,29 @@
 		seriously.destroy();
 	});
 
+	module('Target');
+	test('Canvas Target', function () {
+		var seriously,
+			canvas,
+			target;
+
+		seriously = new Seriously();
+		canvas = document.createElement('canvas');
+		canvas.width = 17;
+		canvas.height = 19;
+		target = seriously.target(canvas);
+
+		equal(target.width, 17, 'target.width');
+		equal(target.height, 19, 'target.height');
+		equal(target.original, canvas, 'target.original');
+		equal(target.inputs.source.type, 'image', 'target.inputs.source');
+
+		target.width = 29;
+		ok(canvas.width === 29 && canvas.height === 19, 'target.width modifies canvas width, but not height');
+		target.height = 31;
+		ok(canvas.width === 29 && canvas.height === 31, 'target.height modifies canvas height, but not width');
+	});
+
 	module('Destroy');
 	test('Destroy things', function() {
 		var seriously, source, target, effect, transform, canvas;
