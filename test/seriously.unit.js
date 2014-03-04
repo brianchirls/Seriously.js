@@ -29,13 +29,11 @@
 	};
 
 	module('Core');
-	test('Core', function () {
+	test('Core', 5, function () {
 		var p, props = 0,
 			newGlobals = [],
 			skipIds = false,
 			s;
-
-		expect(5);
 
 		ok(window.Seriously, 'Seriously exists');
 
@@ -155,10 +153,8 @@
 	 * define plugin
 	*/
 
-	test('Remove Plugin', function () {
+	test('Remove Plugin', 3, function () {
 		var p, s, error, e, allEffects;
-
-		expect(3);
 
 		p = Seriously.plugin('removeme', {});
 		ok(p && p.title === 'removeme', 'First plugin loaded');
@@ -186,10 +182,8 @@
 		s.destroy();
 	});
 
-	test('Define plugin with duplicate name', function () {
+	test('Define plugin with duplicate name', 4, function () {
 		var p, allEffects;
-
-		expect(4);
 
 		Seriously.logger.warn = function (s) {
 			equal(s, 'Effect [pluginDuplicate] already loaded', 'Warning logged to console');
@@ -212,10 +206,8 @@
 		Seriously.removePlugin('pluginDuplicate');
 	});
 
-	test('Define plugin with reserved input name', function () {
+	test('Define plugin with reserved input name', 2, function () {
 		var p, s, error1 = false, error2 = false;
-
-		expect(2);
 
 		try {
 			p = Seriously.plugin('badPlugin', {
@@ -251,7 +243,7 @@
 			canvas,
 			target;
 
-		expect(4);
+		expect(Seriously.incompatible() ? 2 : 4);
 
 		Seriously.plugin('removeme', function (options) {
 			var id = options.id;
@@ -289,10 +281,8 @@
 		Seriously.removePlugin('removeme');
 	});
 
-	asyncTest('Plugin loaded before Seriously', function () {
+	asyncTest('Plugin loaded before Seriously', 3, function () {
 		var iframe;
-
-		expect(3);
 
 		iframe = document.createElement('iframe');
 		iframe.style.display = 'none';
@@ -371,11 +361,9 @@
 		Seriously.removePlugin('removeme');
 	});
 
-	test('Effect alias', function () {
+	test('Effect alias', 2, function () {
 		var seriously,
 			effect;
-
-		expect(2);
 
 		Seriously.plugin('removeme', {
 			inputs: {
@@ -494,8 +482,10 @@
 	 * checkSource on cross-origin image, dirty canvas
 	*/
 
-	asyncTest('Source Types', function () {
+	asyncTest('Source Types', 17, function () {
 		var seriously, source, target,
+			incompatible,
+			error,
 			sourceCanvas, targetCanvas, img,
 			ctx,
 			pixels, imagedata,
@@ -507,7 +497,7 @@
 				0, 255, 0, 255
 			];
 
-		expect(11);
+		incompatible = Seriously.incompatible();
 
 		targetCanvas = document.createElement('canvas');
 		targetCanvas.width = 2;
@@ -533,10 +523,16 @@
 
 		img = document.createElement('img');
 		img.addEventListener('load', function () {
+			var error;
 			source = seriously.source(img);
 			ok(source, 'Created source from image');
-			pixels = source.readPixels(0, 0, 2, 2);
-			ok(pixels && compare(pixels, comparison), 'Image source rendered accurately.');
+			try {
+				pixels = source.readPixels(0, 0, 2, 2);
+			} catch (e) {
+				error = e;
+			}
+			ok(incompatible ? error : !error, 'readPixels throws error iff incompatible');
+			ok(incompatible || pixels && compare(pixels, comparison), 'Image source rendered accurately.');
 			source.destroy();
 
 			asyncDone = true;
@@ -549,13 +545,25 @@
 
 		source = seriously.source(sourceCanvas);
 		ok(source, 'Created source from canvas');
-		pixels = source.readPixels(0, 0, 2, 2);
-		ok(pixels && compare(pixels, comparison), 'Canvas source rendered accurately.');
+		error = false;
+		try {
+			pixels = source.readPixels(0, 0, 2, 2);
+		} catch (e) {
+			error = e;
+		}
+		ok(incompatible ? error : !error, 'readPixels throws error iff incompatible');
+		ok(incompatible || pixels && compare(pixels, comparison), 'Canvas source rendered accurately.');
 
 		ctx.fillRect(0, 0, 2, 2);
 		source.update();
-		pixels = source.readPixels(0, 0, 2, 2);
-		ok(pixels && compare(pixels, [ //image is upside down
+		error = false;
+		try {
+			pixels = source.readPixels(0, 0, 2, 2);
+		} catch (e) {
+			error = e;
+		}
+		ok(incompatible ? error : !error, 'readPixels throws error iff incompatible');
+		ok(incompatible || pixels && compare(pixels, [ //image is upside down
 			255, 255, 255, 255,
 			255, 255, 255, 255,
 			255, 255, 255, 255,
@@ -564,8 +572,14 @@
 
 		source = seriously.source(imagedata);
 		ok(source, 'Created source from ImageData');
-		pixels = source.readPixels(0, 0, 2, 2);
-		ok(pixels && compare(pixels, comparison), 'ImageData source rendered accurately.');
+		error = false;
+		try {
+			pixels = source.readPixels(0, 0, 2, 2);
+		} catch (e) {
+			error = e;
+		}
+		ok(incompatible ? error : !error, 'readPixels throws error iff incompatible');
+		ok(incompatible || pixels && compare(pixels, comparison), 'ImageData source rendered accurately.');
 		source.destroy();
 
 		source = seriously.source(new Uint8Array(comparison), {
@@ -573,8 +587,14 @@
 			height: 2
 		});
 		ok(source, 'Created source from Typed Array');
-		pixels = source.readPixels(0, 0, 2, 2);
-		ok(pixels && compare(pixels, comparison), 'Typed Array source rendered accurately.');
+		error = false;
+		try {
+			pixels = source.readPixels(0, 0, 2, 2);
+		} catch (e) {
+			error = e;
+		}
+		ok(incompatible ? error : !error, 'readPixels throws error iff incompatible');
+		ok(incompatible || pixels && compare(pixels, comparison), 'Typed Array source rendered accurately.');
 		source.destroy();
 
 		source = seriously.source(comparison, {
@@ -582,8 +602,14 @@
 			height: 2
 		});
 		ok(source, 'Created source from Array');
-		pixels = source.readPixels(0, 0, 2, 2);
-		ok(pixels && compare(pixels, comparison), 'Array source rendered accurately.');
+		error = false;
+		try {
+			pixels = source.readPixels(0, 0, 2, 2);
+		} catch (e) {
+			error = e;
+		}
+		ok(incompatible ? error : !error, 'readPixels throws error iff incompatible');
+		ok(incompatible || pixels && compare(pixels, comparison), 'Array source rendered accurately.');
 		source.destroy();
 
 		//todo: implement and test WebGLTexture source
@@ -593,7 +619,6 @@
 			seriously.destroy();
 			start();
 		}
-		return;
 	});
 
 	test('Create two Source objects on identical sources', function () {
@@ -632,7 +657,7 @@
 		Seriously.removePlugin('test');
 	});
 
-	test('Source Plugins', 7, function () {
+	test('Source Plugins', function () {
 		var seriously,
 			funcSource,
 			objSource,
@@ -641,6 +666,9 @@
 			effect,
 			canvas,
 			target;
+
+		//render methods don't run without WebGL
+		expect(Seriously.incompatible() ? 5 : 7);
 
 		Seriously.plugin('temp', {
 			inputs: {
@@ -724,9 +752,8 @@
 	 * all different types
 	 * test html elements as inputs (with overwriting)
 	 */
-	test('Number', function () {
+	test('Number', 6, function () {
 		var s, e, val, input;
-		expect(6);
 
 		Seriously.plugin('testNumberInput', {
 			inputs: {
@@ -1027,9 +1054,8 @@
 		Seriously.removePlugin('testColorInput');
 	});
 
-	test('Enum', function() {
+	test('Enum', 4, function() {
 		var s, e, val;
-		expect(4);
 
 		Seriously.plugin('testEnumInput', {
 			inputs: {
@@ -1126,15 +1152,17 @@
 	});
 
 	module('Transform');
-	test('Basic Transformations', function () {
+	test('Basic Transformations', 8, function () {
 		var seriously, source, target,
 			transform,
 			flip,
 			sourceCanvas, targetCanvas,
 			ctx,
-			pixels = new Uint8Array(16);
+			pixels = new Uint8Array(16),
+			incompatible,
+			error;
 
-		expect(4);
+		incompatible = Seriously.incompatible();
 
 		targetCanvas = document.createElement('canvas');
 		targetCanvas.width = 2;
@@ -1164,8 +1192,14 @@
 		target.source = transform;
 
 		transform.rotation = -90; //90 degrees counter-clockwise
-		target.readPixels(0, 0, 2, 2, pixels);
-		ok(compare(pixels, [
+		error = false;
+		try {
+			target.readPixels(0, 0, 2, 2, pixels);
+		} catch (e) {
+			error = e;
+		}
+		ok(incompatible ? error : !error, 'readPixels throws error iff incompatible');
+		ok(incompatible || compare(pixels, [
 			255, 0, 0, 255,
 			0, 0, 255, 255,
 			0, 255, 0, 255,
@@ -1175,8 +1209,14 @@
 
 		target.source = flip;
 		flip.direction = 'vertical';
-		target.readPixels(0, 0, 2, 2, pixels);
-		ok(compare(pixels, [ //image is upside down
+		error = false;
+		try {
+			target.readPixels(0, 0, 2, 2, pixels);
+		} catch (e) {
+			error = e;
+		}
+		ok(incompatible ? error : !error, 'readPixels throws error iff incompatible');
+		ok(incompatible || compare(pixels, [ //image is upside down
 			255, 0, 0, 255,
 			0, 255, 0, 255,
 			0, 0, 255, 255,
@@ -1185,8 +1225,14 @@
 
 		target.source = flip;
 		flip.direction = 'horizontal';
-		target.readPixels(0, 0, 2, 2, pixels);
-		ok(compare(pixels, [ //image is upside down
+		error = false;
+		try {
+			target.readPixels(0, 0, 2, 2, pixels);
+		} catch (e) {
+			error = e;
+		}
+		ok(incompatible ? error : !error, 'readPixels throws error iff incompatible');
+		ok(incompatible || compare(pixels, [ //image is upside down
 			255, 255, 255, 255,
 			0, 0, 255, 255,
 			0, 255, 0, 255,
@@ -1196,8 +1242,14 @@
 		target.source = transform;
 		transform.translate(1, 0);
 		target.render();
-		target.readPixels(0, 0, 2, 2, pixels);
-		ok(compare(pixels, [ //image is upside down
+		error = false;
+		try {
+			target.readPixels(0, 0, 2, 2, pixels);
+		} catch (e) {
+			error = e;
+		}
+		ok(incompatible ? error : !error, 'readPixels throws error iff incompatible');
+		ok(incompatible || compare(pixels, [ //image is upside down
 			0, 0, 0, 0,
 			0, 0, 255, 255,
 			0, 0, 0, 0,
@@ -1208,14 +1260,12 @@
 		return;
 	});
 
-	test('Transform definition function', function () {
+	test('Transform definition function', 5, function () {
 		var seriously,
 			transform1,
 			transform2,
 			canvas,
 			target;
-
-		expect(5);
 
 		Seriously.transform('removeme', function (options) {
 			var id = options.id,
@@ -1275,11 +1325,9 @@
 		Seriously.removePlugin('removeme');
 	});
 
-	test('Transform alias', function () {
+	test('Transform alias', 5, function () {
 		var seriously,
 			transform;
-
-		expect(5);
 
 		seriously = new Seriously();
 		transform = seriously.transform('2d');
@@ -1324,10 +1372,8 @@
 	});
 
 	module('Destroy');
-	test('Destroy things', function() {
+	test('Destroy things', 15, function() {
 		var seriously, source, target, effect, transform, canvas;
-
-		expect(15);
 
 		Seriously.plugin('test', {});
 
@@ -1373,11 +1419,9 @@
 		Seriously.removePlugin('test');
 	});
 
-	test('Connect after nodes destroyed', function() {
+	test('Connect after nodes destroyed', 2, function() {
 		var source, target, seriously,
 			canvas;
-
-		expect(2);
 
 		seriously = new Seriously();
 		//create and destroy source twice
@@ -1517,10 +1561,8 @@
 
 	module('Utilities');
 
-	asyncTest('setTimeoutZero', function() {
+	asyncTest('setTimeoutZero', 2, function() {
 		var countdown = 2, startTime = Date.now();
-
-		expect(2);
 
 		Seriously.util.setTimeoutZero(function() {
 			countdown--;
@@ -1610,7 +1652,7 @@
 	use require for loading plugins
 	*/
 	module('Effect Plugins');
-	asyncTest('invert', 2, function () {
+	asyncTest('invert', 3, function () {
 		require([
 			'seriously',
 			'effects/seriously.invert',
@@ -1621,7 +1663,11 @@
 				target,
 				canvas,
 				source,
-				pixels;
+				pixels,
+				error,
+				incompatible;
+
+			incompatible = Seriously.incompatible();
 
 			seriously = new Seriously();
 			source = seriously.source([255, 128, 100, 200], {
@@ -1640,8 +1686,13 @@
 			target.source = effect;
 			effect.source = source;
 
-			pixels = target.readPixels(0, 0, 1, 1);
-			ok(pixels && compare(pixels, [0, 127, 155, 200]), 'Invert effect rendered accurately.');
+			try {
+				pixels = target.readPixels(0, 0, 1, 1);
+			} catch (e) {
+				error = e;
+			}
+			ok(incompatible ? error : !error, 'readPixels throws error iff incompatible');
+			ok(incompatible || pixels && compare(pixels, [0, 127, 155, 200]), 'Invert effect rendered accurately.');
 
 			seriously.destroy();
 			Seriously.removePlugin('invert');
