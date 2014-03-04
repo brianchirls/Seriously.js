@@ -1541,6 +1541,10 @@
 				equal(s, 'Unable to access cross-domain image', 'Warning logged to console');
 			};
 
+			Seriously.logger.warn = function (s) {
+				equal(s, 'Image not loaded', 'Warning logged to console');
+			};
+
 			ok(!Seriously.util.checkSource(img), 'Cross-origin image checks false');
 
 			canvas = document.createElement('canvas');
