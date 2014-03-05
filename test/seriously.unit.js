@@ -1557,19 +1557,21 @@
 		});
 	});
 
-	asyncTest('resize event', 3, function () {
+	asyncTest('resize event', 4, function () {
 		var seriously,
 			source,
 			deferred,
 			effect,
+			transform,
 			target,
 
 			deferredResized = false,
 			effectResized = false,
+			transformResized = false,
 			targetResized = false;
 
 		function proceed() {
-			if (deferredResized && effectResized && targetResized) {
+			if (deferredResized && effectResized && transformResized && targetResized) {
 				seriously.destroy();
 				Seriously.removeSource('size');
 				start();
@@ -1629,6 +1631,14 @@
 			proceed();
 		});
 		effect.source = source;
+
+		transform = seriously.transform('2d');
+		transform.on('resize', function () {
+			transformResized = true;
+			ok(true, 'Transform resize event runs when connected to a source');
+			proceed();
+		});
+		transform.source = effect;
 
 		target = seriously.target(document.createElement('canvas'));
 		target.on('resize', function () {
