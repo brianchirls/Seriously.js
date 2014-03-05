@@ -3256,6 +3256,7 @@
 							me.target.width = value;
 
 							me.setTransformDirty();
+							me.emit('resize');
 							/*
 							if (this.source && this.source.resize) {
 								this.source.resize(value);
@@ -3281,6 +3282,7 @@
 							me.target.height = value;
 
 							me.setTransformDirty();
+							me.emit('resize');
 
 							/*
 							if (this.source && this.source.resize) {

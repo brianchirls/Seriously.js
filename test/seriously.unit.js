@@ -1557,6 +1557,100 @@
 		});
 	});
 
+	asyncTest('resize event', 3, function () {
+		var seriously,
+			source,
+			deferred,
+			effect,
+			target,
+
+			deferredResized = false,
+			effectResized = false,
+			targetResized = false;
+
+		function proceed() {
+			if (deferredResized && effectResized && targetResized) {
+				seriously.destroy();
+				Seriously.removeSource('size');
+				start();
+			}
+		}
+
+		function fail() {
+			ok(false, 'Removed event listener should not run');
+		}
+
+		Seriously.source('immediate', function (source) {
+			this.width = source.width;
+			this.height = source.height;
+			return {
+				render: function () {}
+			};
+		}, {
+			title: 'delete me'
+		});
+
+		Seriously.source('deferred', function (source) {
+			var that = this;
+			this.width = 1;
+			this.height = 1;
+			setTimeout(function () {
+				that.width = source.width;
+				that.height = source.height;
+				that.resize();
+			}, 0);
+
+			return {
+				render: function () {}
+			};
+		}, {
+			title: 'delete me'
+		});
+
+		Seriously.plugin('test', {
+			title: 'Test Effect',
+			inputs: {
+				source: {
+					type: 'image'
+				}
+			}
+		});
+
+		seriously = new Seriously();
+		source = seriously.source('size', {
+			width: 17,
+			height: 19
+		});
+
+		effect = seriously.effect('test');
+		effect.on('resize', function () {
+			effectResized = true;
+			ok(true, 'Effect resize event runs when connected to a source');
+			proceed();
+		});
+		effect.source = source;
+
+		target = seriously.target(document.createElement('canvas'));
+		target.on('resize', function () {
+			targetResized = true;
+			ok(true, 'Target resize event runs when dimensions changed explicitly');
+			proceed();
+		});
+		target.width = 60;
+
+		deferred = seriously.source('deferred', {
+			width: 17,
+			height: 19
+		});
+		deferred.on('resize', function () {
+			deferredResized = true;
+			ok(true, 'Source resize event runs when set by internal asynchronous code');
+			proceed();
+		});
+		deferred.on('resize', fail);
+		deferred.off('resize', fail);
+	});
+
 	module('Alias');
 
 	module('Utilities');
