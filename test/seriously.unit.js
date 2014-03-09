@@ -29,11 +29,13 @@
 	};
 
 	module('Core');
-	test('Core', 5, function () {
+	test('Core', 6, function () {
 		var p, props = 0,
 			newGlobals = [],
 			skipIds = false,
-			s;
+			s1,
+			s2,
+			s3;
 
 		ok(window.Seriously, 'Seriously exists');
 
@@ -67,15 +69,23 @@
 			newGlobals.join(', ') + ']';
 		equal(props, 1, p);
 
-		s = new Seriously();
-		ok(s instanceof Seriously, 'Create Seriously instance with new');
-		s.destroy();
+		s1 = new Seriously();
+		ok(s1 instanceof Seriously, 'Create Seriously instance with new');
 
 		/*jshint ignore:start*/
-		s = Seriously();
+		s2 = Seriously();
 		/*jshint ignore:end*/
-		ok(s instanceof Seriously, 'Create Seriously instance without new');
-		s.destroy();
+		ok(s2 instanceof Seriously && s2 !== s1, 'Create Seriously instance without new');
+
+		//not sure why this would ever happen, but couldn't hurt to have the safety check
+		/*jshint ignore:start*/
+		s3 = Seriously.bind(s2)();
+		/*jshint ignore:end*/
+		ok(s3 instanceof Seriously && s3 !== s2, 'Create Seriously instance without new, `this` bound to another instance');
+
+		s1.destroy();
+		s2.destroy();
+		s3.destroy();
 	});
 
 	test('Incompatible', 4, function () {

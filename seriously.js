@@ -932,7 +932,7 @@
 	function Seriously(options) {
 
 		//if called without 'new', make a new object and return that
-		if (window === this || !(this instanceof Seriously)) {
+		if (window === this || !(this instanceof Seriously) || this.id !== undefined) {
 			return new Seriously(options);
 		}
 
