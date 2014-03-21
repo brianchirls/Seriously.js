@@ -68,9 +68,11 @@
 
 			video = document.createElement('video');
 
-			getUserMedia.call(navigator, {
-				video: true
-			}, function (s) {
+			var opts = {video:true};
+			if(typeof source == 'object'){
+				opts = source;
+			}
+			getUserMedia.call(navigator, opts, function (s) {
 				stream = s;
 
 				if (destroyed) {
