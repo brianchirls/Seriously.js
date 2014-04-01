@@ -5568,7 +5568,10 @@
 
 			aspectOut = width / height;
 
-			if (mode === 'width' || mode === 'contain' && aspectOut <= aspectIn) {
+			if (mode === 'none') {
+				scaleX = sourceWidth / width;
+				scaleY = sourceHeight / height;
+			} else if (mode === 'width' || mode === 'contain' && aspectOut <= aspectIn) {
 				scaleX = 1;
 				scaleY = aspectOut / aspectIn;
 			} else if (mode === 'height' || mode === 'contain' && aspectOut > aspectIn) {
@@ -5701,7 +5704,8 @@
 						'contain',
 						'distort',
 						'width',
-						'height'
+						'height',
+						'none'
 					]
 				}
 			}
