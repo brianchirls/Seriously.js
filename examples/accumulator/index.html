@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Shake Them Heads</title>
+	<style type="text/css">
+		body {
+			margin: 0;
+		}
+
+		img, video {
+			display: none;
+		}
+
+		#canvas {
+			position: absolute;
+			top: 0;
+			left: 0;
+			width: 100%;
+			height: 100%;
+		}
+
+	</style>
+</head>
+<body>
+	<img src="../images/pencils.jpg" id="image"/>
+	<canvas id="canvas" width="960" height="540"></canvas>
+	<script src="../../lib/require.js"></script>
+	<script>
+		require.config({
+			baseUrl: '../../'
+		});
+
+		require([
+			'seriously',
+			'effects/seriously.accumulator'
+		], function (Seriously) {
+			// declare our variables
+			var seriously, // the main object that holds the entire composition
+				target, // a wrapper object for our target canvas
+				move,
+				reformat,
+				accumulator,
+				reformatForOutput,
+				x = 0,
+				y = 0,
+				vx = 0,
+				vy = 0,
+				lastFrameTime = Date.now();
+
+			function resize() {
+				var aspect = window.innerWidth / window.innerHeight;
+				target.width = Math.min(960, window.innerWidth);
+				target.height = target.width / aspect;
+				reformatForOutput.width = target.width;
+				reformatForOutput.height = target.height;
+			}
+
+			seriously = new Seriously();
+			reformat = seriously.transform('reformat');
+			move = seriously.transform('2d');
+			accumulator = seriously.effect('accumulator');
+			reformatForOutput = seriously.transform('reformat');
+			target = seriously.target('#canvas');
+
+			reformat.width = 1280;
+			reformat.height = 720;
+			reformat.mode = 'none';
+			reformatForOutput.mode = 'cover';
+
+			reformat.source = '#image';
+			move.source = reformat;
+			accumulator.source = move;
+			reformatForOutput.source = accumulator;
+			target.source = reformatForOutput;
+			resize();
+
+			window.onresize = resize;
+			seriously.go(function () {
+				var now = Date.now(),
+					diff = (now - lastFrameTime) / 1000;
+
+				vx = Math.min(Math.max(vx + (Math.random() - 0.5) * 100, -200), 200);
+				vy = Math.min(Math.max(vy + (Math.random() - 0.5) * 100, -200), 200);
+				if (x > 435 || x < -435) {
+					vx *= 1;
+				}
+				if (y > 148 || y < -148) {
+					vy *= 1;
+				}
+				x = Math.min(Math.max(x + vx * diff, -435), 435);
+				y = Math.min(Math.max(y + vy * diff, -148), 148);
+				move.translateX = x;
+				move.translateY = y;
+				lastFrameTime = now;
+			});
+		});
+	</script>
+</body>
+</html>

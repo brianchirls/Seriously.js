@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Shake Them Heads</title>
+	<style type="text/css">
+		body {
+			margin: 0;
+		}
+
+		img, video {
+			display: none;
+		}
+
+		#canvas {
+			position: absolute;
+			top: 0;
+			left: 0;
+			width: 100%;
+			height: 100%;
+		}
+
+	</style>
+</head>
+<body>
+	<canvas id="canvas" width="960" height="540"></canvas>
+	<script src="../../lib/require.js"></script>
+	<script>
+		require.config({
+			baseUrl: '../../'
+		});
+
+		require([
+			'seriously',
+			'effects/seriously.accumulator',
+			'transforms/seriously.camerashake',
+			'sources/seriously.camera'
+		], function (Seriously) {
+			// declare our variables
+			var seriously, // the main object that holds the entire composition
+				target, // a wrapper object for our target canvas
+				shake,
+				scale,
+				reformat,
+				accumulator,
+				x = 0,
+				y = 0,
+				vx = 0,
+				vy = 0,
+				lastFrameTime = Date.now();
+
+			function resize() {
+				var aspect = window.innerWidth / window.innerHeight;
+				target.width = Math.min(960, window.innerWidth);
+				target.height = target.width / aspect;
+				reformat.width = target.width;
+				reformat.height = target.height;
+			}
+
+			window.onresize = resize;
+
+			seriously = new Seriously();
+			reformat = seriously.transform('reformat');
+			scale = seriously.transform('2d');
+			shake = seriously.transform('camerashake');
+			accumulator = seriously.effect('accumulator');
+			target = seriously.target('#canvas');
+
+			reformat.mode = 'cover';
+			scale.scale(1.2);
+
+			shake.rotation = 4;
+			shake.frequency = 0.22;
+			shake.amplitudeX = 16;
+			shake.amplitudeY = 8;
+
+			accumulator.opacity = 0.15;
+
+			scale.source = seriously.source('camera');
+			shake.source = scale;
+			accumulator.source = shake;
+			reformat.source = accumulator;
+			target.source = reformat;
+			resize();
+			seriously.go(function () {
+				shake.time = Date.now() / 200;
+			});
+		});
+	</script>
+</body>
+</html>
