@@ -18,14 +18,12 @@
 	'use strict';
 
 	/*
-	todo: for prototype version, blend only handles two layers. this should handle multiple layers?
 	todo: if transforms are used, do multiple passes and enable depth testing?
 	todo: for now, only supporting float blend modes. Add complex ones
 	todo: apply proper credit and license
 
-	** Romain Dura | Romz
-	** Blog: http://blog.mouaif.org
-	** Post: http://blog.mouaif.org/?p=94
+	Blend mode shader by Romain Dura
+	http://mouaif.wordpress.com/2009/01/05/photoshop-math-with-glsl-shaders/
 
 	*/
 	var modes = {
@@ -279,17 +277,21 @@
 					'#define BlendGlow(base, blend)			BlendReflect(blend, base)\n' +
 					'#define BlendPhoenix(base, blend)		(min(base, blend) - max(base, blend) + vec3(1.0))\n' +
 					//'#define BlendOpacity(base, blend, F, O)	(F(base, blend) * O + blend * (1.0 - O))\n' +
-					'#define BlendOpacity(base, blend, BlendFn, Opacity, Alpha)	((BlendFn(base.rgb * blend.a * Opacity, blend.rgb * blend.a * Opacity) + base.rgb * base.a * (1.0 - blend.a * Opacity)) / Alpha)\n' +
-					'\n' +
+					//'#define BlendOpacity(base, blend, BlendFn, Opacity, Alpha)	((BlendFn(base.rgb * blend.a * Opacity, blend.rgb * blend.a * Opacity) + base.rgb * base.a * (1.0 - blend.a * Opacity)) / Alpha)\n' +
+
 					'varying vec2 vTexCoord;\n' +
 					'varying vec4 vPosition;\n' +
-					'\n' +
+
 					'uniform sampler2D top;\n' +
-					'\n' +
 					'uniform sampler2D bottom;\n' +
-					'\n' +
 					'uniform float opacity;\n' +
-					'\n' +
+
+					'vec3 BlendOpacity(vec4 base, vec4 blend, float opacity, float alpha) {\n' +
+					'	vec3 baseRGB = base.rgb * blend.a * opacity;\n' +
+					'	vec3 blendRGB = blend.rgb * blend.a * opacity;\n' +
+					'	return (BlendFunction(baseRGB, blendRGB) + base.rgb * base.a * (1.0 - blend.a * opacity)) / alpha;\n' +
+					'}\n' +
+
 					'void main(void) {\n' +
 					'	vec3 color;\n' +
 					'	vec4 topPixel = texture2D(top, vTexCoord);\n' +
@@ -299,7 +301,7 @@
 					'	if (alpha == 0.0) {\n' +
 					'		color = vec3(0.0);\n' +
 					'	} else {\n' +
-					'		color = BlendOpacity(bottomPixel, topPixel, BlendFunction, opacity, alpha);\n' +
+					'		color = BlendOpacity(bottomPixel, topPixel, opacity, alpha);\n' +
 					'	}\n' +
 					'	gl_FragColor = vec4(color, alpha);\n' +
 					'}\n';
