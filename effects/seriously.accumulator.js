@@ -52,12 +52,17 @@
 		},
 		drawOpts = {
 			clear: false
-		};
+		},
+		frameBuffers,
+		fbIndex = 0;
 
 		return {
-			initialize: function (initialize) {
+			initialize: function (initialize, gl) {
 				initialize();
-				this.uniforms.previous = this.frameBuffer.texture;
+				frameBuffers = [
+					this.frameBuffer,
+					new Seriously.util.FrameBuffer(gl, this.width, this.height)
+				];
 			},
 			shader: function (inputs, shaderSource) {
 				var mode = inputs.blendMode || 'normal';
@@ -153,13 +158,35 @@
 
 				return shaderSource;
 			},
+			resize: function () {
+				if (frameBuffers) {
+					frameBuffers[0].resize(this.width, this.height);
+					frameBuffers[1].resize(this.width, this.height);
+				}
+			},
 			draw: function (shader, model, uniforms, frameBuffer, draw) {
+				var fb;
+
+				// ping-pong textures
+				this.uniforms.previous = this.frameBuffer.texture;
+				fbIndex = (fbIndex + 1) % 2;
+				fb = frameBuffers[fbIndex];
+				this.frameBuffer = fb;
+				this.texture = fb.texture;
+
 				if (this.inputs.clear) {
-					draw(this.baseShader, model, uniforms, frameBuffer, null);
+					draw(this.baseShader, model, uniforms, fb.frameBuffer, null);
 					return;
 				}
 
-				draw(shader, model, uniforms, frameBuffer, null, drawOpts);
+				draw(shader, model, uniforms, fb.frameBuffer, null, drawOpts);
+			},
+			destroy: function () {
+				if (frameBuffers) {
+					frameBuffers[0].destroy();
+					frameBuffers[1].destroy();
+					frameBuffers.length = 0;
+				}
 			}
 		};
 	}, {
