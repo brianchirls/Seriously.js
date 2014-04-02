@@ -160,60 +160,60 @@
 				}
 
 				draw(shader, model, uniforms, frameBuffer, null, drawOpts);
-			},
-			inputs: {
-				source: {
-					type: 'image',
-					uniform: 'source'
-				},
-				clear: {
-					type: 'boolean',
-					defaultValue: false
-				},
-				opacity: {
-					type: 'number',
-					uniform: 'opacity',
-					defaultValue: 1,
-					min: 0,
-					max: 1
-				},
-				blendMode: {
-					type: 'enum',
-					shaderDirty: true,
-					defaultValue: 'normal',
-					options: [
-						['normal', 'Normal'],
-						['lighten', 'Lighten'],
-						['darken', 'Darken'],
-						['multiply', 'Multiply'],
-						['average', 'Average'],
-						['add', 'Add'],
-						['substract', 'Substract'],
-						['difference', 'Difference'],
-						['negation', 'Negation'],
-						['exclusion', 'Exclusion'],
-						['screen', 'Screen'],
-						['overlay', 'Overlay'],
-						['softlight', 'Soft Light'],
-						['hardlight', 'Hard Light'],
-						['colordodge', 'Color Dodge'],
-						['colorburn', 'Color Burn'],
-						['lineardodge', 'Linear Dodge'],
-						['linearburn', 'Linear Burn'],
-						['linearlight', 'Linear Light'],
-						['vividlight', 'Vivid Light'],
-						['pinlight', 'Pin Light'],
-						['hardmix', 'Hard Mix'],
-						['reflect', 'Reflect'],
-						['glow', 'Glow'],
-						['phoenix', 'Phoenix']
-					]
-				}
 			}
 		};
 	}, {
 		inPlace: false,
 		title: 'Accumulator',
-		description: 'Draw on top of previous frame'
+		description: 'Draw on top of previous frame',
+		inputs: {
+			source: {
+				type: 'image',
+				uniform: 'source'
+			},
+			clear: {
+				type: 'boolean',
+				defaultValue: false
+			},
+			opacity: {
+				type: 'number',
+				uniform: 'opacity',
+				defaultValue: 1,
+				min: 0,
+				max: 1
+			},
+			blendMode: {
+				type: 'enum',
+				shaderDirty: true,
+				defaultValue: 'normal',
+				options: [
+					['normal', 'Normal'],
+					['lighten', 'Lighten'],
+					['darken', 'Darken'],
+					['multiply', 'Multiply'],
+					['average', 'Average'],
+					['add', 'Add'],
+					['substract', 'Substract'],
+					['difference', 'Difference'],
+					['negation', 'Negation'],
+					['exclusion', 'Exclusion'],
+					['screen', 'Screen'],
+					['overlay', 'Overlay'],
+					['softlight', 'Soft Light'],
+					['hardlight', 'Hard Light'],
+					['colordodge', 'Color Dodge'],
+					['colorburn', 'Color Burn'],
+					['lineardodge', 'Linear Dodge'],
+					['linearburn', 'Linear Burn'],
+					['linearlight', 'Linear Light'],
+					['vividlight', 'Vivid Light'],
+					['pinlight', 'Pin Light'],
+					['hardmix', 'Hard Mix'],
+					['reflect', 'Reflect'],
+					['glow', 'Glow'],
+					['phoenix', 'Phoenix']
+				]
+			}
+		}
 	});
 }));
