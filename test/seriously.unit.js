@@ -425,7 +425,6 @@
 
 	test('Effect Info', 14, function () {
 		var inputs,
-			input,
 			seriously,
 			effect;
 
@@ -481,7 +480,7 @@
 		inputs.e.options[1][0] = 'three';
 		equal(effect.inputs('e').options[1][0], 'two', 'Enum options fully copied, cannot be tampered with');
 
-		seriously.destroy;
+		seriously.destroy();
 		Seriously.removePlugin('test');
 	});
 
