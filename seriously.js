@@ -1650,7 +1650,7 @@
 			}
 
 			//priveleged publicly accessible methods/setters/getters
-			//todo: provide an alternate method
+			//todo: provide alternate set/get methods
 			for (name in me.effect.inputs) {
 				if (me.effect.inputs.hasOwnProperty(name)) {
 					if (this[name] === undefined) {
@@ -1882,8 +1882,10 @@
 			if (gl) {
 				this.initialize();
 				if (this.effect.commonShader) {
-					//this effect is unlikely to need to be modified again
-					//by changing parameters
+					/*
+					this effect is unlikely to need to be modified again
+					by changing parameters, so build it now to avoid jank later
+					*/
 					this.buildShader();
 				}
 			}
@@ -2096,7 +2098,7 @@
 					if (this.sources.hasOwnProperty(i) &&
 						(!effect.requires || effect.requires.call(this, i, this.inputs))) {
 
-						//todo: set source texture
+						//todo: set source texture in case it changes?
 						//sourcetexture = this.sources[i].render() || this.sources[i].texture
 
 						inPlace = typeof this.inPlace === 'function' ? this.inPlace(i) : this.inPlace;
@@ -5720,7 +5722,6 @@
 	- perspective
 	- matrix
 	- crop? - maybe not - probably would just scale.
-	- camera shake?
 	*/
 
 	/*
