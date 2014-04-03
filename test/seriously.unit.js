@@ -1334,6 +1334,67 @@
 		Seriously.removePlugin('removeme');
 	});
 
+	test('Transform Info', 14, function () {
+		var inputs,
+			seriously,
+			transform;
+
+		Seriously.transform('test', {
+			inputs: {
+				number: {
+					type: 'number',
+					min: -4,
+					max: 100,
+					step: 2,
+					defaultValue: 8,
+					description: 'this is a number',
+					title: 'Number'
+				},
+				vector: {
+					type: 'vector',
+					dimensions: 3
+				},
+				e: {
+					type: 'enum',
+					options: [
+						['one', 'One'],
+						['two', 'Two']
+					]
+				}
+			},
+			title: 'Test'
+		});
+
+		seriously = new Seriously();
+		transform = seriously.transform('test');
+
+		equal(transform.transform, 'test', 'Transform name reported');
+		equal(transform.title, 'Test', 'Transform title reported');
+		ok(transform.id >= 0, 'Transform id reported');
+
+		//Check inputs
+		inputs = transform.inputs();
+		ok(inputs.number && inputs.vector && inputs.e, 'All inputs are present');
+		equal(Object.keys(inputs).length, 3, 'No extra properties');
+
+		equal(inputs.number.min, -4, 'Number minimum reported');
+		equal(inputs.number.max, 100, 'Number maximum reported');
+		equal(inputs.number.step, 2, 'Number step reported');
+		equal(inputs.number.defaultValue, 8, 'Number default value reported');
+		equal(inputs.number.title, 'Number', 'Node title reported');
+		equal(inputs.number.description, 'this is a number', 'Node description reported');
+
+		equal(inputs.vector.dimensions, 3, 'Vector dimensions reported');
+
+		ok(Array.isArray(inputs.e.options), 'Enum options reported');
+
+		inputs.e.options[1][0] = 'three';
+		equal(transform.inputs('e').options[1][0], 'two', 'Enum options fully copied, cannot be tampered with');
+
+		seriously.destroy();
+		Seriously.removeTransform('test');
+	});
+
 	test('Transform alias', 5, function () {
 		var seriously,
 			transform;

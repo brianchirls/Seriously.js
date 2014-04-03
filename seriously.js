@@ -3826,6 +3826,34 @@
 
 			//priveleged accessor methods
 			Object.defineProperties(this, {
+				transform: {
+					enumerable: true,
+					configurable: true,
+					get: function () {
+						return me.hook;
+					}
+				},
+				title: {
+					enumerable: true,
+					configurable: true,
+					get: function () {
+						return me.plugin.title || me.hook;
+					}
+				},
+				width: {
+					enumerable: true,
+					configurable: true,
+					get: function () {
+						return me.width;
+					}
+				},
+				height: {
+					enumerable: true,
+					configurable: true,
+					get: function () {
+						return me.height;
+					}
+				},
 				id: {
 					enumerable: true,
 					configurable: true,
@@ -3860,6 +3888,65 @@
 
 			this.update = function () {
 				me.setDirty();
+			};
+
+			this.inputs = function (name) {
+				var result,
+					input,
+					inputs,
+					enumOption,
+					i,
+					key;
+
+				inputs = me.plugin.inputs;
+
+				if (name) {
+					input = inputs[name];
+					if (!input) {
+						return null;
+					}
+
+					result = {
+						type: input.type,
+						defaultValue: input.defaultValue,
+						title: input.title || name
+					};
+
+					if (input.type === 'number') {
+						result.min = input.min;
+						result.max = input.max;
+						result.step = input.step;
+					} else if (input.type === 'enum') {
+						//make a deep copy
+						result.options = [];
+						if (options) {
+							for (i = 0; i < input.options.length; i++) {
+								enumOption = input.options[i];
+								if (Array.isArray(enumOption)) {
+									result.options.push(enumOption.slice(0));
+								} else {
+									result.options.push(enumOption);
+								}
+							}
+						}
+					} else if (input.type === 'vector') {
+						result.dimensions = input.dimensions;
+					}
+
+					if (input.description) {
+						result.description = input.description;
+					}
+
+					return result;
+				}
+
+				result = {};
+				for (key in inputs) {
+					if (inputs.hasOwnProperty(key)) {
+						result[key] = this.inputs(key);
+					}
+				}
+				return result;
 			};
 
 			this.alias = function (inputName, aliasName) {
