@@ -423,7 +423,7 @@
 		Seriously.removePlugin('removeme');
 	});
 
-	test('Effect Info', 14, function () {
+	test('Effect Info', 17, function () {
 		var inputs,
 			seriously,
 			effect;
@@ -466,6 +466,7 @@
 		ok(inputs.number && inputs.vector && inputs.e, 'All inputs are present');
 		equal(Object.keys(inputs).length, 3, 'No extra properties');
 
+		equal(inputs.number.type, 'number', 'Number type reported');
 		equal(inputs.number.min, -4, 'Number minimum reported');
 		equal(inputs.number.max, 100, 'Number maximum reported');
 		equal(inputs.number.step, 2, 'Number step reported');
@@ -473,8 +474,10 @@
 		equal(inputs.number.title, 'Number', 'Node title reported');
 		equal(inputs.number.description, 'this is a number', 'Node description reported');
 
+		equal(inputs.vector.type, 'vector', 'Vector type reported');
 		equal(inputs.vector.dimensions, 3, 'Vector dimensions reported');
 
+		equal(inputs.e.type, 'enum', 'Enum type reported');
 		ok(Array.isArray(inputs.e.options), 'Enum options reported');
 
 		inputs.e.options[1][0] = 'three';
@@ -1334,7 +1337,7 @@
 		Seriously.removePlugin('removeme');
 	});
 
-	test('Transform Info', 14, function () {
+	test('Transform Info', 17, function () {
 		var inputs,
 			seriously,
 			transform;
@@ -1377,6 +1380,7 @@
 		ok(inputs.number && inputs.vector && inputs.e, 'All inputs are present');
 		equal(Object.keys(inputs).length, 3, 'No extra properties');
 
+		equal(inputs.number.type, 'number', 'Number type reported');
 		equal(inputs.number.min, -4, 'Number minimum reported');
 		equal(inputs.number.max, 100, 'Number maximum reported');
 		equal(inputs.number.step, 2, 'Number step reported');
@@ -1384,8 +1388,10 @@
 		equal(inputs.number.title, 'Number', 'Node title reported');
 		equal(inputs.number.description, 'this is a number', 'Node description reported');
 
+		equal(inputs.vector.type, 'vector', 'Vector type reported');
 		equal(inputs.vector.dimensions, 3, 'Vector dimensions reported');
 
+		equal(inputs.e.type, 'enum', 'Enum type reported');
 		ok(Array.isArray(inputs.e.options), 'Enum options reported');
 
 		inputs.e.options[1][0] = 'three';
