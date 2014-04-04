@@ -20,19 +20,19 @@
 	Seriously.plugin('invert', {
 		commonShader: true,
 		shader: function (inputs, shaderSource) {
-			shaderSource.fragment = '#ifdef GL_ES\n\n' +
-				'precision mediump float;\n\n' +
-				'#endif\n\n' +
-				'\n' +
-				'varying vec2 vTexCoord;\n' +
-				'varying vec4 vPosition;\n' +
-				'\n' +
-				'uniform sampler2D source;\n' +
-				'\n' +
-				'void main(void) {\n' +
-				'	gl_FragColor = texture2D(source, vTexCoord);\n' +
-				'	gl_FragColor = vec4(1.0 - gl_FragColor.rgb, gl_FragColor.a);\n' +
-				'}\n';
+			shaderSource.fragment = [
+				'precision mediump float;',
+
+				'varying vec2 vTexCoord;',
+				'varying vec4 vPosition;',
+
+				'uniform sampler2D source;',
+
+				'void main(void) {',
+				'	gl_FragColor = texture2D(source, vTexCoord);',
+				'	gl_FragColor = vec4(1.0 - gl_FragColor.rgb, gl_FragColor.a);',
+				'}'
+			].join('\n');
 			return shaderSource;
 		},
 		inPlace: true,

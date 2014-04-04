@@ -20,24 +20,25 @@
 	Seriously.plugin('falsecolor', {
 		commonShader: true,
 		shader: function (inputs, shaderSource) {
-			shaderSource.fragment = '#ifdef GL_ES\n\n' +
-				'precision mediump float;\n\n' +
-				'#endif\n\n' +
-				'\n' +
-				'varying vec2 vTexCoord;\n' +
-				'varying vec4 vPosition;\n' +
-				'\n' +
-				'uniform sampler2D source;\n' +
-				'uniform float amount;\n' +
-				'uniform vec4 dark;\n' +
-				'uniform vec4 light;\n' +
-				'const vec3 luma = vec3(0.2125, 0.7154, 0.0721);\n' +
-				'\n' +
-				'void main(void) {\n' +
-				'	vec4 pixel = texture2D(source, vTexCoord);\n' +
-				'	float luminance = dot(pixel.rgb, luma);\n' +
-				'	gl_FragColor = vec4( mix(dark.rgb, light.rgb, luminance), pixel.a);\n' +
-				'}\n';
+			shaderSource.fragment = [
+				'precision mediump float;',
+
+				'varying vec2 vTexCoord;',
+				'varying vec4 vPosition;',
+
+				'uniform sampler2D source;',
+				'uniform float amount;',
+				'uniform vec4 dark;',
+				'uniform vec4 light;',
+
+				'const vec3 luma = vec3(0.2125, 0.7154, 0.0721);',
+
+				'void main(void) {',
+				'	vec4 pixel = texture2D(source, vTexCoord);',
+				'	float luminance = dot(pixel.rgb, luma);',
+				'	gl_FragColor = vec4( mix(dark.rgb, light.rgb, luminance), pixel.a);',
+				'}'
+			].join('\n');
 			return shaderSource;
 		},
 		inPlace: true,

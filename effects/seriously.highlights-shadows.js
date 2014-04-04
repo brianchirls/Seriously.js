@@ -20,27 +20,28 @@
 	Seriously.plugin('highlights-shadows', {
 		commonShader: true,
 		shader: function (inputs, shaderSource) {
-			shaderSource.fragment = '#ifdef GL_ES\n\n' +
-				'precision mediump float;\n\n' +
-				'#endif\n\n' +
-				'\n' +
-				'varying vec2 vTexCoord;\n' +
-				'varying vec4 vPosition;\n' +
-				'\n' +
-				'uniform sampler2D source;\n' +
-				'uniform float shadows;\n' +
-				'uniform float highlights;\n' +
-				'const vec3 luma = vec3(0.2125, 0.7154, 0.0721);\n' +
-				'\n' +
-				'void main(void) {\n' +
-				'	vec4 pixel = texture2D(source, vTexCoord);\n' +
-				'	float luminance = dot(pixel.rgb, luma);\n' +
-				'	float shadow = clamp((pow(luminance, 1.0 / (shadows + 1.0)) + (-0.76) * pow(luminance, 2.0 / (shadows + 1.0))) - luminance, 0.0, 1.0);\n' +
-				'	float highlight = clamp((1.0 - (pow(1.0 - luminance, 1.0 / (2.0 - highlights)) + (-0.8) * pow(1.0 - luminance, 2.0 / (2.0 - highlights)))) - luminance, -1.0, 0.0);\n' +
-				'	vec3 rgb = (luminance + shadow + highlight) * (pixel.rgb / vec3(luminance));\n' +
-				//'	vec3 rgb = vec3(0.0, 0.0, 0.0) + ((luminance + shadow + highlight) - 0.0) * ((pixel.rgb - vec3(0.0, 0.0, 0.0))/(luminance - 0.0));\n' +
-				'	gl_FragColor = vec4(rgb, pixel.a);\n' +
-				'}\n';
+			shaderSource.fragment = [
+				'precision mediump float;',
+
+				'varying vec2 vTexCoord;',
+				'varying vec4 vPosition;',
+
+				'uniform sampler2D source;',
+				'uniform float shadows;',
+				'uniform float highlights;',
+
+				'const vec3 luma = vec3(0.2125, 0.7154, 0.0721);',
+
+				'void main(void) {',
+				'	vec4 pixel = texture2D(source, vTexCoord);',
+				'	float luminance = dot(pixel.rgb, luma);',
+				'	float shadow = clamp((pow(luminance, 1.0 / (shadows + 1.0)) + (-0.76) * pow(luminance, 2.0 / (shadows + 1.0))) - luminance, 0.0, 1.0);',
+				'	float highlight = clamp((1.0 - (pow(1.0 - luminance, 1.0 / (2.0 - highlights)) + (-0.8) * pow(1.0 - luminance, 2.0 / (2.0 - highlights)))) - luminance, -1.0, 0.0);',
+				'	vec3 rgb = (luminance + shadow + highlight) * (pixel.rgb / vec3(luminance));',
+				//'	vec3 rgb = vec3(0.0, 0.0, 0.0) + ((luminance + shadow + highlight) - 0.0) * ((pixel.rgb - vec3(0.0, 0.0, 0.0))/(luminance - 0.0));',
+				'	gl_FragColor = vec4(rgb, pixel.a);',
+				'}'
+			].join('\n');
 			return shaderSource;
 		},
 		inPlace: true,

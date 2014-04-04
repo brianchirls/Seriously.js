@@ -65,66 +65,65 @@
 
 			if (inputs.mode === 'sobel') {
 				defines = '#define N_MATRICES 2\n' +
-				'#define SOBEL\n';
+					'#define SOBEL\n';
 			} else {
 				//frei-chen
 				defines = '#define N_MATRICES 9\n';
 			}
 
-			shaderSource.fragment = defines +
-				'#ifdef GL_ES\n' +
-				'precision mediump float;\n' +
-				'#endif\n' +
-				'\n' +
-				'varying vec2 vTexCoord;\n' +
-				'varying vec4 vPosition;\n' +
-				'\n' +
-				'uniform sampler2D source;\n' +
-				'uniform float pixelWidth;\n' +
-				'uniform float pixelHeight;\n' +
-				'uniform mat3 G[9];\n' +
-				'\n' +
-				'void main(void) {\n' +
-				'	mat3 I;\n' +
-				'	float dp3, cnv[9];\n' +
-				'	vec3 tc;\n' +
+			shaderSource.fragment = [
+				defines,
+				'precision mediump float;',
+
+				'varying vec2 vTexCoord;',
+				'varying vec4 vPosition;',
+
+				'uniform sampler2D source;',
+				'uniform float pixelWidth;',
+				'uniform float pixelHeight;',
+				'uniform mat3 G[9];',
+
+				'void main(void) {',
+				'	mat3 I;',
+				'	float dp3, cnv[9];',
+				'	vec3 tc;',
 
 				// fetch the 3x3 neighbourhood and use the RGB vector's length as intensity value
-				'	float fi = 0.0, fj = 0.0;\n' +
-				'	for (int i = 0; i < 3; i++) {\n' +
-				'		fj = 0.0;\n' +
-				'		for (int j = 0; j < 3; j++) {\n' +
+				'	float fi = 0.0, fj = 0.0;',
+				'	for (int i = 0; i < 3; i++) {',
+				'		fj = 0.0;',
+				'		for (int j = 0; j < 3; j++) {',
 				'			I[i][j] = length( ' +
 							'texture2D(source, ' +
 								'vTexCoord + vec2((fi - 1.0) * pixelWidth, (fj - 1.0) * pixelHeight)' +
-							').rgb );\n' +
-				'			fj += 1.0;\n' +
-				'		};\n' +
-				'		fi += 1.0;\n' +
-				'	};\n' +
+							').rgb );',
+				'			fj += 1.0;',
+				'		};',
+				'		fi += 1.0;',
+				'	};',
 
 				// calculate the convolution values for all the masks
 
-				'	for (int i = 0; i < N_MATRICES; i++) {\n' +
-				'		dp3 = dot(G[i][0], I[0]) + dot(G[i][1], I[1]) + dot(G[i][2], I[2]);\n' +
-				'		cnv[i] = dp3 * dp3;\n' +
-				'	};\n' +
-				'\n' +
+				'	for (int i = 0; i < N_MATRICES; i++) {',
+				'		dp3 = dot(G[i][0], I[0]) + dot(G[i][1], I[1]) + dot(G[i][2], I[2]);',
+				'		cnv[i] = dp3 * dp3;',
+				'	};',
 
 				//Sobel
-				'#ifdef SOBEL\n' +
-				'	tc = vec3(0.5 * sqrt(cnv[0]*cnv[0]+cnv[1]*cnv[1]));\n' +
-				'#else\n' +
+				'#ifdef SOBEL',
+				'	tc = vec3(0.5 * sqrt(cnv[0]*cnv[0]+cnv[1]*cnv[1]));',
+				'#else',
 
 				//Frei-Chen
 				// Line detector
-				'	float M = (cnv[4] + cnv[5]) + (cnv[6] + cnv[7]);\n' +
-				'	float S = (cnv[0] + cnv[1]) + (cnv[2] + cnv[3]) + (cnv[4] + cnv[5]) + (cnv[6] + cnv[7]) + cnv[8];\n' +
-				'	tc = vec3(sqrt(M/S));\n' +
-				'#endif\n' +
+				'	float M = (cnv[4] + cnv[5]) + (cnv[6] + cnv[7]);',
+				'	float S = (cnv[0] + cnv[1]) + (cnv[2] + cnv[3]) + (cnv[4] + cnv[5]) + (cnv[6] + cnv[7]) + cnv[8];',
+				'	tc = vec3(sqrt(M/S));',
+				'#endif',
 
-				'	gl_FragColor = vec4(tc, 1.0);\n' +
-				'}\n';
+				'	gl_FragColor = vec4(tc, 1.0);',
+				'}'
+			].join('\n');
 
 			return shaderSource;
 		},

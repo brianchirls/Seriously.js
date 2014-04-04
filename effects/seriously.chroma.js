@@ -28,9 +28,7 @@
 		commonShader: true,
 		shader: function (inputs, shaderSource) {
 			shaderSource.vertex = [
-				'#ifdef GL_ES',
 				'precision mediump float;',
-				'#endif ',
 
 				'attribute vec4 position;',
 				'attribute vec2 texCoord;',
@@ -70,9 +68,7 @@
 				'}'
 			].join('\n');
 			shaderSource.fragment = [
-				'#ifdef GL_ES',
 				'precision mediump float;',
-				'#endif',
 
 				'varying vec2 vTexCoord;',
 				'varying vec4 vPosition;',

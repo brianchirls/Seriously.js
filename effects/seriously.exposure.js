@@ -29,26 +29,23 @@
 	Seriously.plugin('exposure', {
 		commonShader: true,
 		shader: function (inputs, shaderSource) {
-			shaderSource.fragment = '#ifdef GL_ES\n\n' +
-				'precision mediump float;\n\n' +
-				'#endif\n\n' +
-				'\n' +
-				'varying vec2 vTexCoord;\n' +
-				'varying vec4 vPosition;\n' +
-				'\n' +
-				'uniform sampler2D source;\n' +
-				'\n' +
-				'uniform float exposure;\n' +
-				'\n' +
-				'//constant variables.\n' +
-				'const float sqrtoftwo = 1.41421356237;\n' +
-				'\n' +
-				'\n' +
-				'void main (void)  {\n' +
-				'	vec4 pixel = texture2D(source, vTexCoord);\n' +
-				'	gl_FragColor = log2(vec4(pow(exposure + sqrtoftwo, 2.0))) * pixel;\n' +
-				'\n' +
-				'} \n';
+			shaderSource.fragment = [
+				'precision mediump float;',
+
+				'varying vec2 vTexCoord;',
+				'varying vec4 vPosition;',
+
+				'uniform sampler2D source;',
+
+				'uniform float exposure;',
+
+				'const float sqrtoftwo = 1.41421356237;',
+
+				'void main (void)  {',
+				'	vec4 pixel = texture2D(source, vTexCoord);',
+				'	gl_FragColor = log2(vec4(pow(exposure + sqrtoftwo, 2.0))) * pixel;',
+				'}'
+			].join('\n');
 			return shaderSource;
 		},
 		inPlace: true,

@@ -38,25 +38,25 @@
 					return n;
 				}
 
-				shaderSource.fragment = '#ifdef GL_ES\n\n' +
-					'precision mediump float;\n\n' +
-					'#endif\n\n' +
-					'\n' +
-					'varying vec2 vTexCoord;\n' +
-					'varying vec4 vPosition;\n' +
-					'\n' +
-					'uniform float amount;\n' +
-					'uniform vec2 noiseScale;\n' +
-					'uniform vec2 noiseOffset;\n' +
-					'uniform float time;\n' +
+				shaderSource.fragment = [
+					'precision mediump float;',
 
-					utilities.shader.noiseHelpers +
-					utilities.shader.snoise3d +
-					//utilities.shader.random +
+					'varying vec2 vTexCoord;',
+					'varying vec4 vPosition;',
 
-					'void main(void) {\n' +
-					'	float total = 0.0;\n' +
-					'	vec3 pos = vec3(vTexCoord.xy * noiseScale + noiseOffset, time);\n';
+					'uniform float amount;',
+					'uniform vec2 noiseScale;',
+					'uniform vec2 noiseOffset;',
+					'uniform float time;',
+
+					utilities.shader.noiseHelpers,
+					utilities.shader.snoise3d,
+					//utilities.shader.random,
+
+					'void main(void) {',
+					'	float total = 0.0;',
+					'	vec3 pos = vec3(vTexCoord.xy * noiseScale + noiseOffset, time);'
+				].join('\n');
 
 				for (i = 0; i < inputs.octaves; i++) {
 					frequency = Math.pow(2, i);
@@ -64,10 +64,12 @@
 					adjust += amplitude;
 					shaderSource.fragment += '\ttotal += snoise(pos * ' + fmtFloat(frequency) + ') * ' + fmtFloat(amplitude) + ';\n';
 				}
-				shaderSource.fragment += '\ttotal *= amount / ' + fmtFloat(adjust) + ';\n' +
-				'	total = (total + 1.0)/ 2.0;\n' +
-				'	gl_FragColor = vec4(total, total, total, 1.0);\n' +
-				'}';
+				shaderSource.fragment += [
+					'	total *= amount / ' + fmtFloat(adjust) + ';',
+					'	total = (total + 1.0)/ 2.0;',
+					'	gl_FragColor = vec4(total, total, total, 1.0);',
+					'}'
+				].join('\n');
 
 				return shaderSource;
 			},

@@ -20,21 +20,21 @@
 	Seriously.plugin('fader', {
 		commonShader: true,
 		shader: function (inputs, shaderSource) {
-			shaderSource.fragment = '#ifdef GL_ES\n\n' +
-				'precision mediump float;\n\n' +
-				'#endif\n\n' +
-				'\n' +
-				'varying vec2 vTexCoord;\n' +
-				'varying vec4 vPosition;\n' +
-				'\n' +
-				'uniform sampler2D source;\n' +
-				'uniform vec4 color;\n' +
-				'uniform float amount;\n' +
-				'\n' +
-				'void main(void) {\n' +
-				'	gl_FragColor = texture2D(source, vTexCoord);\n' +
-				'	gl_FragColor = mix(gl_FragColor, color, amount);\n' +
-				'}\n';
+			shaderSource.fragment = [
+				'precision mediump float;',
+
+				'varying vec2 vTexCoord;',
+				'varying vec4 vPosition;',
+
+				'uniform sampler2D source;',
+				'uniform vec4 color;',
+				'uniform float amount;',
+
+				'void main(void) {',
+				'	gl_FragColor = texture2D(source, vTexCoord);',
+				'	gl_FragColor = mix(gl_FragColor, color, amount);',
+				'}'
+			].join('\n');
 			return shaderSource;
 		},
 		inPlace: true,

@@ -24,33 +24,34 @@
 	Seriously.plugin('colorcube', {
 		commonShader: true,
 		shader: function (inputs, shaderSource) {
-			shaderSource.fragment = '#ifdef GL_ES\n' +
-				'precision mediump float;\n' +
-				'#endif\n' +
-				'uniform sampler2D source;\n' +
-				'uniform sampler2D colorCube;\n' +
-				'varying vec2 vTexCoord;\n' +
+			shaderSource.fragment = [
+				'precision mediump float;',
 
-				'vec3 sampleAs3DTexture(sampler2D tex, vec3 coord, float size) {\n' +
-				'	float sliceSize = 1.0 / size;                         // space of 1 slice\n' +
-				'	float slicePixelSize = sliceSize / size;              // space of 1 pixel\n' +
-				'	float sliceInnerSize = slicePixelSize * (size - 1.0); // space of size pixels\n' +
-				'	float zSlice0 = min(floor(coord.z * size), size - 1.0);\n' +
-				'	float zSlice1 = min(zSlice0 + 1.0, size - 1.0);\n' +
-				'	float xOffset = slicePixelSize * 0.5 + coord.x * sliceInnerSize;\n' +
-				'	float s0 = xOffset + (zSlice0 * sliceSize);\n' +
-				'	float s1 = xOffset + (zSlice1 * sliceSize);\n' +
-				'	vec3 slice0Color = texture2D(tex, vec2(s0, 1.0 - coord.y)).rgb;\n' +
-				'	vec3 slice1Color = texture2D(tex, vec2(s1, 1.0 - coord.y)).rgb;\n' +
-				'	float zOffset = mod(coord.z * size, 1.0);\n' +
-				'	return mix(slice0Color, slice1Color, zOffset);\n' +
-				'}\n' +
+				'uniform sampler2D source;',
+				'uniform sampler2D colorCube;',
+				'varying vec2 vTexCoord;',
 
-				'void main(void) {\n' +
-				'	vec4 originalColor = texture2D(source, vTexCoord);\n' +
-				'	vec3 color = sampleAs3DTexture(colorCube, originalColor.rgb, 8.0);\n' +
-				'	gl_FragColor = vec4(color, originalColor.a);\n' +
-				'}\n';
+				'vec3 sampleAs3DTexture(sampler2D tex, vec3 coord, float size) {',
+				'	float sliceSize = 1.0 / size;', // space of 1 slice
+				'	float slicePixelSize = sliceSize / size;', // space of 1 pixel
+				'	float sliceInnerSize = slicePixelSize * (size - 1.0);', // space of size pixels
+				'	float zSlice0 = min(floor(coord.z * size), size - 1.0);',
+				'	float zSlice1 = min(zSlice0 + 1.0, size - 1.0);',
+				'	float xOffset = slicePixelSize * 0.5 + coord.x * sliceInnerSize;',
+				'	float s0 = xOffset + (zSlice0 * sliceSize);',
+				'	float s1 = xOffset + (zSlice1 * sliceSize);',
+				'	vec3 slice0Color = texture2D(tex, vec2(s0, 1.0 - coord.y)).rgb;',
+				'	vec3 slice1Color = texture2D(tex, vec2(s1, 1.0 - coord.y)).rgb;',
+				'	float zOffset = mod(coord.z * size, 1.0);',
+				'	return mix(slice0Color, slice1Color, zOffset);',
+				'}',
+
+				'void main(void) {',
+				'	vec4 originalColor = texture2D(source, vTexCoord);',
+				'	vec3 color = sampleAs3DTexture(colorCube, originalColor.rgb, 8.0);',
+				'	gl_FragColor = vec4(color, originalColor.a);',
+				'}'
+			].join('\n');
 			return shaderSource;
 		},
 		inPlace: true,

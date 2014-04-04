@@ -71,9 +71,8 @@
 
 				shaderSource.fragment = [
 					'#define BlendFunction ' + mode,
-					'#ifdef GL_ES',
+
 					'precision mediump float;',
-					'#endif',
 
 					'#define BlendLinearDodgef				BlendAddf',
 					'#define BlendLinearBurnf				BlendSubtractf',

@@ -19,40 +19,40 @@
 
 	Seriously.plugin('noise', {
 		shader: function (inputs, shaderSource, utilities) {
-			var frag = '#ifdef GL_ES\n\n' +
-				'precision mediump float;\n\n' +
-				'#endif\n\n' +
-				'\n' +
-				'#define Blend(base, blend, funcf)		vec3(funcf(base.r, blend.r), funcf(base.g, blend.g), funcf(base.b, blend.b))\n' +
-				'#define BlendOverlayf(base, blend) (base < 0.5 ? (2.0 * base * blend) : (1.0 - 2.0 * (1.0 - base) * (1.0 - blend)))\n' +
-				'#define BlendOverlay(base, blend)		Blend(base, blend, BlendOverlayf)\n' +
-				'varying vec2 vTexCoord;\n' +
-				'varying vec4 vPosition;\n' +
-				'\n' +
-				'uniform sampler2D source;\n' +
-				'\n' +
-				'uniform vec2 resolution;\n' +
-				'uniform float amount;\n' +
-				'uniform float timer;\n' +
+			var frag = [
+				'precision mediump float;',
 
-				utilities.shader.noiseHelpers +
-				utilities.shader.snoise3d +
-				utilities.shader.random +
+				'#define Blend(base, blend, funcf)		vec3(funcf(base.r, blend.r), funcf(base.g, blend.g), funcf(base.b, blend.b))',
+				'#define BlendOverlayf(base, blend) (base < 0.5 ? (2.0 * base * blend) : (1.0 - 2.0 * (1.0 - base) * (1.0 - blend)))',
+				'#define BlendOverlay(base, blend)		Blend(base, blend, BlendOverlayf)',
+				'varying vec2 vTexCoord;',
+				'varying vec4 vPosition;',
 
-				'void main(void) {\n' +
-				'	vec4 pixel = texture2D(source, vTexCoord);\n' +
-				'	float r = random(vec2(timer * vTexCoord.xy));\n' +
-				'	float noise = snoise(vec3(vTexCoord * (1024.4 + r * 512.0), timer)) * 0.5;';
+				'uniform sampler2D source;',
+
+				'uniform vec2 resolution;',
+				'uniform float amount;',
+				'uniform float timer;',
+
+				utilities.shader.noiseHelpers,
+				utilities.shader.snoise3d,
+				utilities.shader.random,
+
+				'void main(void) {',
+				'	vec4 pixel = texture2D(source, vTexCoord);',
+				'	float r = random(vec2(timer * vTexCoord.xy));',
+				'	float noise = snoise(vec3(vTexCoord * (1024.4 + r * 512.0), timer)) * 0.5;'
+			];
 
 			if (inputs.overlay) {
-				frag += '	vec3 overlay = BlendOverlay(pixel.rgb, vec3(noise));\n' +
-						'	pixel.rgb = mix(pixel.rgb, overlay, amount);\n';
+				frag.push('	vec3 overlay = BlendOverlay(pixel.rgb, vec3(noise));');
+				frag.push('	pixel.rgb = mix(pixel.rgb, overlay, amount);');
 			} else {
-				frag += '	pixel.rgb += noise * amount;\n';
+				frag.push('	pixel.rgb += noise * amount;');
 			}
-			frag += '	gl_FragColor = pixel;\n}';
+			frag.push('	gl_FragColor = pixel;}');
 
-			shaderSource.fragment = frag;
+			shaderSource.fragment = frag.join('\n');
 			return shaderSource;
 		},
 		inPlace: true,

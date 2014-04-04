@@ -19,19 +19,19 @@
 
 	Seriously.plugin('color', {
 		commonShader: true,
-		shader: function(inputs, shaderSource, utilities) {
-			shaderSource.fragment = '#ifdef GL_ES\n\n' +
-				'precision mediump float;\n\n' +
-				'#endif\n\n' +
-				'\n' +
-				'varying vec2 vTexCoord;\n' +
-				'varying vec4 vPosition;\n' +
-				'\n' +
-				'uniform vec4 color;\n' +
-				'\n' +
-				'void main(void) {\n' +
-				'	gl_FragColor = color;\n' +
-				'}\n';
+		shader: function(inputs, shaderSource) {
+			shaderSource.fragment = [
+				'precision mediump float;\n',
+
+				'varying vec2 vTexCoord;',
+				'varying vec4 vPosition;',
+
+				'uniform vec4 color;',
+
+				'void main(void) {',
+				'	gl_FragColor = color;',
+				'}'
+			].join('\n');
 			return shaderSource;
 		},
 		inPlace: true,

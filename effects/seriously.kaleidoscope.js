@@ -21,9 +21,7 @@
 		commonShader: true,
 		shader: function (inputs, shaderSource) {
 			shaderSource.fragment = [
-				'#ifdef GL_ES',
 				'precision mediump float;',
-				'#endif',
 
 				'varying vec2 vTexCoord;',
 				'varying vec4 vPosition;',
@@ -40,11 +38,13 @@
 				'		gl_FragColor = texture2D(source, vTexCoord);',
 				'	} else {',
 				'		vec2 centered = vTexCoord - 0.5;',
+
 				//to polar
 				'		float r = length(centered);',
 				'		float theta = atan(centered.y, centered.x);',
 				'		theta = mod(theta, TAU / segments);',
 				'		theta = abs(theta - PI / segments);',
+
 				//back to cartesian
 				'		vec2 newCoords = r * vec2(cos(theta), sin(theta)) + 0.5;',
 				'		gl_FragColor = texture2D(source, mod(newCoords - offset, 1.0));',

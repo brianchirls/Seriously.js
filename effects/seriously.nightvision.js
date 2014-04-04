@@ -23,32 +23,32 @@
 	Seriously.plugin('nightvision', {
 		commonShader: true,
 		shader: function (inputs, shaderSource, utilities) {
-			shaderSource.fragment = '#ifdef GL_ES\n\n' +
-					'precision mediump float;\n\n' +
-					'#endif\n\n' +
-					'\n' +
-					'varying vec2 vTexCoord;\n' +
-					'varying vec4 vPosition;\n' +
-					'\n' +
-					'uniform sampler2D source;\n' +
-					'uniform float timer;\n' +
-					'uniform float luminanceThreshold;\n' +
-					'uniform float amplification;\n' +
-					'uniform vec3 nightVisionColor;\n' +
-					'\n' +
-					utilities.shader.makeNoise +
-					'\n' +
-					'void main(void) {\n' +
+			shaderSource.fragment = [
+					'precision mediump float;',
+
+					'varying vec2 vTexCoord;',
+					'varying vec4 vPosition;',
+
+					'uniform sampler2D source;',
+					'uniform float timer;',
+					'uniform float luminanceThreshold;',
+					'uniform float amplification;',
+					'uniform vec3 nightVisionColor;',
+
+					utilities.shader.makeNoise,
+
+					'void main(void) {',
 					'	vec3 noise = vec3(' +
 							'makeNoise(vTexCoord.x, vTexCoord.y, timer), ' +
 							'makeNoise(vTexCoord.x, vTexCoord.y, timer * 200.0 + 1.0), ' +
 							'makeNoise(vTexCoord.x, vTexCoord.y, timer * 100.0 + 3.0)' +
-						');\n' +
-					'	vec4 pixel = texture2D(source, vTexCoord + noise.xy * 0.0025);\n' +
-					'	float luminance = dot(vec3(0.299, 0.587, 0.114), pixel.rgb);\n' +
-					'	pixel.rgb *= step(luminanceThreshold, luminance) * amplification;\n' +
-					'	gl_FragColor = vec4( (pixel.rgb + noise * 0.1) * nightVisionColor, pixel.a);\n' +
-					'}\n';
+						');',
+					'	vec4 pixel = texture2D(source, vTexCoord + noise.xy * 0.0025);',
+					'	float luminance = dot(vec3(0.299, 0.587, 0.114), pixel.rgb);',
+					'	pixel.rgb *= step(luminanceThreshold, luminance) * amplification;',
+					'	gl_FragColor = vec4( (pixel.rgb + noise * 0.1) * nightVisionColor, pixel.a);',
+					'}'
+			].join('\n');
 			return shaderSource;
 		},
 		inputs: {

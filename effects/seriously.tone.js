@@ -20,29 +20,29 @@
 	Seriously.plugin('tone', {
 		commonShader: true,
 		shader: function (inputs, shaderSource) {
-			shaderSource.fragment = '#ifdef GL_ES\n\n' +
-				'precision mediump float;\n\n' +
-				'#endif\n\n' +
-				'\n' +
-				'varying vec2 vTexCoord;\n' +
-				'varying vec4 vPosition;\n' +
-				'\n' +
-				'uniform sampler2D source;\n' +
-				'uniform vec4 light;\n' +
-				'uniform vec4 dark;\n' +
-				'uniform float desat;\n' +
-				'uniform float toned;\n' +
-				'\n' +
-				'const vec3 lumcoeff = vec3(0.2125,0.7154,0.0721);\n' +
-				'\n' +
-				'void main(void) {\n' +
-				'	vec4 sourcePixel = texture2D(source, vTexCoord);\n' +
-				'	vec3 sceneColor = light.rgb * sourcePixel.rgb;\n' +
-				'	vec3 gray = vec3(dot(lumcoeff, sceneColor));\n' +
-				'	vec3 muted = mix(sceneColor, gray, desat);\n' +
-				'	vec3 tonedColor = mix(dark.rgb, light.rgb, gray);\n' +
-				'	gl_FragColor = vec4(mix(muted, tonedColor, toned), sourcePixel.a);\n' +
-				'}\n';
+			shaderSource.fragment = [
+				'precision mediump float;',
+
+				'varying vec2 vTexCoord;',
+				'varying vec4 vPosition;',
+
+				'uniform sampler2D source;',
+				'uniform vec4 light;',
+				'uniform vec4 dark;',
+				'uniform float desat;',
+				'uniform float toned;',
+
+				'const vec3 lumcoeff = vec3(0.2125,0.7154,0.0721);',
+
+				'void main(void) {',
+				'	vec4 sourcePixel = texture2D(source, vTexCoord);',
+				'	vec3 sceneColor = light.rgb * sourcePixel.rgb;',
+				'	vec3 gray = vec3(dot(lumcoeff, sceneColor));',
+				'	vec3 muted = mix(sceneColor, gray, desat);',
+				'	vec3 tonedColor = mix(dark.rgb, light.rgb, gray);',
+				'	gl_FragColor = vec4(mix(muted, tonedColor, toned), sourcePixel.a);',
+				'}'
+			].join('\n');
 			return shaderSource;
 		},
 		inPlace: true,

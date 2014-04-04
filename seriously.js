@@ -4560,9 +4560,7 @@
 		//todo: load, save, find
 
 		baseVertexShader = [
-			'#ifdef GL_ES',
 			'precision mediump float;',
-			'#endif',
 
 			'attribute vec4 position;',
 			'attribute vec2 texCoord;',
@@ -4588,12 +4586,13 @@
 		].join('\n');
 
 		baseFragmentShader = [
-			'#ifdef GL_ES',
 			'precision mediump float;',
-			'#endif',
+
 			'varying vec2 vTexCoord;',
 			'varying vec4 vPosition;',
+
 			'uniform sampler2D source;',
+
 			'void main(void) {',
 			/*
 			'	if (any(lessThan(vTexCoord, vec2(0.0))) || any(greaterThanEqual(vTexCoord, vec2(1.0)))) {',
