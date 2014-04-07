@@ -22,11 +22,13 @@ Full documentation is in progress at the [wiki](https://github.com/brianchirls/S
 - Load with [AMD](http://requirejs.org/docs/whyamd.html#amd)/[RequireJS](http://www.requirejs.org/)
 
 ### Included Effects
+- Accumulator
 - Ascii Text
 - Bleach Bypass
 - Blend
 - Brightness/Contrast
 - Channel Mapping
+- Checkerboard Generator
 - Chroma Key
 - Color Complements
 - Color Generator
@@ -37,24 +39,29 @@ Full documentation is in progress at the [wiki](https://github.com/brianchirls/S
 - Edge Detect
 - Emboss
 - Exposure Adjust
+- Expressions
 - Fader
 - False Color
 - Film Grain
+- Freeze Frame
 - Gaussian Blur
 - Hex Tiles
 - Highlights/Shadows
 - Hue/Saturation Adjust
 - Invert
 - Kaleidoscope
+- Layers
 - Linear Transfer
 - Luma Key
 - Night Vision
+- Polar Coordinates
 - Ripple
 - Scanlines
 - Sepia tone
 - Simplex Noise
 - Sketch
 - Split
+- Throttle Frame Rate
 - Tone Adjust
 - TV Glitch
 - Vignette
