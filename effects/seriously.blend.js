@@ -1,4 +1,4 @@
-/* global define, require */
+/* global define, require, exports, Float32Array */
 (function (root, factory) {
 	'use strict';
 
@@ -14,7 +14,7 @@
 		}
 		factory(root.Seriously);
 	}
-}(this, function (Seriously, undefined) {
+}(this, function (Seriously) {
 	'use strict';
 
 	/*
@@ -65,7 +65,6 @@
 		hardlight: vectorBlendFormula('base < 0.5 ? (2.0 * base * blend) : (1.0 - 2.0 * (1.0 - base) * (1.0 - blend))', 'blend', 'base'),
 		colordodge: vectorBlendFormula('blend == 1.0 ? blend : min(base / (1.0 - blend), 1.0)'),
 		colorburn: vectorBlendFormula('blend == 0.0 ? blend : max((1.0 - ((1.0 - base) / blend)), 0.0)'),
-		//linearlight: vectorBlendFormula('blend < 0.5 ? max(base + 2.0 * blend - 1.0, 0.0) : min(base + (2.0 * (blend - 0.5)), 1.0)'),
 		linearlight: vectorBlendFormula('BlendLinearLightf(base, blend)'),
 		vividlight: vectorBlendFormula('BlendVividLightf(base, blend)'),
 		pinlight: vectorBlendFormula('BlendPinLightf(base, blend)'),
@@ -89,7 +88,20 @@
 			bottomUniforms,
 			topOpts = {
 				clear: false
-			};
+			},
+			inputs,
+			gl;
+
+		function updateDrawFunction() {
+			var nativeMode = inputs && nativeBlendModes[inputs.mode];
+			if (nativeMode && gl) {
+				topOpts.blendEquation = gl[nativeMode[0]];
+				topOpts.srcRGB = gl[nativeMode[1]];
+				topOpts.destRGB = gl[nativeMode[2]];
+				topOpts.srcAlpha = gl[nativeMode[3]];
+				topOpts.destAlpha = gl[nativeMode[4]];
+			}
+		}
 
 		// custom resize method
 		this.resize = function () {
@@ -162,6 +174,12 @@
 		};
 
 		return {
+			initialize: function (initialize) {
+				inputs = this.inputs;
+				initialize();
+				gl = this.gl;
+				updateDrawFunction();
+			},
 			shader: function (inputs, shaderSource) {
 				var mode = inputs.mode || 'normal',
 					node;
@@ -306,13 +324,11 @@
 				return shaderSource;
 			},
 			draw: function (shader, model, uniforms, frameBuffer, draw) {
-				var gl;
 				if (nativeBlendModes[this.inputs.mode]) {
 					if (this.inputs.bottom) {
 						draw(shader, model, bottomUniforms, frameBuffer);
 					} else {
 						//just clear
-						gl = this.gl;
 						gl.viewport(0, 0, this.width, this.height);
 						gl.bindFramebuffer(gl.FRAMEBUFFER, frameBuffer);
 						gl.clearColor(0.0, 0.0, 0.0, 0.0);
@@ -404,7 +420,10 @@
 						['reflect', 'Reflect'],
 						['glow', 'Glow'],
 						['phoenix', 'Phoenix']
-					]
+					],
+					update: function () {
+						updateDrawFunction();
+					}
 				}
 			}
 		};

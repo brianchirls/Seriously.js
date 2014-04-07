@@ -1150,19 +1150,19 @@
 			//default for blend is enable
 			if (!options || options.blend === undefined || options.blend) {
 				gl.enable(gl.BLEND);
+				/*
 				gl.blendFunc(
 					options && options.srcRGB || gl.ONE,
 					options && options.dstRGB || gl.ONE_MINUS_SRC_ALPHA
 				);
+				*/
 
-				/*
 				gl.blendFuncSeparate(
 					options && options.srcRGB || gl.ONE,
 					options && options.dstRGB || gl.ONE_MINUS_SRC_ALPHA,
-					options && options.srcAlpha || gl.SRC_ALPHA,
-					options && options.dstAlpha || gl.DST_ALPHA
+					options && (options.srcAlpha || options.srcRGB) || gl.SRC_ALPHA,
+					options && (options.dstAlpha || options.dstRGB) || gl.ONE
 				);
-				*/
 				gl.blendEquation(options && options.blendEquation || gl.FUNC_ADD);
 			} else {
 				gl.disable(gl.BLEND);

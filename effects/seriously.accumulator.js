@@ -61,7 +61,6 @@
 		hardlight: vectorBlendFormula('base < 0.5 ? (2.0 * base * blend) : (1.0 - 2.0 * (1.0 - base) * (1.0 - blend))', 'blend', 'base'),
 		colordodge: vectorBlendFormula('blend == 1.0 ? blend : min(base / (1.0 - blend), 1.0)'),
 		colorburn: vectorBlendFormula('blend == 0.0 ? blend : max((1.0 - ((1.0 - base) / blend)), 0.0)'),
-		//linearlight: vectorBlendFormula('blend < 0.5 ? max(base + 2.0 * blend - 1.0, 0.0) : min(base + (2.0 * (blend - 0.5)), 1.0)'),
 		linearlight: vectorBlendFormula('BlendLinearLightf(base, blend)'),
 		vividlight: vectorBlendFormula('BlendVividLightf(base, blend)'),
 		pinlight: vectorBlendFormula('BlendPinLightf(base, blend)'),
