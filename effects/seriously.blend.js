@@ -157,6 +157,11 @@
 				this.setDirty();
 			}
 
+			this.uniforms.resBottom[0] = bottom.width;
+			this.uniforms.resBottom[1] = bottom.height;
+			this.uniforms.resTop[0] = top.width;
+			this.uniforms.resTop[1] = top.height;
+
 			if (topUniforms) {
 				if (bottom) {
 					bottomUniforms.resolution[0] = bottom.width;
@@ -172,6 +177,9 @@
 				this.targets[i].resize();
 			}
 		};
+
+		this.uniforms.resTop = [1, 1];
+		this.uniforms.resBottom = [1, 1];
 
 		return {
 			initialize: function (initialize) {
@@ -224,7 +232,6 @@
 						'uniform mat4 transform;',
 
 						'varying vec2 vTexCoord;',
-						'varying vec4 vPosition;',
 
 						'void main(void) {',
 						// first convert to screen space
@@ -237,14 +244,12 @@
 						'	gl_Position.xy *= resolution / targetRes;',
 						'	gl_Position.w = screenPosition.w;',
 						'	vTexCoord = texCoord;',
-						'	vPosition = gl_Position;',
 						'}\n'
 					].join('\n');
 
 					shaderSource.fragment = [
 						'precision mediump float;',
 						'varying vec2 vTexCoord;',
-						'varying vec4 vPosition;',
 						'uniform sampler2D source;',
 						'uniform float opacity;',
 						'void main(void) {',
@@ -258,6 +263,33 @@
 
 				topUniforms = null;
 				bottomUniforms = null;
+
+				//todo: need separate texture coords for different size top/bottom images
+				shaderSource.vertex = [
+					'precision mediump float;',
+
+					'attribute vec4 position;',
+					'attribute vec2 texCoord;',
+
+					'uniform vec2 resolution;',
+					'uniform vec2 resBottom;',
+					'uniform vec2 resTop;',
+
+					'varying vec2 texCoordBottom;',
+					'varying vec2 texCoordTop;',
+
+					'const vec2 HALF = vec2(0.5);',
+
+					'void main(void) {',
+					//we don't need to do a transform in this shader, since this effect is not "inPlace"
+					'	gl_Position = position;',
+
+					'	vec2 adjusted = (texCoord - HALF) * resolution;',
+
+					'	texCoordBottom = adjusted / resBottom + HALF;',
+					'	texCoordTop = adjusted / resTop + HALF;',
+					'}\n'
+				].join('\n');
 
 				shaderSource.fragment = [
 					'precision mediump float;',
@@ -293,8 +325,8 @@
 
 					'#define BlendFunction(base, blend) ' + blendModes[mode],
 
-					'varying vec2 vTexCoord;',
-					'varying vec4 vPosition;',
+					'varying vec2 texCoordBottom;',
+					'varying vec2 texCoordTop;',
 
 					'uniform sampler2D top;',
 					'uniform sampler2D bottom;',
@@ -308,8 +340,8 @@
 
 					'void main(void) {',
 					'	vec3 color;',
-					'	vec4 topPixel = texture2D(top, vTexCoord);',
-					'	vec4 bottomPixel = texture2D(bottom, vTexCoord);',
+					'	vec4 topPixel = texture2D(top, texCoordTop);',
+					'	vec4 bottomPixel = texture2D(bottom, texCoordBottom);',
 
 					'	float alpha = topPixel.a + bottomPixel.a * (1.0 - topPixel.a);',
 					'	if (alpha == 0.0) {',

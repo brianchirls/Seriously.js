@@ -68,19 +68,26 @@
 			var seriously, // the main object that holds the entire composition
 				blend,
 				reformat,
+				reformatRobot,
 				target; // a wrapper object for our target canvas
 
 			seriously = new Seriously();
 			target = seriously.target('#canvas');
 			blend = seriously.effect('blend');
 			reformat = seriously.transform('reformat');
+			reformatRobot = seriously.transform('reformat');
+
+			reformatRobot.source = '#robot';
+			reformatRobot.mode = 'cover';
+			reformatRobot.width = 640;
+			reformatRobot.height = 619;
 
 			reformat.source = '#bars';
 			reformat.mode = 'distort';
 			reformat.width = 640;
 			reformat.height = 619;
 
-			blend.bottom = '#robot';
+			blend.bottom = reformatRobot;
 			blend.top = reformat;
 			blend.opacity = '#opacity';
 			blend.mode = '#mode';
