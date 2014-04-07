@@ -306,12 +306,20 @@
 				return shaderSource;
 			},
 			draw: function (shader, model, uniforms, frameBuffer, draw) {
+				var gl;
 				if (nativeBlendModes[this.inputs.mode]) {
 					if (this.inputs.bottom) {
 						draw(shader, model, bottomUniforms, frameBuffer);
+					} else {
+						//just clear
+						gl = this.gl;
+						gl.viewport(0, 0, this.width, this.height);
+						gl.bindFramebuffer(gl.FRAMEBUFFER, frameBuffer);
+						gl.clearColor(0.0, 0.0, 0.0, 0.0);
+						gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 					}
 
-					if (this.inputs.top) {
+					if (this.inputs.top && this.inputs.opacity) {
 						draw(shader, model, topUniforms, frameBuffer, null, topOpts);
 					}
 				} else {
