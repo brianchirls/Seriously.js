@@ -93,17 +93,6 @@ or images that are served from the same domain, unless they are served
 with [CORS headers](http://hacks.mozilla.org/2011/11/using-cors-to-load-webgl-textures-from-cross-domain-images/).
 Firefox, Chrome and Opera support CORS for video, but Safari and Internet Explorer do not, and videos served with CORS are rare. So for now, it is best to host your own video files.
 
-### Roadmap:
-
-- API documentation and plugin developer guidelines
-- More examples and tutorials
-- 3D transforms (perspective) on any node
-- Accept input from WebGL Textures
-- Benchmarking utility to determine client capabilities
-- Automatic resolution tuning to maintain minimum frame rate
-- Handle lost WebGL context
-- Graphical interface
-
 ## Contributing
 
 Bug fixes, new features, effects and examples are welcome and appreciated. Please follow the [Contributing Guidelines](https://github.com/brianchirls/Seriously.js/wiki/Contributing).
