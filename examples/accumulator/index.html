@@ -19,11 +19,52 @@
 			height: 100%;
 		}
 
+		#controls {
+			position: absolute;
+			top: 0;
+			left: 0;
+			background-color: rgba(100, 100, 100, 0.6);
+			padding: 4px;
+		}
+
 	</style>
 </head>
 <body>
 	<img src="../images/pencils.jpg" id="image"/>
 	<canvas id="canvas" width="960" height="540"></canvas>
+	<div id="controls">
+		<div>
+			<label for="mode">Blend Mode</label>
+			<select id="mode">
+				<option value="normal">Normal</option>
+				<option value="lighten">Lighten</option>
+				<option value="darken">Darken</option>
+				<option value="multiply">Multiply</option>
+				<option value="average">Average</option>
+				<option value="add">Add</option>
+				<option value="subtract">Subtract</option>
+				<option value="difference">Difference</option>
+				<option value="negation">Negation</option>
+				<option value="exclusion">Exclusion</option>
+				<option value="screen">Screen</option>
+				<option value="overlay">Overlay</option>
+				<option value="softlight">Soft Light</option>
+				<option value="hardlight">Hard Light</option>
+				<option value="colordodge">Color Dodge</option>
+				<option value="colorburn">Color Burn</option>
+				<option value="lineardodge">Linear Dodge</option>
+				<option value="linearburn">Linear Burn</option>
+				<option value="linearlight">Linear Light</option>
+				<option value="vividlight">Vivid Light</option>
+				<option value="pinlight">Pin Light</option>
+				<option value="hardmix">Hard Mix</option>
+				<option value="reflect">Reflect</option>
+				<option value="glow">Glow</option>
+				<option value="phoenix">Phoenix</option>
+			</select>
+		</div>
+		<div><label for="amount">Opacity</label><input type="range" id="opacity" min="0" max="1" step="0.001" value="1"/></div>
+	</div>
 	<script src="../../lib/require.js"></script>
 	<script>
 		require.config({
@@ -66,6 +107,9 @@
 			reformat.height = 720;
 			reformat.mode = 'none';
 			reformatForOutput.mode = 'cover';
+
+			accumulator.blendMode = '#mode';
+			accumulator.opacity = '#opacity';
 
 			reformat.source = '#image';
 			move.source = reformat;
