@@ -197,7 +197,7 @@
 							targetRes: this.uniforms.resolution,
 							source: node,
 							transform: node && node.cumulativeMatrix || identity,
-							opacity: 1
+							opacity: this.inputs.opacity
 						};
 
 						node = this.inputs.bottom;
