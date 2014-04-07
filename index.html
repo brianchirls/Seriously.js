@@ -339,6 +339,7 @@
 					option,
 					i, j,
 					input,
+					inputs,
 					obj,
 					effectType,
 					name = this.value;
@@ -355,8 +356,9 @@
 					
 					//todo: title, description, set up table
 					
-					for (i in effectType.inputs) {
-						input = effectType.inputs[i];
+					inputs = obj.effect.inputs();
+					for (i in inputs) {
+						input = inputs[i];
 
 						//types: color, number (slider, number, text), enum (select), boolean (checkbox), vector
 						if (input.type === 'image') {
