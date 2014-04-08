@@ -150,6 +150,16 @@
 		};
 
 		return {
+			initialize: function (initialize) {
+				var gl = this.gl;
+				initialize();
+
+				topOpts.blendEquation = gl.FUNC_ADD;
+				topOpts.srcRGB = gl.SRC_ALPHA;
+				topOpts.dstRGB = gl.ONE_MINUS_SRC_ALPHA;
+				topOpts.srcAlpha = gl.SRC_ALPHA;
+				topOpts.dstAlpha = gl.DST_ALPHA;
+			},
 			commonShader: true,
 			shader: function (inputs, shaderSource) {
 				shaderSource.vertex = [

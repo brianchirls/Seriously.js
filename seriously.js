@@ -1159,9 +1159,9 @@
 
 				gl.blendFuncSeparate(
 					options && options.srcRGB || gl.ONE,
-					options && options.dstRGB || gl.ONE_MINUS_SRC_ALPHA,
-					options && (options.srcAlpha || options.srcRGB) || gl.SRC_ALPHA,
-					options && (options.dstAlpha || options.dstRGB) || gl.ONE
+					options && options.dstRGB || gl.ZERO,
+					options && (options.srcAlpha || options.srcRGB) || gl.ONE,
+					options && (options.dstAlpha || options.dstRGB) || gl.ZERO
 				);
 				gl.blendEquation(options && options.blendEquation || gl.FUNC_ADD);
 			} else {
