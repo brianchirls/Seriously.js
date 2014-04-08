@@ -2,12 +2,12 @@
 (function (root, factory) {
 	'use strict';
 
-	if (typeof exports === 'object') {
-		// Node/CommonJS
-		factory(require('seriously'));
-	} else if (typeof define === 'function' && define.amd) {
+	if (typeof define === 'function' && define.amd) {
 		// AMD. Register as an anonymous module.
 		define(['seriously'], factory);
+	} else if (typeof exports === 'object') {
+		// Node/CommonJS
+		factory(require('seriously'));
 	} else {
 		if (!root.Seriously) {
 			root.Seriously = { plugin: function (name, opt) { this[name] = opt; } };
@@ -28,9 +28,7 @@
 		commonShader: true,
 		shader: function (inputs, shaderSource) {
 			shaderSource.vertex = [
-				'#ifdef GL_ES',
 				'precision mediump float;',
-				'#endif ',
 
 				'attribute vec4 position;',
 				'attribute vec2 texCoord;',
@@ -70,9 +68,7 @@
 				'}'
 			].join('\n');
 			shaderSource.fragment = [
-				'#ifdef GL_ES',
 				'precision mediump float;',
-				'#endif',
 
 				'varying vec2 vTexCoord;',
 				'varying vec4 vPosition;',

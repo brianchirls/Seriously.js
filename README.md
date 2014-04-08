@@ -22,11 +22,13 @@ Full documentation is in progress at the [wiki](https://github.com/brianchirls/S
 - Load with [AMD](http://requirejs.org/docs/whyamd.html#amd)/[RequireJS](http://www.requirejs.org/)
 
 ### Included Effects
+- Accumulator
 - Ascii Text
 - Bleach Bypass
 - Blend
 - Brightness/Contrast
 - Channel Mapping
+- Checkerboard Generator
 - Chroma Key
 - Color Complements
 - Color Generator
@@ -37,24 +39,29 @@ Full documentation is in progress at the [wiki](https://github.com/brianchirls/S
 - Edge Detect
 - Emboss
 - Exposure Adjust
+- Expressions
 - Fader
 - False Color
 - Film Grain
+- Freeze Frame
 - Gaussian Blur
 - Hex Tiles
 - Highlights/Shadows
 - Hue/Saturation Adjust
 - Invert
 - Kaleidoscope
+- Layers
 - Linear Transfer
 - Luma Key
 - Night Vision
+- Polar Coordinates
 - Ripple
 - Scanlines
 - Sepia tone
 - Simplex Noise
 - Sketch
 - Split
+- Throttle Frame Rate
 - Tone Adjust
 - TV Glitch
 - Vignette
@@ -65,9 +72,8 @@ Full documentation is in progress at the [wiki](https://github.com/brianchirls/S
 #### WebGL
 
 Seriously.js requires a browser that supports [WebGL](http://en.wikipedia.org/wiki/Webgl). 
-Development is targeted to and tested in Firefox (4.0+) and Google Chrome (9+). Safari
-and Opera are [expected to support WebGL](http://caniuse.com/#search=webgl)
-in the near future. Internet Explorer supports WebGL but does not support video textures.
+Development is targeted to and tested in Firefox (4.0+), Google Chrome (9+), Internet Explorer (11+) and Opera (18+). Safari is [expected to support WebGL](http://caniuse.com/#search=webgl)
+in the near future.
 
 Even though a browser may support WebGL, the ability to run it depends
 on the system's graphics card. Seriously.js is heavily optimized, so most
@@ -85,19 +91,7 @@ descriptive error messages wherever possible.
 Due to security limitations of WebGL, Seriously.js can only process video
 or images that are served from the same domain, unless they are served
 with [CORS headers](http://hacks.mozilla.org/2011/11/using-cors-to-load-webgl-textures-from-cross-domain-images/).
-Firefox 12 and up [support CORS for video](https://bugzilla.mozilla.org/show_bug.cgi?id=682299) but other browsers do not, and videos served with CORS are rare.
-So for now, it is best to host your own video files.
-
-### Roadmap:
-
-- API documentation and plugin developer guidelines
-- More examples and tutorials
-- 3D transforms (perspective) on any node
-- Accept input from WebGL Textures
-- Benchmarking utility to determine client capabilities
-- Automatic resolution tuning to maintain minimum frame rate
-- Handle lost WebGL context
-- Graphical interface
+Firefox, Chrome and Opera support CORS for video, but Safari and Internet Explorer do not, and videos served with CORS are rare. So for now, it is best to host your own video files.
 
 ## Contributing
 

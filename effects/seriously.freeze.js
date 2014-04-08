@@ -17,33 +17,24 @@
 }(this, function (Seriously, undefined) {
 	'use strict';
 
-	Seriously.plugin('color', {
-		commonShader: true,
-		shader: function(inputs, shaderSource) {
-			shaderSource.fragment = [
-				'precision mediump float;\n',
-
-				'varying vec2 vTexCoord;',
-				'varying vec4 vPosition;',
-
-				'uniform vec4 color;',
-
-				'void main(void) {',
-				'	gl_FragColor = color;',
-				'}'
-			].join('\n');
-			return shaderSource;
+	Seriously.plugin('freeze', {
+		draw: function (shader, model, uniforms, frameBuffer, draw) {
+			if (!this.inputs.frozen) {
+				draw(shader, model, uniforms, frameBuffer);
+			}
 		},
 		inPlace: true,
 		inputs: {
-			color: {
-				type: 'color',
-				uniform: 'color',
-				defaultValue: [0, 0, 0, 1]
+			source: {
+				type: 'image',
+				uniform: 'source'
+			},
+			frozen: {
+				type: 'boolean',
+				defaultValue: false
 			}
 		},
-		title: 'Color',
-		description: 'Generate color',
-		categories: ['generator']
+		title: 'Freeze',
+		description: 'Freeze Frame'
 	});
 }));

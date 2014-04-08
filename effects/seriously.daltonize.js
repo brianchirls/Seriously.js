@@ -2,12 +2,12 @@
 (function (root, factory) {
 	'use strict';
 
-	if (typeof exports === 'object') {
-		// Node/CommonJS
-		factory(require('seriously'));
-	} else if (typeof define === 'function' && define.amd) {
+	if (typeof define === 'function' && define.amd) {
 		// AMD. Register as an anonymous module.
 		define(['seriously'], factory);
+	} else if (typeof exports === 'object') {
+		// Node/CommonJS
+		factory(require('seriously'));
 	} else {
 		var Seriously = root.Seriously;
 		if (!Seriously) {
@@ -56,96 +56,96 @@
 		commonShader: true,
 		shader: function (inputs, shaderSource) {
 			//Vertex shader
-			shaderSource.vertex = '#ifdef GL_ES\n' +
-				'precision mediump float;\n' +
-				'#endif \n' +
-				'\n' +
-				'attribute vec3 position;\n' +
-				'attribute vec2 texCoord;\n' +
-				'\n' +
-				'uniform mat4 transform;\n' +
-				'\n' +
-				'varying vec2 vTexCoord;\n' +
-				'varying vec4 vPosition;\n' +
-				'\n' +
-				'void main(void) {\n' +
-				'	gl_Position = transform * vec4(position, 1.0);\n' +
-				'	vTexCoord = vec2(texCoord.s, texCoord.t);\n' +
-				'}\n';
+			shaderSource.vertex = [
+				'precision mediump float;',
+
+				'attribute vec3 position;',
+				'attribute vec2 texCoord;',
+
+				'uniform mat4 transform;',
+
+				'varying vec2 vTexCoord;',
+				'varying vec4 vPosition;',
+
+				'void main(void) {',
+				'	gl_Position = transform * vec4(position, 1.0);',
+				'	vTexCoord = vec2(texCoord.s, texCoord.t);',
+				'}'
+			].join('\n');
 			//Fragment shader
-			shaderSource.fragment = '#ifdef GL_ES\n\n' +
-				'precision mediump float;\n\n' +
-				'#endif\n\n' +
-				'\n' +
-				'varying vec2 vTexCoord;\n' +
-				'varying vec4 vPosition;\n' +
-				'\n' +
-				'uniform sampler2D source;\n' +
-				'uniform float cbtype;\n' +
-				'\n' +
-				'void main(void) {\n' +
-				'	vec4 color = texture2D(source, vTexCoord);\n' +
+			shaderSource.fragment = [
+				'precision mediump float;',
+
+				'varying vec2 vTexCoord;',
+				'varying vec4 vPosition;',
+
+				'uniform sampler2D source;',
+				'uniform float cbtype;',
+
+				'void main(void) {',
+				'	vec4 color = texture2D(source, vTexCoord);',
 
 				//No change, skip the rest
-				'	if (cbtype == 0.0) {\n' +
-				'		gl_FragColor = color;\n' +
-				'		return;\n' +
-				'	}\n' +
+				'	if (cbtype == 0.0) {',
+				'		gl_FragColor = color;',
+				'		return;',
+				'	}',
 
 				// RGB to LMS matrix conversion
 				'	const mat3 RGBLMS = mat3( ' +
 				'		17.8824, 43.5161, 4.11935,' +
 				'		3.45565, 27.1554, 3.86714,' +
 				'		0.0299566, 0.184309, 1.46709' +
-				'	);\n' +
-				'	vec3 LMS = color.rgb * RGBLMS;\n' +
+				'	);',
+				'	vec3 LMS = color.rgb * RGBLMS;',
 
-				'	vec3 lms = vec3(0.0,0.0,0.0);\n' +
+				'	vec3 lms = vec3(0.0,0.0,0.0);',
 				//Protanope
-				'	if (cbtype < 0.33) {\n' +
+				'	if (cbtype < 0.33) {',
 				'		lms = vec3(	' +
 				'			(2.02344 * LMS.g) + (-2.52581 * LMS.b),' +
 				'			LMS.g,' +
 				'			LMS.b' +
-				'		);\n' +
-				'	}\n' +
+				'		);',
+				'	}',
 				//Deuteranope
-				'	if (cbtype > 0.33 && cbtype < 0.66) {\n' +
+				'	if (cbtype > 0.33 && cbtype < 0.66) {',
 				'		lms = vec3(	' +
 				'			LMS.r,' +
 				'			(0.494207 * LMS.r) + (1.24827 * LMS.b),' +
 				'			LMS.b' +
-				'		);\n' +
-				'	}\n' +
+				'		);',
+				'	}',
 				//Tritanope
-				'	if (cbtype > 0.66) {\n' +
+				'	if (cbtype > 0.66) {',
 				'		lms = vec3(	' +
 				'			LMS.r,' +
 				'			LMS.g,' +
 				'			(-0.395913 * LMS.r) + (0.801109 * LMS.g)' +
-				'		);\n' +
-				'	}\n' +
+				'		);',
+				'	}',
 
 				// LMS to RGB matrix operation
 				'	const mat3 LMSRGB = mat3(    ' +
 				'		0.0809444479, -0.130504409, 0.116721066,' +
 				'		-0.0102485335, 0.0540193266, -0.113614708,' +
 				'		-0.000365296938, -0.00412161469, 0.693511405' +
-				'	);\n' +
+				'	);',
 
-				'	vec3 RGB = lms * LMSRGB;\n' +
+				'	vec3 RGB = lms * LMSRGB;',
 
 				// Colour shift
 				// values may go over 1.0 but will get automatically clamped on output	
-				'	RGB.rgb = color.rgb - RGB.rgb;\n' +
-				'	RGB.g = 0.7*RGB.r + RGB.g;\n' +
-				'	RGB.b = 0.7*RGB.r + RGB.b;\n' +
-				'	color.rgb = color.rgb + RGB.rgb;\n' +
+				'	RGB.rgb = color.rgb - RGB.rgb;',
+				'	RGB.g = 0.7*RGB.r + RGB.g;',
+				'	RGB.b = 0.7*RGB.r + RGB.b;',
+				'	color.rgb = color.rgb + RGB.rgb;',
 
 				//Output
-				'	gl_FragColor = color;\n' +
+				'	gl_FragColor = color;',
 
-				'}\n';
+				'}'
+			].join('\n');
 			return shaderSource;
 		},
 		inPlace: true,

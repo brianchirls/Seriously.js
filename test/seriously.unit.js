@@ -19,14 +19,23 @@
 		return true;
 	}
 
+	function nop() {}
+
+	Seriously.logger = {
+		log: nop,
+		info: nop,
+		warn: nop,
+		error: nop
+	};
+
 	module('Core');
-	test('Core', function () {
+	test('Core', 6, function () {
 		var p, props = 0,
 			newGlobals = [],
 			skipIds = false,
-			s;
-
-		expect(5);
+			s1,
+			s2,
+			s3;
 
 		ok(window.Seriously, 'Seriously exists');
 
@@ -60,15 +69,23 @@
 			newGlobals.join(', ') + ']';
 		equal(props, 1, p);
 
-		s = new Seriously();
-		ok(s instanceof Seriously, 'Create Seriously instance with new');
-		s.destroy();
+		s1 = new Seriously();
+		ok(s1 instanceof Seriously, 'Create Seriously instance with new');
 
 		/*jshint ignore:start*/
-		s = Seriously();
+		s2 = Seriously();
 		/*jshint ignore:end*/
-		ok(s instanceof Seriously, 'Create Seriously instance without new');
-		s.destroy();
+		ok(s2 instanceof Seriously && s2 !== s1, 'Create Seriously instance without new');
+
+		//not sure why this would ever happen, but couldn't hurt to have the safety check
+		/*jshint ignore:start*/
+		s3 = Seriously.bind(s2)();
+		/*jshint ignore:end*/
+		ok(s3 instanceof Seriously && s3 !== s2, 'Create Seriously instance without new, `this` bound to another instance');
+
+		s1.destroy();
+		s2.destroy();
+		s3.destroy();
 	});
 
 	test('Incompatible', 4, function () {
@@ -146,10 +163,8 @@
 	 * define plugin
 	*/
 
-	test('Remove Plugin', function () {
+	test('Remove Plugin', 3, function () {
 		var p, s, error, e, allEffects;
-
-		expect(3);
 
 		p = Seriously.plugin('removeme', {});
 		ok(p && p.title === 'removeme', 'First plugin loaded');
@@ -169,19 +184,20 @@
 		try {
 			s.effect('removeme');
 		} catch (ee) {
-			error = true;
+			error = ee;
 		}
 
-		ok(error, 'Plugin doesn\'t exist; using throws error');
+		equal(error && error.message, 'Unknown effect: removeme', 'Plugin doesn\'t exist; throws error');
 
 		s.destroy();
 	});
 
-	test('Define plugin with duplicate name', function () {
+	test('Define plugin with duplicate name', 4, function () {
 		var p, allEffects;
 
-		expect(3);
-
+		Seriously.logger.warn = function (s) {
+			equal(s, 'Effect [pluginDuplicate] already loaded', 'Warning logged to console');
+		};
 		p = Seriously.plugin('pluginDuplicate', {
 			title: 'Original'
 		});
@@ -196,13 +212,12 @@
 		allEffects = Seriously.effects();
 		equal(allEffects.pluginDuplicate.title, 'Original', 'Original plugin remains');
 
+		Seriously.logger.warn = nop;
 		Seriously.removePlugin('pluginDuplicate');
 	});
 
-	test('Define plugin with reserved input name', function () {
+	test('Define plugin with reserved input name', 2, function () {
 		var p, s, error1 = false, error2 = false;
-
-		expect(2);
 
 		try {
 			p = Seriously.plugin('badPlugin', {
@@ -213,19 +228,19 @@
 				}
 			});
 		} catch (e) {
-			error1 = true;
+			error1 = e;
 		}
 
-		ok(error1, 'Defining plugin throws error');
+		equal(error1 && error1.message, 'Reserved effect input name: initialize', 'Defining plugin throws error');
 
 		try {
 			s = new Seriously();
 			s.effect('badPlugin');
 		} catch (ee) {
-			error2 = true;
+			error2 = ee;
 		}
 
-		ok(error2, 'Plugin doesn\'t exist; using throws error');
+		equal(error2 && error2.message, 'Unknown effect: badPlugin', 'Plugin doesn\'t exist; using throws error');
 
 		s.destroy();
 		Seriously.removePlugin('badPlugin');
@@ -238,7 +253,7 @@
 			canvas,
 			target;
 
-		expect(4);
+		expect(Seriously.incompatible() ? 2 : 4);
 
 		Seriously.plugin('removeme', function (options) {
 			var id = options.id;
@@ -276,10 +291,8 @@
 		Seriously.removePlugin('removeme');
 	});
 
-	asyncTest('Plugin loaded before Seriously', function () {
+	asyncTest('Plugin loaded before Seriously', 3, function () {
 		var iframe;
-
-		expect(3);
 
 		iframe = document.createElement('iframe');
 		iframe.style.display = 'none';
@@ -358,11 +371,9 @@
 		Seriously.removePlugin('removeme');
 	});
 
-	test('Effect alias', function () {
+	test('Effect alias', 2, function () {
 		var seriously,
 			effect;
-
-		expect(2);
 
 		Seriously.plugin('removeme', {
 			inputs: {
@@ -403,13 +414,77 @@
 		try {
 			effect.source = effect;
 		} catch (e) {
-			error = true;
+			error = e;
 		}
 
-		ok(error, 'Setting effect source to itself throws an error');
+		equal(error && error.message, 'Attempt to make cyclical connection.', 'Setting effect source to itself throws an error');
 
 		seriously.destroy();
 		Seriously.removePlugin('removeme');
+	});
+
+	test('Effect Info', 17, function () {
+		var inputs,
+			seriously,
+			effect;
+
+		Seriously.plugin('test', {
+			inputs: {
+				number: {
+					type: 'number',
+					min: -4,
+					max: 100,
+					step: 2,
+					defaultValue: 8,
+					description: 'this is a number',
+					title: 'Number'
+				},
+				vector: {
+					type: 'vector',
+					dimensions: 3
+				},
+				e: {
+					type: 'enum',
+					options: [
+						['one', 'One'],
+						['two', 'Two']
+					]
+				}
+			},
+			title: 'Test'
+		});
+
+		seriously = new Seriously();
+		effect = seriously.effect('test');
+
+		equal(effect.effect, 'test', 'Effect name reported');
+		equal(effect.title, 'Test', 'Effect title reported');
+		ok(effect.id >= 0, 'Effect id reported');
+
+		//Check inputs
+		inputs = effect.inputs();
+		ok(inputs.number && inputs.vector && inputs.e, 'All inputs are present');
+		equal(Object.keys(inputs).length, 3, 'No extra properties');
+
+		equal(inputs.number.type, 'number', 'Number type reported');
+		equal(inputs.number.min, -4, 'Number minimum reported');
+		equal(inputs.number.max, 100, 'Number maximum reported');
+		equal(inputs.number.step, 2, 'Number step reported');
+		equal(inputs.number.defaultValue, 8, 'Number default value reported');
+		equal(inputs.number.title, 'Number', 'Node title reported');
+		equal(inputs.number.description, 'this is a number', 'Node description reported');
+
+		equal(inputs.vector.type, 'vector', 'Vector type reported');
+		equal(inputs.vector.dimensions, 3, 'Vector dimensions reported');
+
+		equal(inputs.e.type, 'enum', 'Enum type reported');
+		ok(Array.isArray(inputs.e.options), 'Enum options reported');
+
+		inputs.e.options[1][0] = 'three';
+		equal(effect.inputs('e').options[1][0], 'two', 'Enum options fully copied, cannot be tampered with');
+
+		seriously.destroy();
+		Seriously.removePlugin('test');
 	});
 
 	module('Source');
@@ -419,8 +494,10 @@
 	 * checkSource on cross-origin image, dirty canvas
 	*/
 
-	asyncTest('Source Types', function () {
+	asyncTest('Source Types', 17, function () {
 		var seriously, source, target,
+			incompatible,
+			error,
 			sourceCanvas, targetCanvas, img,
 			ctx,
 			pixels, imagedata,
@@ -432,7 +509,7 @@
 				0, 255, 0, 255
 			];
 
-		expect(11);
+		incompatible = Seriously.incompatible();
 
 		targetCanvas = document.createElement('canvas');
 		targetCanvas.width = 2;
@@ -458,10 +535,16 @@
 
 		img = document.createElement('img');
 		img.addEventListener('load', function () {
+			var error;
 			source = seriously.source(img);
 			ok(source, 'Created source from image');
-			pixels = source.readPixels(0, 0, 2, 2);
-			ok(pixels && compare(pixels, comparison), 'Image source rendered accurately.');
+			try {
+				pixels = source.readPixels(0, 0, 2, 2);
+			} catch (e) {
+				error = e;
+			}
+			ok(incompatible ? error : !error, 'readPixels throws error iff incompatible');
+			ok(incompatible || pixels && compare(pixels, comparison), 'Image source rendered accurately.');
 			source.destroy();
 
 			asyncDone = true;
@@ -474,13 +557,25 @@
 
 		source = seriously.source(sourceCanvas);
 		ok(source, 'Created source from canvas');
-		pixels = source.readPixels(0, 0, 2, 2);
-		ok(pixels && compare(pixels, comparison), 'Canvas source rendered accurately.');
+		error = false;
+		try {
+			pixels = source.readPixels(0, 0, 2, 2);
+		} catch (e) {
+			error = e;
+		}
+		ok(incompatible ? error : !error, 'readPixels throws error iff incompatible');
+		ok(incompatible || pixels && compare(pixels, comparison), 'Canvas source rendered accurately.');
 
 		ctx.fillRect(0, 0, 2, 2);
 		source.update();
-		pixels = source.readPixels(0, 0, 2, 2);
-		ok(pixels && compare(pixels, [ //image is upside down
+		error = false;
+		try {
+			pixels = source.readPixels(0, 0, 2, 2);
+		} catch (e) {
+			error = e;
+		}
+		ok(incompatible ? error : !error, 'readPixels throws error iff incompatible');
+		ok(incompatible || pixels && compare(pixels, [ //image is upside down
 			255, 255, 255, 255,
 			255, 255, 255, 255,
 			255, 255, 255, 255,
@@ -489,8 +584,14 @@
 
 		source = seriously.source(imagedata);
 		ok(source, 'Created source from ImageData');
-		pixels = source.readPixels(0, 0, 2, 2);
-		ok(pixels && compare(pixels, comparison), 'ImageData source rendered accurately.');
+		error = false;
+		try {
+			pixels = source.readPixels(0, 0, 2, 2);
+		} catch (e) {
+			error = e;
+		}
+		ok(incompatible ? error : !error, 'readPixels throws error iff incompatible');
+		ok(incompatible || pixels && compare(pixels, comparison), 'ImageData source rendered accurately.');
 		source.destroy();
 
 		source = seriously.source(new Uint8Array(comparison), {
@@ -498,8 +599,14 @@
 			height: 2
 		});
 		ok(source, 'Created source from Typed Array');
-		pixels = source.readPixels(0, 0, 2, 2);
-		ok(pixels && compare(pixels, comparison), 'Typed Array source rendered accurately.');
+		error = false;
+		try {
+			pixels = source.readPixels(0, 0, 2, 2);
+		} catch (e) {
+			error = e;
+		}
+		ok(incompatible ? error : !error, 'readPixels throws error iff incompatible');
+		ok(incompatible || pixels && compare(pixels, comparison), 'Typed Array source rendered accurately.');
 		source.destroy();
 
 		source = seriously.source(comparison, {
@@ -507,8 +614,14 @@
 			height: 2
 		});
 		ok(source, 'Created source from Array');
-		pixels = source.readPixels(0, 0, 2, 2);
-		ok(pixels && compare(pixels, comparison), 'Array source rendered accurately.');
+		error = false;
+		try {
+			pixels = source.readPixels(0, 0, 2, 2);
+		} catch (e) {
+			error = e;
+		}
+		ok(incompatible ? error : !error, 'readPixels throws error iff incompatible');
+		ok(incompatible || pixels && compare(pixels, comparison), 'Array source rendered accurately.');
 		source.destroy();
 
 		//todo: implement and test WebGLTexture source
@@ -518,7 +631,6 @@
 			seriously.destroy();
 			start();
 		}
-		return;
 	});
 
 	test('Create two Source objects on identical sources', function () {
@@ -557,7 +669,7 @@
 		Seriously.removePlugin('test');
 	});
 
-	test('Source Plugins', 7, function () {
+	test('Source Plugins', function () {
 		var seriously,
 			funcSource,
 			objSource,
@@ -566,6 +678,9 @@
 			effect,
 			canvas,
 			target;
+
+		//render methods don't run without WebGL
+		expect(Seriously.incompatible() ? 5 : 7);
 
 		Seriously.plugin('temp', {
 			inputs: {
@@ -649,9 +764,8 @@
 	 * all different types
 	 * test html elements as inputs (with overwriting)
 	 */
-	test('Number', function () {
+	test('Number', 6, function () {
 		var s, e, val, input;
-		expect(6);
 
 		Seriously.plugin('testNumberInput', {
 			inputs: {
@@ -706,10 +820,156 @@
 		Seriously.removePlugin('testNumberInput');
 	});
 
-	test('Color', function () {
-		var e, s, val;
-
-		expect(18);
+	test('Color', 159, function () {
+		var e, s, val,
+			name,
+			colorNames = {
+				black: [0 / 255, 0 / 255, 0 / 255, 1],
+				silver: [192 / 255, 192 / 255, 192 / 255, 1],
+				gray: [128 / 255, 128 / 255, 128 / 255, 1],
+				white: [1, 1, 1, 1],
+				maroon: [128 / 255, 0 / 255, 0 / 255, 1],
+				red: [1, 0 / 255, 0 / 255, 1],
+				purple: [128 / 255, 0 / 255, 128 / 255, 1],
+				fuchsia: [1, 0 / 255, 1, 1],
+				green: [0 / 255, 128 / 255, 0 / 255, 1],
+				lime: [0 / 255, 1, 0 / 255, 1],
+				olive: [128 / 255, 128 / 255, 0 / 255, 1],
+				yellow: [1, 1, 0 / 255, 1],
+				navy: [0 / 255, 0 / 255, 128 / 255, 1],
+				blue: [0 / 255, 0 / 255, 1, 1],
+				teal: [0 / 255, 128 / 255, 128 / 255, 1],
+				aqua: [0 / 255, 1, 1, 1],
+				orange: [1, 165 / 255, 0 / 255, 1],
+				aliceblue: [240 / 255, 248 / 255, 1, 1],
+				antiquewhite: [250 / 255, 235 / 255, 215 / 255, 1],
+				aquamarine: [127 / 255, 1, 212 / 255, 1],
+				azure: [240 / 255, 1, 1, 1],
+				beige: [245 / 255, 245 / 255, 220 / 255, 1],
+				bisque: [1, 228 / 255, 196 / 255, 1],
+				blanchedalmond: [1, 235 / 255, 205 / 255, 1],
+				blueviolet: [138 / 255, 43 / 255, 226 / 255, 1],
+				brown: [165 / 255, 42 / 255, 42 / 255, 1],
+				burlywood: [222 / 255, 184 / 255, 135 / 255, 1],
+				cadetblue: [95 / 255, 158 / 255, 160 / 255, 1],
+				chartreuse: [127 / 255, 1, 0 / 255, 1],
+				chocolate: [210 / 255, 105 / 255, 30 / 255, 1],
+				coral: [1, 127 / 255, 80 / 255, 1],
+				cornflowerblue: [100 / 255, 149 / 255, 237 / 255, 1],
+				cornsilk: [1, 248 / 255, 220 / 255, 1],
+				crimson: [220 / 255, 20 / 255, 60 / 255, 1],
+				darkblue: [0 / 255, 0 / 255, 139 / 255, 1],
+				darkcyan: [0 / 255, 139 / 255, 139 / 255, 1],
+				darkgoldenrod: [184 / 255, 134 / 255, 11 / 255, 1],
+				darkgray: [169 / 255, 169 / 255, 169 / 255, 1],
+				darkgreen: [0 / 255, 100 / 255, 0 / 255, 1],
+				darkgrey: [169 / 255, 169 / 255, 169 / 255, 1],
+				darkkhaki: [189 / 255, 183 / 255, 107 / 255, 1],
+				darkmagenta: [139 / 255, 0 / 255, 139 / 255, 1],
+				darkolivegreen: [85 / 255, 107 / 255, 47 / 255, 1],
+				darkorange: [1, 140 / 255, 0 / 255, 1],
+				darkorchid: [153 / 255, 50 / 255, 204 / 255, 1],
+				darkred: [139 / 255, 0 / 255, 0 / 255, 1],
+				darksalmon: [233 / 255, 150 / 255, 122 / 255, 1],
+				darkseagreen: [143 / 255, 188 / 255, 143 / 255, 1],
+				darkslateblue: [72 / 255, 61 / 255, 139 / 255, 1],
+				darkslategray: [47 / 255, 79 / 255, 79 / 255, 1],
+				darkslategrey: [47 / 255, 79 / 255, 79 / 255, 1],
+				darkturquoise: [0 / 255, 206 / 255, 209 / 255, 1],
+				darkviolet: [148 / 255, 0 / 255, 211 / 255, 1],
+				deeppink: [1, 20 / 255, 147 / 255, 1],
+				deepskyblue: [0 / 255, 191 / 255, 1, 1],
+				dimgray: [105 / 255, 105 / 255, 105 / 255, 1],
+				dimgrey: [105 / 255, 105 / 255, 105 / 255, 1],
+				dodgerblue: [30 / 255, 144 / 255, 1, 1],
+				firebrick: [178 / 255, 34 / 255, 34 / 255, 1],
+				floralwhite: [1, 250 / 255, 240 / 255, 1],
+				forestgreen: [34 / 255, 139 / 255, 34 / 255, 1],
+				gainsboro: [220 / 255, 220 / 255, 220 / 255, 1],
+				ghostwhite: [248 / 255, 248 / 255, 1, 1],
+				gold: [1, 215 / 255, 0 / 255, 1],
+				goldenrod: [218 / 255, 165 / 255, 32 / 255, 1],
+				greenyellow: [173 / 255, 1, 47 / 255, 1],
+				grey: [128 / 255, 128 / 255, 128 / 255, 1],
+				honeydew: [240 / 255, 1, 240 / 255, 1],
+				hotpink: [1, 105 / 255, 180 / 255, 1],
+				indianred: [205 / 255, 92 / 255, 92 / 255, 1],
+				indigo: [75 / 255, 0 / 255, 130 / 255, 1],
+				ivory: [1, 1, 240 / 255, 1],
+				khaki: [240 / 255, 230 / 255, 140 / 255, 1],
+				lavender: [230 / 255, 230 / 255, 250 / 255, 1],
+				lavenderblush: [1, 240 / 255, 245 / 255, 1],
+				lawngreen: [124 / 255, 252 / 255, 0 / 255, 1],
+				lemonchiffon: [1, 250 / 255, 205 / 255, 1],
+				lightblue: [173 / 255, 216 / 255, 230 / 255, 1],
+				lightcoral: [240 / 255, 128 / 255, 128 / 255, 1],
+				lightcyan: [224 / 255, 1, 1, 1],
+				lightgoldenrodyellow: [250 / 255, 250 / 255, 210 / 255, 1],
+				lightgray: [211 / 255, 211 / 255, 211 / 255, 1],
+				lightgreen: [144 / 255, 238 / 255, 144 / 255, 1],
+				lightgrey: [211 / 255, 211 / 255, 211 / 255, 1],
+				lightpink: [1, 182 / 255, 193 / 255, 1],
+				lightsalmon: [1, 160 / 255, 122 / 255, 1],
+				lightseagreen: [32 / 255, 178 / 255, 170 / 255, 1],
+				lightskyblue: [135 / 255, 206 / 255, 250 / 255, 1],
+				lightslategray: [119 / 255, 136 / 255, 153 / 255, 1],
+				lightslategrey: [119 / 255, 136 / 255, 153 / 255, 1],
+				lightsteelblue: [176 / 255, 196 / 255, 222 / 255, 1],
+				lightyellow: [1, 1, 224 / 255, 1],
+				limegreen: [50 / 255, 205 / 255, 50 / 255, 1],
+				linen: [250 / 255, 240 / 255, 230 / 255, 1],
+				mediumaquamarine: [102 / 255, 205 / 255, 170 / 255, 1],
+				mediumblue: [0 / 255, 0 / 255, 205 / 255, 1],
+				mediumorchid: [186 / 255, 85 / 255, 211 / 255, 1],
+				mediumpurple: [147 / 255, 112 / 255, 219 / 255, 1],
+				mediumseagreen: [60 / 255, 179 / 255, 113 / 255, 1],
+				mediumslateblue: [123 / 255, 104 / 255, 238 / 255, 1],
+				mediumspringgreen: [0 / 255, 250 / 255, 154 / 255, 1],
+				mediumturquoise: [72 / 255, 209 / 255, 204 / 255, 1],
+				mediumvioletred: [199 / 255, 21 / 255, 133 / 255, 1],
+				midnightblue: [25 / 255, 25 / 255, 112 / 255, 1],
+				mintcream: [245 / 255, 1, 250 / 255, 1],
+				mistyrose: [1, 228 / 255, 225 / 255, 1],
+				moccasin: [1, 228 / 255, 181 / 255, 1],
+				navajowhite: [1, 222 / 255, 173 / 255, 1],
+				oldlace: [253 / 255, 245 / 255, 230 / 255, 1],
+				olivedrab: [107 / 255, 142 / 255, 35 / 255, 1],
+				orangered: [1, 69 / 255, 0 / 255, 1],
+				orchid: [218 / 255, 112 / 255, 214 / 255, 1],
+				palegoldenrod: [238 / 255, 232 / 255, 170 / 255, 1],
+				palegreen: [152 / 255, 251 / 255, 152 / 255, 1],
+				paleturquoise: [175 / 255, 238 / 255, 238 / 255, 1],
+				palevioletred: [219 / 255, 112 / 255, 147 / 255, 1],
+				papayawhip: [1, 239 / 255, 213 / 255, 1],
+				peachpuff: [1, 218 / 255, 185 / 255, 1],
+				peru: [205 / 255, 133 / 255, 63 / 255, 1],
+				pink: [1, 192 / 255, 203 / 255, 1],
+				plum: [221 / 255, 160 / 255, 221 / 255, 1],
+				powderblue: [176 / 255, 224 / 255, 230 / 255, 1],
+				rosybrown: [188 / 255, 143 / 255, 143 / 255, 1],
+				royalblue: [65 / 255, 105 / 255, 225 / 255, 1],
+				saddlebrown: [139 / 255, 69 / 255, 19 / 255, 1],
+				salmon: [250 / 255, 128 / 255, 114 / 255, 1],
+				sandybrown: [244 / 255, 164 / 255, 96 / 255, 1],
+				seagreen: [46 / 255, 139 / 255, 87 / 255, 1],
+				seashell: [1, 245 / 255, 238 / 255, 1],
+				sienna: [160 / 255, 82 / 255, 45 / 255, 1],
+				skyblue: [135 / 255, 206 / 255, 235 / 255, 1],
+				slateblue: [106 / 255, 90 / 255, 205 / 255, 1],
+				slategray: [112 / 255, 128 / 255, 144 / 255, 1],
+				slategrey: [112 / 255, 128 / 255, 144 / 255, 1],
+				snow: [1, 250 / 255, 250 / 255, 1],
+				springgreen: [0 / 255, 1, 127 / 255, 1],
+				steelblue: [70 / 255, 130 / 255, 180 / 255, 1],
+				tan: [210 / 255, 180 / 255, 140 / 255, 1],
+				thistle: [216 / 255, 191 / 255, 216 / 255, 1],
+				tomato: [1, 99 / 255, 71 / 255, 1],
+				turquoise: [64 / 255, 224 / 255, 208 / 255, 1],
+				violet: [238 / 255, 130 / 255, 238 / 255, 1],
+				wheat: [245 / 255, 222 / 255, 179 / 255, 1],
+				whitesmoke: [245 / 255, 245 / 255, 245 / 255, 1],
+				yellowgreen: [154 / 255, 205 / 255, 50 / 255, 1]
+			};
 
 		Seriously.plugin('testColorInput', {
 			inputs: {
@@ -725,50 +985,34 @@
 
 		e.color = 'rgb(10, 20, 30)';
 		val = e.color;
-		ok(compare(val, [10/255, 20/255, 30/255, 1]), 'Set color by rgb');
+		ok(compare(val, [10 / 255, 20 / 255, 30 / 255, 1]), 'Set color by rgb');
 
 		e.color = 'rgba(30, 20, 10, 0.8)';
 		val = e.color;
-		ok(compare(val, [30/255, 20/255, 10/255, 0.8]), 'Set color by rgba');
+		ok(compare(val, [30 / 255, 20 / 255, 10 / 255, 0.8]), 'Set color by rgba');
 
 		//todo: test rgb percentages
 		//todo: test hsl/hsla
 
 		e.color = '#123';
 		val = e.color;
-		ok(compare(val, [1/15, 2/15, 3/15, 1]), 'Set color by 3-character hex');
+		ok(compare(val, [1 / 15, 2 / 15, 3 / 15, 1]), 'Set color by 3-character hex');
 
 		e.color = '#1234';
 		val = e.color;
-		ok(compare(val, [0x1/15, 0x2/15, 0x3/15, 0x4/15]), 'Set color by 4-character hex');
+		ok(compare(val, [0x1 / 15, 0x2 / 15, 0x3 / 15, 0x4 / 15]), 'Set color by 4-character hex');
 
 		e.color = '#123456';
 		val = e.color;
-		ok(compare(val, [0x12/255, 0x34/255, 0x56/255, 1]), 'Set color by 6-character hex');
+		ok(compare(val, [0x12 / 255, 0x34 / 255, 0x56 / 255, 1]), 'Set color by 6-character hex');
 
 		e.color = '#654321AA';
 		val = e.color;
-		ok(compare(val, [0x65/255, 0x43/255, 0x21/255, 0xAA/255]), 'Set color by 8-character hex');
+		ok(compare(val, [0x65 / 255, 0x43 / 255, 0x21 / 255, 0xAA/255]), 'Set color by 8-character hex');
 
 		e.color = '#fffff';
 		val = e.color;
 		ok(compare(val, [0, 0, 0, 0]), 'Set color by bad hex is transparent black');
-
-		e.color = 'lightcyan';
-		val = e.color;
-		ok(compare(val, [224/255, 1, 1, 1]), 'Set color by name (lightcyan)');
-
-		e.color = 'lightblue';
-		val = e.color;
-		ok(compare(val, [173/255, 216/255, 230/255, 1]), 'Set color by name (lightblue)');
-
-		e.color = 'red';
-		val = e.color;
-		ok(compare(val, [1, 0, 0, 1]), 'Set color by name (red)');
-
-		e.color = 'white';
-		val = e.color;
-		ok(compare(val, [1, 1, 1, 1]), 'Set color by name (white)');
 
 		e.color = 'transparent';
 		val = e.color;
@@ -777,6 +1021,17 @@
 		e.color = 'garbage';
 		val = e.color;
 		ok(compare(val, [0, 0, 0, 0]), 'Set color by unknown name is transparent black');
+
+		for (name in colorNames) {
+			if (colorNames.hasOwnProperty(name)) {
+				e.color = name;
+				val = e.color;
+				ok(compare(val, colorNames[name]), 'Set color by name (' + name + ')');
+				if (!compare(val, colorNames[name])) {
+					console.log(name + ': ' + JSON.stringify(colorNames[name].map(function (val) { return val * 255; })) + ',');
+				}
+			}
+		}
 
 		e.color = 0.3;
 		val = e.color;
@@ -811,9 +1066,8 @@
 		Seriously.removePlugin('testColorInput');
 	});
 
-	test('Enum', function() {
+	test('Enum', 4, function() {
 		var s, e, val;
-		expect(4);
 
 		Seriously.plugin('testEnumInput', {
 			inputs: {
@@ -910,15 +1164,17 @@
 	});
 
 	module('Transform');
-	test('Basic Transformations', function () {
+	test('Basic Transformations', 8, function () {
 		var seriously, source, target,
 			transform,
 			flip,
 			sourceCanvas, targetCanvas,
 			ctx,
-			pixels = new Uint8Array(16);
+			pixels = new Uint8Array(16),
+			incompatible,
+			error;
 
-		expect(4);
+		incompatible = Seriously.incompatible();
 
 		targetCanvas = document.createElement('canvas');
 		targetCanvas.width = 2;
@@ -948,8 +1204,14 @@
 		target.source = transform;
 
 		transform.rotation = -90; //90 degrees counter-clockwise
-		target.readPixels(0, 0, 2, 2, pixels);
-		ok(compare(pixels, [
+		error = false;
+		try {
+			target.readPixels(0, 0, 2, 2, pixels);
+		} catch (e) {
+			error = e;
+		}
+		ok(incompatible ? error : !error, 'readPixels throws error iff incompatible');
+		ok(incompatible || compare(pixels, [
 			255, 0, 0, 255,
 			0, 0, 255, 255,
 			0, 255, 0, 255,
@@ -959,8 +1221,14 @@
 
 		target.source = flip;
 		flip.direction = 'vertical';
-		target.readPixels(0, 0, 2, 2, pixels);
-		ok(compare(pixels, [ //image is upside down
+		error = false;
+		try {
+			target.readPixels(0, 0, 2, 2, pixels);
+		} catch (e) {
+			error = e;
+		}
+		ok(incompatible ? error : !error, 'readPixels throws error iff incompatible');
+		ok(incompatible || compare(pixels, [ //image is upside down
 			255, 0, 0, 255,
 			0, 255, 0, 255,
 			0, 0, 255, 255,
@@ -969,8 +1237,14 @@
 
 		target.source = flip;
 		flip.direction = 'horizontal';
-		target.readPixels(0, 0, 2, 2, pixels);
-		ok(compare(pixels, [ //image is upside down
+		error = false;
+		try {
+			target.readPixels(0, 0, 2, 2, pixels);
+		} catch (e) {
+			error = e;
+		}
+		ok(incompatible ? error : !error, 'readPixels throws error iff incompatible');
+		ok(incompatible || compare(pixels, [ //image is upside down
 			255, 255, 255, 255,
 			0, 0, 255, 255,
 			0, 255, 0, 255,
@@ -980,8 +1254,14 @@
 		target.source = transform;
 		transform.translate(1, 0);
 		target.render();
-		target.readPixels(0, 0, 2, 2, pixels);
-		ok(compare(pixels, [ //image is upside down
+		error = false;
+		try {
+			target.readPixels(0, 0, 2, 2, pixels);
+		} catch (e) {
+			error = e;
+		}
+		ok(incompatible ? error : !error, 'readPixels throws error iff incompatible');
+		ok(incompatible || compare(pixels, [ //image is upside down
 			0, 0, 0, 0,
 			0, 0, 255, 255,
 			0, 0, 0, 0,
@@ -992,14 +1272,12 @@
 		return;
 	});
 
-	test('Transform definition function', function () {
+	test('Transform definition function', 5, function () {
 		var seriously,
 			transform1,
 			transform2,
 			canvas,
 			target;
-
-		expect(5);
 
 		Seriously.transform('removeme', function (options) {
 			var id = options.id,
@@ -1059,11 +1337,73 @@
 		Seriously.removePlugin('removeme');
 	});
 
-	test('Transform alias', function () {
-		var seriously,
+	test('Transform Info', 17, function () {
+		var inputs,
+			seriously,
 			transform;
 
-		expect(5);
+		Seriously.transform('test', {
+			inputs: {
+				number: {
+					type: 'number',
+					min: -4,
+					max: 100,
+					step: 2,
+					defaultValue: 8,
+					description: 'this is a number',
+					title: 'Number'
+				},
+				vector: {
+					type: 'vector',
+					dimensions: 3
+				},
+				e: {
+					type: 'enum',
+					options: [
+						['one', 'One'],
+						['two', 'Two']
+					]
+				}
+			},
+			title: 'Test'
+		});
+
+		seriously = new Seriously();
+		transform = seriously.transform('test');
+
+		equal(transform.transform, 'test', 'Transform name reported');
+		equal(transform.title, 'Test', 'Transform title reported');
+		ok(transform.id >= 0, 'Transform id reported');
+
+		//Check inputs
+		inputs = transform.inputs();
+		ok(inputs.number && inputs.vector && inputs.e, 'All inputs are present');
+		equal(Object.keys(inputs).length, 3, 'No extra properties');
+
+		equal(inputs.number.type, 'number', 'Number type reported');
+		equal(inputs.number.min, -4, 'Number minimum reported');
+		equal(inputs.number.max, 100, 'Number maximum reported');
+		equal(inputs.number.step, 2, 'Number step reported');
+		equal(inputs.number.defaultValue, 8, 'Number default value reported');
+		equal(inputs.number.title, 'Number', 'Node title reported');
+		equal(inputs.number.description, 'this is a number', 'Node description reported');
+
+		equal(inputs.vector.type, 'vector', 'Vector type reported');
+		equal(inputs.vector.dimensions, 3, 'Vector dimensions reported');
+
+		equal(inputs.e.type, 'enum', 'Enum type reported');
+		ok(Array.isArray(inputs.e.options), 'Enum options reported');
+
+		inputs.e.options[1][0] = 'three';
+		equal(transform.inputs('e').options[1][0], 'two', 'Enum options fully copied, cannot be tampered with');
+
+		seriously.destroy();
+		Seriously.removeTransform('test');
+	});
+
+	test('Transform alias', 5, function () {
+		var seriously,
+			transform;
 
 		seriously = new Seriously();
 		transform = seriously.transform('2d');
@@ -1084,11 +1424,32 @@
 		seriously.destroy();
 	});
 
-	module('Destroy');
-	test('Destroy things', function() {
-		var seriously, source, target, effect, transform, canvas;
+	module('Target');
+	test('Canvas Target', function () {
+		var seriously,
+			canvas,
+			target;
 
-		expect(15);
+		seriously = new Seriously();
+		canvas = document.createElement('canvas');
+		canvas.width = 17;
+		canvas.height = 19;
+		target = seriously.target(canvas);
+
+		equal(target.width, 17, 'target.width');
+		equal(target.height, 19, 'target.height');
+		equal(target.original, canvas, 'target.original');
+		equal(target.inputs.source.type, 'image', 'target.inputs.source');
+
+		target.width = 29;
+		ok(canvas.width === 29 && canvas.height === 19, 'target.width modifies canvas width, but not height');
+		target.height = 31;
+		ok(canvas.width === 29 && canvas.height === 31, 'target.height modifies canvas height, but not width');
+	});
+
+	module('Destroy');
+	test('Destroy things', 15, function() {
+		var seriously, source, target, effect, transform, canvas;
 
 		Seriously.plugin('test', {});
 
@@ -1134,11 +1495,9 @@
 		Seriously.removePlugin('test');
 	});
 
-	test('Connect after nodes destroyed', function() {
+	test('Connect after nodes destroyed', 2, function() {
 		var source, target, seriously,
 			canvas;
-
-		expect(2);
 
 		seriously = new Seriously();
 		//create and destroy source twice
@@ -1274,14 +1633,116 @@
 		});
 	});
 
+	asyncTest('resize event', 4, function () {
+		var seriously,
+			source,
+			deferred,
+			effect,
+			transform,
+			target,
+
+			deferredResized = false,
+			effectResized = false,
+			transformResized = false,
+			targetResized = false;
+
+		function proceed() {
+			if (deferredResized && effectResized && transformResized && targetResized) {
+				seriously.destroy();
+				Seriously.removeSource('size');
+				start();
+			}
+		}
+
+		function fail() {
+			ok(false, 'Removed event listener should not run');
+		}
+
+		Seriously.source('immediate', function (source) {
+			this.width = source.width;
+			this.height = source.height;
+			return {
+				render: function () {}
+			};
+		}, {
+			title: 'delete me'
+		});
+
+		Seriously.source('deferred', function (source) {
+			var that = this;
+			this.width = 1;
+			this.height = 1;
+			setTimeout(function () {
+				that.width = source.width;
+				that.height = source.height;
+				that.resize();
+			}, 0);
+
+			return {
+				render: function () {}
+			};
+		}, {
+			title: 'delete me'
+		});
+
+		Seriously.plugin('test', {
+			title: 'Test Effect',
+			inputs: {
+				source: {
+					type: 'image'
+				}
+			}
+		});
+
+		seriously = new Seriously();
+		source = seriously.source('size', {
+			width: 17,
+			height: 19
+		});
+
+		effect = seriously.effect('test');
+		effect.on('resize', function () {
+			effectResized = true;
+			ok(true, 'Effect resize event runs when connected to a source');
+			proceed();
+		});
+		effect.source = source;
+
+		transform = seriously.transform('2d');
+		transform.on('resize', function () {
+			transformResized = true;
+			ok(true, 'Transform resize event runs when connected to a source');
+			proceed();
+		});
+		transform.source = effect;
+
+		target = seriously.target(document.createElement('canvas'));
+		target.on('resize', function () {
+			targetResized = true;
+			ok(true, 'Target resize event runs when dimensions changed explicitly');
+			proceed();
+		});
+		target.width = 60;
+
+		deferred = seriously.source('deferred', {
+			width: 17,
+			height: 19
+		});
+		deferred.on('resize', function () {
+			deferredResized = true;
+			ok(true, 'Source resize event runs when set by internal asynchronous code');
+			proceed();
+		});
+		deferred.on('resize', fail);
+		deferred.off('resize', fail);
+	});
+
 	module('Alias');
 
 	module('Utilities');
 
-	asyncTest('setTimeoutZero', function() {
+	asyncTest('setTimeoutZero', 2, function() {
 		var countdown = 2, startTime = Date.now();
-
-		expect(2);
 
 		Seriously.util.setTimeoutZero(function() {
 			countdown--;
@@ -1299,7 +1760,7 @@
 		var pass, fail,
 			tests = 2;
 
-		expect(4);
+		expect(6);
 
 		function checkImagePass(img) {
 			var canvas, ctx;
@@ -1321,12 +1782,26 @@
 		function checkImageFail(img) {
 			var canvas, ctx;
 
+			Seriously.logger.log = function (s) {
+				equal(s, 'Unable to access cross-domain image', 'Warning logged to console');
+			};
+
+			Seriously.logger.warn = function (s) {
+				equal(s, 'Image not loaded', 'Warning logged to console');
+			};
+
 			ok(!Seriously.util.checkSource(img), 'Cross-origin image checks false');
 
 			canvas = document.createElement('canvas');
 			ctx = canvas.getContext('2d');
-			ctx.drawImage(img, 0, 0);
-			ok(!Seriously.util.checkSource(canvas), 'Cross-origin canvas checks false');
+			if (img.naturalWidth) {
+				ctx.drawImage(img, 0, 0);
+				ok(!Seriously.util.checkSource(canvas), 'Cross-origin canvas checks false');
+			} else {
+				expect(4);
+			}
+
+			Seriously.logger.log = nop;
 
 			tests--;
 			if (!tests) {
@@ -1348,13 +1823,16 @@
 		fail.addEventListener('load', function() {
 			checkImageFail(this);
 		}, false);
+		fail.addEventListener('error', function() {
+			checkImageFail(this);
+		}, false);
 	});
 
 	/*
 	use require for loading plugins
 	*/
 	module('Effect Plugins');
-	asyncTest('invert', 2, function () {
+	asyncTest('invert', 3, function () {
 		require([
 			'seriously',
 			'effects/seriously.invert',
@@ -1365,7 +1843,11 @@
 				target,
 				canvas,
 				source,
-				pixels;
+				pixels,
+				error,
+				incompatible;
+
+			incompatible = Seriously.incompatible();
 
 			seriously = new Seriously();
 			source = seriously.source([255, 128, 100, 200], {
@@ -1384,8 +1866,13 @@
 			target.source = effect;
 			effect.source = source;
 
-			pixels = target.readPixels(0, 0, 1, 1);
-			ok(pixels && compare(pixels, [0, 127, 155, 200]), 'Invert effect rendered accurately.');
+			try {
+				pixels = target.readPixels(0, 0, 1, 1);
+			} catch (e) {
+				error = e;
+			}
+			ok(incompatible ? error : !error, 'readPixels throws error iff incompatible');
+			ok(incompatible || pixels && compare(pixels, [0, 127, 155, 200]), 'Invert effect rendered accurately.');
 
 			seriously.destroy();
 			Seriously.removePlugin('invert');

@@ -2,12 +2,7 @@
 /*global Float32Array, Uint8Array, Uint16Array, WebGLTexture, HTMLInputElement, HTMLSelectElement, HTMLElement, WebGLFramebuffer, HTMLCanvasElement, WebGLRenderingContext, define, module, exports */
 (function (root, factory) {
 	'use strict';
-	if (typeof exports === 'object') {
-		// Node. Does not work with strict CommonJS, but
-		// only CommonJS-like enviroments that support module.exports,
-		// like Node.
-		module.exports = factory(root);
-	} else if (typeof define === 'function' && define.amd) {
+	if (typeof define === 'function' && define.amd) {
 		// AMD. Register as an anonymous module.
 		define('seriously', function () {
 			var Seriously = factory(root);
@@ -16,6 +11,11 @@
 			}
 			return Seriously;
 		});
+	} else if (typeof exports === 'object') {
+		// Node. Does not work with strict CommonJS, but
+		// only CommonJS-like enviroments that support module.exports,
+		// like Node.
+		module.exports = factory(root);
 	} else if (typeof root.Seriously !== 'function') {
 		// Browser globals
 		root.Seriously = factory(root);
@@ -57,9 +57,21 @@
 		transparent: [0, 0, 0, 0],
 		black: [0, 0, 0, 1],
 		red: [1, 0, 0, 1],
-		green: [0, 1, 0, 1],
+		green: [0, 128 / 255, 0, 1],
 		blue: [0, 0, 1, 1],
-		white: [1, 1, 1, 1]
+		white: [1, 1, 1, 1],
+		silver: [192 / 255, 192 / 255, 192 / 255, 1],
+		gray: [128 / 255, 128 / 255, 128 / 255, 1],
+		maroon: [128 / 255, 0, 0, 1],
+		purple: [128 / 255, 0, 128 / 255, 1],
+		fuchsia: [1, 0, 1, 1],
+		lime: [0, 1, 0, 1],
+		olive: [128 / 255, 128 / 255, 0, 1],
+		yellow: [1, 1, 0, 1],
+		navy: [0, 0, 128 / 255, 1],
+		teal: [0, 128 / 255, 128 / 255, 1],
+		aqua: [0, 1, 1, 1],
+		orange: [1, 165 / 255, 0, 1]
 	},
 
 	vectorFields = ['x', 'y', 'z', 'w'],
@@ -293,6 +305,29 @@
 		return dest;
 	}
 
+	function consoleMethod(name) {
+		var method;
+		if (!console) {
+			return nop;
+		}
+
+		if (typeof console[name] === 'function') {
+			method = console[name];
+		} else if (typeof console.log === 'function') {
+			method = console.log;
+		} else {
+			return nop;
+		}
+
+		if (method.bind) {
+			return method.bind(console);
+		}
+
+		return function () {
+			method.apply(console, arguments);
+		};
+	}
+
 	//http://www.w3.org/TR/css3-color/#hsl-color
 	function hslToRgb(h, s, l, a, out) {
 		function hueToRgb(m1, m2, h) {
@@ -349,7 +384,7 @@
 		}
 
 		if (typeof fn !== 'function') {
-			throw 'setTimeoutZero argument is not a function';
+			throw new Error('setTimeoutZero argument is not a function');
 		}
 
 		timeouts.push(fn);
@@ -408,7 +443,7 @@
 				}
 			}, false);
 		} else {
-			console.log('Unable to access WebGL.');
+			Seriously.logger.warn('Unable to access WebGL.');
 		}
 
 		return testContext;
@@ -425,7 +460,17 @@
 
 		canvas = document.createElement('canvas');
 		if (!canvas) {
-			console.log('Browser does not support canvas or Seriously.js');
+			Seriously.logger.warn('Browser does not support canvas or Seriously.js');
+			return false;
+		}
+
+		if (element.naturalWidth === 0 && element.tagName === 'IMG') {
+			Seriously.logger.warn('Image not loaded');
+			return false;
+		}
+
+		if (element.readyState === 0 && element.videoWidth === 0 && element.tagName === 'VIDEO') {
+			Seriously.logger.warn('Video not loaded');
 			return false;
 		}
 
@@ -439,9 +484,9 @@
 				ctx.texImage2D(ctx.TEXTURE_2D, 0, ctx.RGBA, ctx.RGBA, ctx.UNSIGNED_BYTE, element);
 			} catch (textureError) {
 				if (textureError.code === window.DOMException.SECURITY_ERR) {
-					console.log('Unable to access cross-domain image');
+					Seriously.logger.log('Unable to access cross-domain image');
 				} else {
-					console.log('Error: ' + textureError.message);
+					Seriously.logger.error('Error storing image to texture: ' + textureError.message);
 				}
 				ctx.deleteTexture(texture);
 				return false;
@@ -454,9 +499,9 @@
 				ctx.getImageData(0, 0, 1, 1);
 			} catch (drawImageError) {
 				if (drawImageError.code === window.DOMException.SECURITY_ERR) {
-					console.log('Unable to access cross-domain image');
+					Seriously.logger.log('Unable to access cross-domain image');
 				} else {
-					console.log('Error: ' + drawImageError.message);
+					Seriously.logger.error('Error drawing image to canvas: ' + drawImageError.message);
 				}
 				return false;
 			}
@@ -481,7 +526,7 @@
 		for (name in effect.inputs) {
 			if (effect.inputs.hasOwnProperty(name)) {
 				if (reserved.indexOf(name) >= 0 || Object.prototype[name]) {
-					throw 'Reserved effect input name: ' + name;
+					throw new Error('Reserved effect input name: ' + name);
 				}
 
 				input = effect.inputs[name];
@@ -562,7 +607,7 @@
 			status,
 			useFloat = options === true ? options : (options && options.useFloat);
 
-		useFloat = false;//useFloat && !!gl.getExtension("OES_texture_float"); //useFloat is not ready!
+		useFloat = false;//useFloat && !!gl.getExtension('OES_texture_float'); //useFloat is not ready!
 		if (useFloat) {
 			this.type = gl.FLOAT;
 		} else {
@@ -612,23 +657,23 @@
 		status = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
 
 		if (status === gl.FRAMEBUFFER_INCOMPLETE_ATTACHMENT) {
-			throw('Incomplete framebuffer: FRAMEBUFFER_INCOMPLETE_ATTACHMENT');
+			throw new Error('Incomplete framebuffer: FRAMEBUFFER_INCOMPLETE_ATTACHMENT');
 		}
 
 		if (status === gl.FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT) {
-			throw('Incomplete framebuffer: FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT');
+			throw new Error('Incomplete framebuffer: FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT');
 		}
 
 		if (status === gl.FRAMEBUFFER_INCOMPLETE_DIMENSIONS) {
-			throw('Incomplete framebuffer: FRAMEBUFFER_INCOMPLETE_DIMENSIONS');
+			throw new Error('Incomplete framebuffer: FRAMEBUFFER_INCOMPLETE_DIMENSIONS');
 		}
 
 		if (status === gl.FRAMEBUFFER_UNSUPPORTED) {
-			throw('Incomplete framebuffer: FRAMEBUFFER_UNSUPPORTED');
+			throw new Error('Incomplete framebuffer: FRAMEBUFFER_UNSUPPORTED');
 		}
 
 		if (status !== gl.FRAMEBUFFER_COMPLETE) {
-			throw('Incomplete framebuffer: ' + status);
+			throw new Error('Incomplete framebuffer: ' + status);
 		}
 
 		//clean up
@@ -711,10 +756,11 @@
 			if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
 				source = source.split(/[\n\r]/);
 				for (i = 0; i < source.length; i++) {
-					source[i] = (i + 1) + ":\t" + source[i];
+					source[i] = (i + 1) + ':\t' + source[i];
 				}
-				console.log(source.join('\n'));
-				throw 'Shader error: ' + gl.getShaderInfoLog(shader);
+				source.unshift('Error compiling ' + (fragment ? 'fragment' : 'vertex') + ' shader:');
+				Seriously.logger.error(source.join('\n'));
+				throw new Error('Shader error: ' + gl.getShaderInfoLog(shader));
 			}
 
 			return shader;
@@ -782,7 +828,7 @@
 				};
 			}
 
-			throw "Unknown shader uniform type: " + info.type;
+			throw new Error('Unknown shader uniform type: ' + info.type);
 		}
 
 		function makeShaderGetter(loc) {
@@ -798,12 +844,12 @@
 		gl.attachShader(program, vertexShader);
 		shaderError = gl.getShaderInfoLog(vertexShader);
 		if (shaderError) {
-			programError += 'Vertex shader error: ' + shaderError + "\n";
+			programError += 'Vertex shader error: ' + shaderError + '\n';
 		}
 		gl.attachShader(program, fragmentShader);
 		shaderError = gl.getShaderInfoLog(fragmentShader);
 		if (shaderError) {
-			programError += 'Fragment shader error: ' + shaderError + "\n";
+			programError += 'Fragment shader error: ' + shaderError + '\n';
 		}
 		gl.linkProgram(program);
 
@@ -812,7 +858,7 @@
 			gl.deleteProgram(program);
 			gl.deleteShader(vertexShader);
 			gl.deleteShader(fragmentShader);
-			throw 'Could not initialise shader: ' + programError;
+			throw new Error('Could not initialise shader: ' + programError);
 		}
 
 		gl.useProgram(program);
@@ -886,7 +932,7 @@
 	function Seriously(options) {
 
 		//if called without 'new', make a new object and return that
-		if (window === this || !(this instanceof Seriously)) {
+		if (window === this || !(this instanceof Seriously) || this.id !== undefined) {
 			return new Seriously(options);
 		}
 
@@ -1104,19 +1150,19 @@
 			//default for blend is enable
 			if (!options || options.blend === undefined || options.blend) {
 				gl.enable(gl.BLEND);
+				/*
 				gl.blendFunc(
 					options && options.srcRGB || gl.ONE,
 					options && options.dstRGB || gl.ONE_MINUS_SRC_ALPHA
 				);
+				*/
 
-				/*
 				gl.blendFuncSeparate(
 					options && options.srcRGB || gl.ONE,
 					options && options.dstRGB || gl.ONE_MINUS_SRC_ALPHA,
-					options && options.srcAlpha || gl.SRC_ALPHA,
-					options && options.dstAlpha || gl.DST_ALPHA
+					options && (options.srcAlpha || options.srcRGB) || gl.SRC_ALPHA,
+					options && (options.dstAlpha || options.dstRGB) || gl.ONE
 				);
-				*/
 				gl.blendEquation(options && options.blendEquation || gl.FUNC_ADD);
 			} else {
 				gl.disable(gl.BLEND);
@@ -1186,7 +1232,7 @@
 				node = nodesById[source.id];
 
 				if (!node) {
-					throw 'Cannot connect a foreign node';
+					throw new Error('Cannot connect a foreign node');
 				}
 			} else {
 				if (typeof source === 'string' && isNaN(source)) {
@@ -1313,7 +1359,7 @@
 
 			if (!gl) {
 				//todo: is this the best approach?
-				throw 'Cannot read pixels until a canvas is connected';
+				throw new Error('Cannot read pixels until a canvas is connected');
 			}
 
 			//todo: check on x, y, width, height
@@ -1329,7 +1375,7 @@
 			if (dest === undefined) {
 				dest = new Uint8Array(width * height * 4);
 			} else if (!dest instanceof Uint8Array) {
-				throw 'Incompatible array type';
+				throw new Error('Incompatible array type');
 			}
 
 			gl.bindFramebuffer(gl.FRAMEBUFFER, this.frameBuffer.frameBuffer); //todo: are we sure about this?
@@ -1604,7 +1650,7 @@
 			}
 
 			//priveleged publicly accessible methods/setters/getters
-			//todo: provide an alternate method
+			//todo: provide alternate set/get methods
 			for (name in me.effect.inputs) {
 				if (me.effect.inputs.hasOwnProperty(name)) {
 					if (this[name] === undefined) {
@@ -1625,28 +1671,24 @@
 						}
 					} else {
 						//todo: this is temporary. get rid of it.
-						throw 'Cannot overwrite Seriously.' + name;
+						throw new Error('Cannot overwrite Seriously.' + name);
 					}
 				}
 			}
 
 			Object.defineProperties(this, {
-				inputs: {
+				effect: {
 					enumerable: true,
 					configurable: true,
 					get: function () {
-						return {
-							source: {
-								type: 'image'
-							}
-						};
+						return me.hook;
 					}
 				},
-				original: {
+				title: {
 					enumerable: true,
 					configurable: true,
 					get: function () {
-						return me.source;
+						return me.effect.title || me.hook;
 					}
 				},
 				width: {
@@ -1687,6 +1729,65 @@
 
 			this.off = function (eventName, callback) {
 				me.off(eventName, callback);
+			};
+
+			this.inputs = function (name) {
+				var result,
+					input,
+					inputs,
+					enumOption,
+					i,
+					key;
+
+				inputs = me.effect.inputs;
+
+				if (name) {
+					input = inputs[name];
+					if (!input) {
+						return null;
+					}
+
+					result = {
+						type: input.type,
+						defaultValue: input.defaultValue,
+						title: input.title || name
+					};
+
+					if (input.type === 'number') {
+						result.min = input.min;
+						result.max = input.max;
+						result.step = input.step;
+					} else if (input.type === 'enum') {
+						//make a deep copy
+						result.options = [];
+						if (options) {
+							for (i = 0; i < input.options.length; i++) {
+								enumOption = input.options[i];
+								if (Array.isArray(enumOption)) {
+									result.options.push(enumOption.slice(0));
+								} else {
+									result.options.push(enumOption);
+								}
+							}
+						}
+					} else if (input.type === 'vector') {
+						result.dimensions = input.dimensions;
+					}
+
+					if (input.description) {
+						result.description = input.description;
+					}
+
+					return result;
+				}
+
+				result = {};
+				for (key in inputs) {
+					if (inputs.hasOwnProperty(key)) {
+						result[key] = this.inputs(key);
+					}
+				}
+				return result;
 			};
 
 			this.alias = function (inputName, aliasName) {
@@ -1781,8 +1882,10 @@
 			if (gl) {
 				this.initialize();
 				if (this.effect.commonShader) {
-					//this effect is unlikely to need to be modified again
-					//by changing parameters
+					/*
+					this effect is unlikely to need to be modified again
+					by changing parameters, so build it now to avoid jank later
+					*/
 					this.buildShader();
 				}
 			}
@@ -1995,7 +2098,7 @@
 					if (this.sources.hasOwnProperty(i) &&
 						(!effect.requires || effect.requires.call(this, i, this.inputs))) {
 
-						//todo: set source texture
+						//todo: set source texture in case it changes?
 						//sourcetexture = this.sources[i].render() || this.sources[i].texture
 
 						inPlace = typeof this.inPlace === 'function' ? this.inPlace(i) : this.inPlace;
@@ -2040,7 +2143,7 @@
 							}
 
 							if (traceSources(value, this)) {
-								throw 'Attempt to make cyclical connection.';
+								throw new Error('Attempt to make cyclical connection.');
 							}
 
 							this.sources[name] = value;
@@ -2101,7 +2204,7 @@
 			var that = this;
 
 			if (reservedNames.indexOf(aliasName) >= 0) {
-				throw aliasName + ' is a reserved name and cannot be used as an alias.';
+				throw new Error(aliasName + ' is a reserved name and cannot be used as an alias.');
 			}
 
 			if (this.effect.inputs.hasOwnProperty(inputName)) {
@@ -2613,6 +2716,20 @@
 					get: function () {
 						return me.id;
 					}
+				},
+				width: {
+					enumerable: true,
+					configurable: true,
+					get: function () {
+						return me.width;
+					}
+				},
+				height: {
+					enumerable: true,
+					configurable: true,
+					get: function () {
+						return me.height;
+					}
 				}
 			});
 
@@ -2786,7 +2903,7 @@
 				}
 			} else if (!plugin && source instanceof WebGLTexture) {
 				if (gl && !gl.isTexture(source)) {
-					throw 'Not a valid WebGL texture.';
+					throw new Error('Not a valid WebGL texture.');
 				}
 
 				//different defaults
@@ -2798,7 +2915,7 @@
 					width = height;
 				}/* else {
 					//todo: guess based on dimensions of target canvas
-					//throw 'Must specify width and height when using a WebGL texture as a source';
+					//throw new Error('Must specify width and height when using a WebGL texture as a source');
 				}*/
 
 				this.width = width;
@@ -2837,7 +2954,7 @@
 			}
 
 			if (!matchedType) {
-				throw 'Unknown source type';
+				throw new Error('Unknown source type');
 			}
 
 			this.source = source;
@@ -3004,7 +3121,7 @@
 				} catch (securityError) {
 					if (securityError.code === window.DOMException.SECURITY_ERR) {
 						this.allowRefresh = false;
-						console.log('Unable to access cross-domain image');
+						Seriously.logger.error('Unable to access cross-domain image');
 					}
 				}
 
@@ -3043,7 +3160,7 @@
 				} catch (securityError) {
 					if (securityError.code === window.DOMException.SECURITY_ERR) {
 						this.allowRefresh = false;
-						console.log('Unable to access cross-domain image');
+						Seriously.logger.error('Unable to access cross-domain image');
 					}
 				}
 
@@ -3141,6 +3258,7 @@
 							me.target.width = value;
 
 							me.setTransformDirty();
+							me.emit('resize');
 							/*
 							if (this.source && this.source.resize) {
 								this.source.resize(value);
@@ -3166,6 +3284,7 @@
 							me.target.height = value;
 
 							me.setTransformDirty();
+							me.emit('resize');
 
 							/*
 							if (this.source && this.source.resize) {
@@ -3272,7 +3391,7 @@
 				}
 
 				if (i >= elements.length) {
-					throw 'not a valid HTML element (must be image, video or canvas)';
+					throw new Error('not a valid HTML element (must be image, video or canvas)');
 				}
 
 				target = element;
@@ -3290,7 +3409,7 @@
 					target = opts.context.canvas;
 				} else {
 					//todo: search all canvases for matching contexts?
-					throw 'Must provide a canvas with WebGLFramebuffer target';
+					throw new Error('Must provide a canvas with WebGLFramebuffer target');
 				}
 			}
 
@@ -3379,7 +3498,7 @@
 			}
 
 			if (!matchedType) {
-				throw 'Unknown target type';
+				throw new Error('Unknown target type');
 			}
 
 			this.target = target;
@@ -3707,6 +3826,34 @@
 
 			//priveleged accessor methods
 			Object.defineProperties(this, {
+				transform: {
+					enumerable: true,
+					configurable: true,
+					get: function () {
+						return me.hook;
+					}
+				},
+				title: {
+					enumerable: true,
+					configurable: true,
+					get: function () {
+						return me.plugin.title || me.hook;
+					}
+				},
+				width: {
+					enumerable: true,
+					configurable: true,
+					get: function () {
+						return me.width;
+					}
+				},
+				height: {
+					enumerable: true,
+					configurable: true,
+					get: function () {
+						return me.height;
+					}
+				},
 				id: {
 					enumerable: true,
 					configurable: true,
@@ -3741,6 +3888,65 @@
 
 			this.update = function () {
 				me.setDirty();
+			};
+
+			this.inputs = function (name) {
+				var result,
+					input,
+					inputs,
+					enumOption,
+					i,
+					key;
+
+				inputs = me.plugin.inputs;
+
+				if (name) {
+					input = inputs[name];
+					if (!input) {
+						return null;
+					}
+
+					result = {
+						type: input.type,
+						defaultValue: input.defaultValue,
+						title: input.title || name
+					};
+
+					if (input.type === 'number') {
+						result.min = input.min;
+						result.max = input.max;
+						result.step = input.step;
+					} else if (input.type === 'enum') {
+						//make a deep copy
+						result.options = [];
+						if (options) {
+							for (i = 0; i < input.options.length; i++) {
+								enumOption = input.options[i];
+								if (Array.isArray(enumOption)) {
+									result.options.push(enumOption.slice(0));
+								} else {
+									result.options.push(enumOption);
+								}
+							}
+						}
+					} else if (input.type === 'vector') {
+						result.dimensions = input.dimensions;
+					}
+
+					if (input.description) {
+						result.description = input.description;
+					}
+
+					return result;
+				}
+
+				result = {};
+				for (key in inputs) {
+					if (inputs.hasOwnProperty(key)) {
+						result[key] = this.inputs(key);
+					}
+				}
+				return result;
 			};
 
 			this.alias = function (inputName, aliasName) {
@@ -3909,7 +4115,7 @@
 			}
 
 			if (traceSources(newSource, this)) {
-				throw 'Attempt to make cyclical connection.';
+				throw new Error('Attempt to make cyclical connection.');
 			}
 
 			if (this.source) {
@@ -3954,7 +4160,7 @@
 				def;
 
 			if (reservedNames.indexOf(aliasName) >= 0) {
-				throw aliasName + ' is a reserved name and cannot be used as an alias.';
+				throw new Error(aliasName + ' is a reserved name and cannot be used as an alias.');
 			}
 
 			if (this.plugin.inputs.hasOwnProperty(inputName)) {
@@ -4146,7 +4352,7 @@
 		*/
 		this.effect = function (hook, options) {
 			if (!seriousEffects[hook]) {
-				throw 'Unknown effect: ' + hook;
+				throw new Error('Unknown effect: ' + hook);
 			}
 
 			var effectNode = new EffectNode(hook, options);
@@ -4168,12 +4374,12 @@
 
 			if (hook) {
 				if (!seriousTransforms[hook]) {
-					throw 'Unknown transforms: ' + hook;
+					throw new Error('Unknown transforms: ' + hook);
 				}
 			} else {
 				hook = options && options.defaultTransform || '2d';
 				if (!seriousTransforms[hook]) {
-					throw 'No transform specified';
+					throw new Error('No transform specified');
 				}
 			}
 
@@ -4354,9 +4560,7 @@
 		//todo: load, save, find
 
 		baseVertexShader = [
-			'#ifdef GL_ES',
 			'precision mediump float;',
-			'#endif',
 
 			'attribute vec4 position;',
 			'attribute vec2 texCoord;',
@@ -4382,12 +4586,13 @@
 		].join('\n');
 
 		baseFragmentShader = [
-			'#ifdef GL_ES',
 			'precision mediump float;',
-			'#endif',
+
 			'varying vec2 vTexCoord;',
 			'varying vec4 vPosition;',
+
 			'uniform sampler2D source;',
+
 			'void main(void) {',
 			/*
 			'	if (any(lessThan(vTexCoord, vec2(0.0))) || any(greaterThanEqual(vTexCoord, vec2(1.0)))) {',
@@ -4444,7 +4649,7 @@
 		var effect;
 
 		if (seriousEffects[hook]) {
-			console.log('Effect [' + hook + '] already loaded');
+			Seriously.logger.warn('Effect [' + hook + '] already loaded');
 			return;
 		}
 
@@ -4513,7 +4718,7 @@
 		var source;
 
 		if (seriousSources[hook]) {
-			console.log('Source [' + hook + '] already loaded');
+			Seriously.logger.warn('Source [' + hook + '] already loaded');
 			return;
 		}
 
@@ -4573,7 +4778,7 @@
 		var transform;
 
 		if (seriousTransforms[hook]) {
-			console.log('Transform [' + hook + '] already loaded');
+			Seriously.logger.warn('Transform [' + hook + '] already loaded');
 			return;
 		}
 
@@ -4919,6 +5124,16 @@
 			}());
 		}
 	}
+
+	/*
+
+	*/
+	Seriously.logger = {
+		log: consoleMethod('log'),
+		info: consoleMethod('info'),
+		warn: consoleMethod('warn'),
+		error: consoleMethod('error')
+	};
 
 	//expose Seriously to the global object
 	Seriously.util = {
@@ -5441,7 +5656,10 @@
 
 			aspectOut = width / height;
 
-			if (mode === 'width' || mode === 'contain' && aspectOut <= aspectIn) {
+			if (mode === 'none') {
+				scaleX = sourceWidth / width;
+				scaleY = sourceHeight / height;
+			} else if (mode === 'width' || mode === 'contain' && aspectOut <= aspectIn) {
 				scaleX = 1;
 				scaleY = aspectOut / aspectIn;
 			} else if (mode === 'height' || mode === 'contain' && aspectOut > aspectIn) {
@@ -5574,7 +5792,8 @@
 						'contain',
 						'distort',
 						'width',
-						'height'
+						'height',
+						'none'
 					]
 				}
 			}
@@ -5589,7 +5808,6 @@
 	- perspective
 	- matrix
 	- crop? - maybe not - probably would just scale.
-	- camera shake?
 	*/
 
 	/*
@@ -5779,10 +5997,10 @@
 		'	i0.z += isYZ.z;\n' +
 		'	i0.w += 1.0 - isYZ.z;\n' +
 		'\n' +
-			// i0 now contains the unique values 0,1,2,3 in each channel
+			// i0 now contains the unique values 0, 1, 2, 3 in each channel
 		'	vec4 i3 = clamp(i0, 0.0, 1.0);\n' +
-		'	vec4 i2 = clamp(i0-1.0, 0.0, 1.0);\n' +
-		'	vec4 i1 = clamp(i0-2.0, 0.0, 1.0);\n' +
+		'	vec4 i2 = clamp(i0 - 1.0, 0.0, 1.0);\n' +
+		'	vec4 i1 = clamp(i0 - 2.0, 0.0, 1.0);\n' +
 		'\n' +
 		'	vec4 x1 = x0 - i1 + C.xxxx;\n' +
 		'	vec4 x2 = x0 - i2 + C.yyyy;\n' +

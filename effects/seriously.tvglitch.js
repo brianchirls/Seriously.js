@@ -2,12 +2,12 @@
 (function (root, factory) {
 	'use strict';
 
-	if (typeof exports === 'object') {
-		// Node/CommonJS
-		factory(require('seriously'));
-	} else if (typeof define === 'function' && define.amd) {
+	if (typeof define === 'function' && define.amd) {
 		// AMD. Register as an anonymous module.
 		define(['seriously'], factory);
+	} else if (typeof exports === 'object') {
+		// Node/CommonJS
+		factory(require('seriously'));
 	} else {
 		if (!root.Seriously) {
 			root.Seriously = { plugin: function (name, opt) { this[name] = opt; } };
@@ -62,36 +62,36 @@
 				particleBuffer.itemSize = 4;
 				particleBuffer.numItems = particleCount;
 
-				particleVertex = '#ifdef GL_ES\n' +
-				'precision mediump float;\n' +
-				'#endif \n' +
-				'\n' +
-				'attribute vec4 particle;\n' +
-				'\n' +
-				'uniform float time;\n' +
-				'uniform float height;\n' +
-				'\n' +
-				'varying float intensity;\n' +
-				'\n' +
-				'void main(void) {\n' +
-				'	float y = particle.x + time * particle.y;\n' +
-				'	y = fract((y + 1.0) / 2.0) * 4.0 - 2.0;\n' +
-				'	intensity = particle.w;\n' +
-				'	gl_Position = vec4(0.0, -y , 1.0, 2.0);\n' +
-				//'	gl_Position = vec4(0.0, 1.0 , 1.0, 1.0);\n' +
-				'	gl_PointSize = height * particle.z;\n' +
-				'}\n';
+				particleVertex = [
+					'precision mediump float;',
 
-				particleFragment = '#ifdef GL_ES\n\n' +
-				'precision mediump float;\n\n' +
-				'#endif\n\n' +
-				'\n' +
-				'varying float intensity;\n' +
-				'\n' +
-				'void main(void) {\n' +
-				'	gl_FragColor = vec4(1.0);\n' +
-				'	gl_FragColor.a = 2.0 * intensity * (1.0 - abs(gl_PointCoord.y - 0.5));\n' +
-				'}\n';
+					'attribute vec4 particle;',
+
+					'uniform float time;',
+					'uniform float height;',
+
+					'varying float intensity;',
+
+					'void main(void) {',
+					'	float y = particle.x + time * particle.y;',
+					'	y = fract((y + 1.0) / 2.0) * 4.0 - 2.0;',
+					'	intensity = particle.w;',
+					'	gl_Position = vec4(0.0, -y , 1.0, 2.0);',
+					//'	gl_Position = vec4(0.0, 1.0 , 1.0, 1.0);',
+					'	gl_PointSize = height * particle.z;',
+					'}'
+				].join('\n');
+
+				particleFragment = [
+					'precision mediump float;',
+
+					'varying float intensity;',
+
+					'void main(void) {',
+					'	gl_FragColor = vec4(1.0);',
+					'	gl_FragColor.a = 2.0 * intensity * (1.0 - abs(gl_PointCoord.y - 0.5));',
+					'}'
+				].join('\n');
 
 				particleShader = new Seriously.util.ShaderProgram(gl, particleVertex, particleFragment);
 
@@ -102,86 +102,86 @@
 			shader: function (inputs, shaderSource) {
 				//baseShader = this.baseShader;
 
-				shaderSource.fragment = '#ifdef GL_ES\n\n' +
-					'precision mediump float;\n\n' +
-					'#endif\n\n' +
-					'\n' +
-					//'#define HardLight(top, bottom) (top < 0.5 ? (2.0 * top * bottom) : (1.0 - 2.0 * (1.0 - top) * (1.0 - bottom)))\n' +
-					'#define HardLight(top, bottom)  (1.0 - 2.0 * (1.0 - top) * (1.0 - bottom))\n' +
-					'\n' +
-					'varying vec2 vTexCoord;\n' +
-					'varying vec4 vPosition;\n' +
-					'\n' +
-					'uniform sampler2D source;\n' +
-					'uniform sampler2D particles;\n' +
-					'uniform float time;\n' +
-					'uniform float scanlines;\n' +
-					'uniform float lineSync;\n' +
-					'uniform float lineHeight;\n' + //for scanlines and distortion
-					'uniform float distortion;\n' +
-					'uniform float vsync;\n' +
-					'uniform float bars;\n' +
-					'uniform float frameSharpness;\n' +
-					'uniform float frameShape;\n' +
-					'uniform float frameLimit;\n' +
-					'uniform vec4 frameColor;\n' +
-					'\n' +
+				shaderSource.fragment = [
+					'precision mediump float;',
+
+					//'#define HardLight(top, bottom) (top < 0.5 ? (2.0 * top * bottom) : (1.0 - 2.0 * (1.0 - top) * (1.0 - bottom)))',
+					'#define HardLight(top, bottom)  (1.0 - 2.0 * (1.0 - top) * (1.0 - bottom))',
+
+					'varying vec2 vTexCoord;',
+					'varying vec4 vPosition;',
+
+					'uniform sampler2D source;',
+					'uniform sampler2D particles;',
+					'uniform float time;',
+					'uniform float scanlines;',
+					'uniform float lineSync;',
+					'uniform float lineHeight;', //for scanlines and distortion
+					'uniform float distortion;',
+					'uniform float vsync;',
+					'uniform float bars;',
+					'uniform float frameSharpness;',
+					'uniform float frameShape;',
+					'uniform float frameLimit;',
+					'uniform vec4 frameColor;',
+
 					//todo: need much better pseudo-random number generator
 					Seriously.util.shader.noiseHelpers +
 					Seriously.util.shader.snoise2d +
-					'\n' +
-					'void main(void) {\n' +
-					'	vec2 texCoord = vTexCoord;\n' +
+
+					'void main(void) {',
+					'	vec2 texCoord = vTexCoord;',
 
 						//distortion
-					'	float drandom = snoise(vec2(time * 50.0, texCoord.y /lineHeight));\n' +
-					'	float distortAmount = distortion * (drandom - 0.25) * 0.5;\n' +
+					'	float drandom = snoise(vec2(time * 50.0, texCoord.y /lineHeight));',
+					'	float distortAmount = distortion * (drandom - 0.25) * 0.5;',
 						//line sync
-					'	vec4 particleOffset = texture2D(particles, vec2(0.0, texCoord.y));\n' +
-					'	distortAmount -= lineSync * (2.0 * particleOffset.a - 0.5);\n' +
+					'	vec4 particleOffset = texture2D(particles, vec2(0.0, texCoord.y));',
+					'	distortAmount -= lineSync * (2.0 * particleOffset.a - 0.5);',
 
-					'	texCoord.x -= distortAmount;\n' +
-					//'	texCoord.x = max(0.0, texCoord.x);\n' +
-					//'	texCoord.x = min(1.0, texCoord.x);\n' +
-					'	texCoord.x = mod(texCoord.x, 1.0);\n' +
+					'	texCoord.x -= distortAmount;',
+					//'	texCoord.x = max(0.0, texCoord.x);',
+					//'	texCoord.x = min(1.0, texCoord.x);',
+					'	texCoord.x = mod(texCoord.x, 1.0);',
 
 						//vertical sync
-					'	float roll;\n' +
-					'	if (vsync != 0.0) {\n' +
-					'		roll = fract(time / vsync);\n' +
-					'		texCoord.y = mod(texCoord.y - roll, 1.0);\n' +
-					'	}\n' +
+					'	float roll;',
+					'	if (vsync != 0.0) {',
+					'		roll = fract(time / vsync);',
+					'		texCoord.y = mod(texCoord.y - roll, 1.0);',
+					'	}',
 
-					'	vec4 pixel = texture2D(source, texCoord);\n' +
+					'	vec4 pixel = texture2D(source, texCoord);',
 
 						//horizontal bars
-					'	float barsAmount = particleOffset.r;\n' +
-					'	if (barsAmount > 0.0) {\n' +
+					'	float barsAmount = particleOffset.r;',
+					'	if (barsAmount > 0.0) {',
 					/*
 					'		pixel = vec4(HardLight(pixel.r * bars, barsAmount),' +
 								'HardLight(pixel.g * bars, barsAmount),' +
 								'HardLight(pixel.b * bars, barsAmount),' +
-								'pixel.a);\n' +
+								'pixel.a);',
 					*/
 					'		pixel = vec4(pixel.r + bars * barsAmount,' +
 								'pixel.g + bars * barsAmount,' +
 								'pixel.b + bars * barsAmount,' +
-								'pixel.a);\n' +
-					'	}\n' +
+								'pixel.a);',
+					'	}',
 
-					'	if (mod(texCoord.y / lineHeight, 2.0) < 1.0 ) {\n' +
-					'		pixel.rgb *= (1.0 - scanlines);\n' +
-					'	}\n' +
+					'	if (mod(texCoord.y / lineHeight, 2.0) < 1.0 ) {',
+					'		pixel.rgb *= (1.0 - scanlines);',
+					'	}',
 
-					'	float f = (1.0 - vPosition.x * vPosition.x) * (1.0 - vPosition.y * vPosition.y);\n' +
-					'	float frame = clamp( frameSharpness * (pow(f, frameShape) - frameLimit), 0.0, 1.0);\n' +
+					'	float f = (1.0 - vPosition.x * vPosition.x) * (1.0 - vPosition.y * vPosition.y);',
+					'	float frame = clamp( frameSharpness * (pow(f, frameShape) - frameLimit), 0.0, 1.0);',
 
-					//'	gl_FragColor.r = vec4(1.0);\n' +
+					//'	gl_FragColor.r = vec4(1.0);',
 
-					'	gl_FragColor = mix(frameColor, pixel, frame); //vec4(vec3(particleOffset), 1.0);\n' +
-					//'	gl_FragColor = vec4(particleOffset);\n' +
-					//'	gl_FragColor.a = 1.0;\n' +
-					'}\n';
+					'	gl_FragColor = mix(frameColor, pixel, frame);', //vec4(vec3(particleOffset), 1.0);
+					//'	gl_FragColor = vec4(particleOffset);',
+					//'	gl_FragColor.a = 1.0;',
+					'}'
+				].join('\n');
 
 				return shaderSource;
 			},

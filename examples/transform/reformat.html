@@ -14,7 +14,7 @@
 	<h2>Source Canvas</h2>
 	<canvas id="source" width="400" height="300"></canvas>
 	<h2>Target Canvas</h2>
-	<canvas id="canvas" width="480" height="270"></canvas>
+	<canvas id="canvas" width="960" height="540"></canvas>
 	<div>
 		<label for="mode">Reformat Mode</label>
 		<select id="mode">
@@ -23,6 +23,7 @@
 			<option value="distort">Distort</option>
 			<option value="width">Width</option>
 			<option value="height">Height</option>
+			<option value="none">No Scale</option>
 		</select>
 	</div>
 
@@ -42,9 +43,8 @@
 			target = seriously.target('#canvas');
 
 			//set up reformat parameters
-			reformat.width = 480;
-			reformat.height = 270;
-			//reformat.mode = '#mode';
+			reformat.width = target.width;
+			reformat.height = target.height;
 			reformat.mode = '#mode';
 
 			// connect all our nodes in the right order
