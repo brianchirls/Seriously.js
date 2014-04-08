@@ -97,9 +97,9 @@
 			if (nativeMode && gl) {
 				topOpts.blendEquation = gl[nativeMode[0]];
 				topOpts.srcRGB = gl[nativeMode[1]];
-				topOpts.destRGB = gl[nativeMode[2]];
+				topOpts.dstRGB = gl[nativeMode[2]];
 				topOpts.srcAlpha = gl[nativeMode[3]];
-				topOpts.destAlpha = gl[nativeMode[4]];
+				topOpts.dstAlpha = gl[nativeMode[4]];
 			}
 		}
 
