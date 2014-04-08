@@ -2,12 +2,12 @@
 (function (root, factory) {
 	'use strict';
 
-	if (typeof exports === 'object') {
-		// Node/CommonJS
-		factory(require('seriously'));
-	} else if (typeof define === 'function' && define.amd) {
+	if (typeof define === 'function' && define.amd) {
 		// AMD. Register as an anonymous module.
 		define(['seriously'], factory);
+	} else if (typeof exports === 'object') {
+		// Node/CommonJS
+		factory(require('seriously'));
 	} else {
 		/*
 		todo: build out-of-order loading for sources and transforms or remove this
@@ -28,6 +28,8 @@
 	Seriously.source('camera', function (source, options, force) {
 		var me = this,
 			video,
+			key,
+			opts,
 			destroyed = false,
 			stream;
 
@@ -66,11 +68,22 @@
 				throw 'Camera source type unavailable. Browser does not support getUserMedia';
 			}
 
+			opts = {};
+			if (source) {
+				//copy over constraints
+				for (key in source) {
+					if (source.hasOwnProperty(key)) {
+						opts[key] = source[key];
+					}
+				}
+			}
+			if (!opts.video) {
+				opts.video = true;
+			}
+
 			video = document.createElement('video');
 
-			getUserMedia.call(navigator, {
-				video: true
-			}, function (s) {
+			getUserMedia.call(navigator, opts, function (s) {
 				stream = s;
 
 				if (destroyed) {

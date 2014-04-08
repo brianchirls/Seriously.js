@@ -2,12 +2,12 @@
 (function (root, factory) {
 	'use strict';
 
-	if (typeof exports === 'object') {
-		// Node/CommonJS
-		factory(require('seriously'));
-	} else if (typeof define === 'function' && define.amd) {
+	if (typeof define === 'function' && define.amd) {
 		// AMD. Register as an anonymous module.
 		define(['seriously'], factory);
+	} else if (typeof exports === 'object') {
+		// Node/CommonJS
+		factory(require('seriously'));
 	} else {
 		if (!root.Seriously) {
 			root.Seriously = { plugin: function (name, opt) { this[name] = opt; } };
@@ -26,57 +26,57 @@
 	Seriously.plugin('hex', {
 		commonShader: true,
 		shader: function (inputs, shaderSource) {
-			shaderSource.fragment = '#ifdef GL_ES\n\n' +
-				'precision mediump float;\n\n' +
-				'#endif\n\n' +
-				'\n' +
-				'varying vec2 vTexCoord;\n' +
-				'varying vec4 vPosition;\n' +
-				'\n' +
-				'uniform sampler2D source;\n' +
-				'uniform vec2 resolution;\n' +
-				'uniform vec2 center;\n' +
-				'uniform float size;\n' +
-				'\n' +
-				'void main(void) {\n' +
-				'	vec2 aspect = normalize(resolution);\n' +
-				'	vec2 tex = (vTexCoord * aspect - center) / size;\n' +
-				'	tex.y /= 0.866025404;\n' +
-				'	tex.x -= tex.y * 0.5;\n' +
-				'	vec2 a;\n' +
-				'	if (tex.x + tex.y - floor(tex.x) - floor(tex.y) < 1.0) {\n' +
-				'		a = vec2(floor(tex.x), floor(tex.y));\n' +
-				'	} else {\n' +
-				'		a = vec2(ceil(tex.x), ceil(tex.y));\n' +
-				'	}\n' +
-				'	vec2 b = vec2(ceil(tex.x), floor(tex.y));\n' +
-				'	vec2 c = vec2(floor(tex.x), ceil(tex.y));\n' +
-				'	vec3 tex3 = vec3(tex.x, tex.y, 1.0 - tex.x - tex.y);\n' +
-				'	vec3 a3 = vec3(a.x, a.y, 1.0 - a.x - a.y);\n' +
-				'	vec3 b3 = vec3(b.x, b.y, 1.0 - b.x - b.y);\n' +
-				'	vec3 c3 = vec3(c.x, c.y, 1.0 - c.x - c.y);\n' +
-				'	float alen =length(tex3 - a3);\n' +
-				'	float blen =length(tex3 - b3);\n' +
-				'	float clen =length(tex3 - c3);\n' +
-				'	vec2 choice;\n' +
-				'	if (alen < blen) {\n' +
-				'		if (alen < clen) {\n' +
-				'			choice = a;\n' +
-				'		} else {\n' +
-				'			choice = c;\n' +
-				'		}\n' +
-				'	} else {\n' +
-				'		if (blen < clen) {\n' +
-				'			choice = b;\n' +
-				'		} else {\n' +
-				'			choice = c;\n' +
-				'		}\n' +
-				'	}\n' +
-				'	choice.x += choice.y * 0.5;\n' +
-				'	choice.y *= 0.866025404;\n' +
-				'	choice *= size / aspect;\n' +
-				'	gl_FragColor = texture2D(source, choice + center / aspect);\n' +
-				'}\n';
+			shaderSource.fragment = [
+				'precision mediump float;\n',
+
+				'varying vec2 vTexCoord;',
+				'varying vec4 vPosition;',
+
+				'uniform sampler2D source;',
+				'uniform vec2 resolution;',
+				'uniform vec2 center;',
+				'uniform float size;',
+
+				'void main(void) {',
+				'	vec2 aspect = normalize(resolution);',
+				'	vec2 tex = (vTexCoord * aspect - center) / size;',
+				'	tex.y /= 0.866025404;',
+				'	tex.x -= tex.y * 0.5;',
+				'	vec2 a;',
+				'	if (tex.x + tex.y - floor(tex.x) - floor(tex.y) < 1.0) {',
+				'		a = vec2(floor(tex.x), floor(tex.y));',
+				'	} else {',
+				'		a = vec2(ceil(tex.x), ceil(tex.y));',
+				'	}',
+				'	vec2 b = vec2(ceil(tex.x), floor(tex.y));',
+				'	vec2 c = vec2(floor(tex.x), ceil(tex.y));',
+				'	vec3 tex3 = vec3(tex.x, tex.y, 1.0 - tex.x - tex.y);',
+				'	vec3 a3 = vec3(a.x, a.y, 1.0 - a.x - a.y);',
+				'	vec3 b3 = vec3(b.x, b.y, 1.0 - b.x - b.y);',
+				'	vec3 c3 = vec3(c.x, c.y, 1.0 - c.x - c.y);',
+				'	float alen =length(tex3 - a3);',
+				'	float blen =length(tex3 - b3);',
+				'	float clen =length(tex3 - c3);',
+				'	vec2 choice;',
+				'	if (alen < blen) {',
+				'		if (alen < clen) {',
+				'			choice = a;',
+				'		} else {',
+				'			choice = c;',
+				'		}',
+				'	} else {',
+				'		if (blen < clen) {',
+				'			choice = b;',
+				'		} else {',
+				'			choice = c;',
+				'		}',
+				'	}',
+				'	choice.x += choice.y * 0.5;',
+				'	choice.y *= 0.866025404;',
+				'	choice *= size / aspect;',
+				'	gl_FragColor = texture2D(source, choice + center / aspect);',
+				'}'
+			].join('\n');
 			return shaderSource;
 		},
 		inPlace: false,

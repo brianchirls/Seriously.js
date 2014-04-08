@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Seriously.js Blend Example</title>
+	<style type="text/css">
+		img {
+			display: none;
+		}
+
+		#controls {
+			display: inline-block;
+			vertical-align: top;
+		}
+
+		#controls input {
+			width: 400px;
+		}
+	</style>
+</head>
+<body>
+	<img src="../../examples/images/robot.jpg" id="robot"/>
+	<img src="../../examples/images/monochromebars.png" id="bars"/>
+	<div id="controls">
+		<div>
+			<label for="mode">Blend Mode</label>
+			<select id="mode">
+				<option value="normal">Normal</option>
+				<option value="lighten">Lighten</option>
+				<option value="darken">Darken</option>
+				<option value="multiply">Multiply</option>
+				<option value="average">Average</option>
+				<option value="add">Add</option>
+				<option value="subtract">Subtract</option>
+				<option value="difference">Difference</option>
+				<option value="negation">Negation</option>
+				<option value="exclusion">Exclusion</option>
+				<option value="screen">Screen</option>
+				<option value="overlay">Overlay</option>
+				<option value="softlight">Soft Light</option>
+				<option value="hardlight">Hard Light</option>
+				<option value="colordodge">Color Dodge</option>
+				<option value="colorburn">Color Burn</option>
+				<option value="lineardodge">Linear Dodge</option>
+				<option value="linearburn">Linear Burn</option>
+				<option value="linearlight">Linear Light</option>
+				<option value="vividlight">Vivid Light</option>
+				<option value="pinlight">Pin Light</option>
+				<option value="hardmix">Hard Mix</option>
+				<option value="reflect">Reflect</option>
+				<option value="glow">Glow</option>
+				<option value="phoenix">Phoenix</option>
+			</select>
+		</div>
+		<div><label for="amount">Opacity</label><input type="range" id="opacity" min="0" max="1" step="0.001" value="1"/></div>
+	</div>
+	<canvas id="canvas" width="640" height="619"></canvas>
+	<script src="../../lib/require.js"></script>
+	<script>
+		require.config({
+			baseUrl: '../../'
+		});
+
+		require([
+			'seriously',
+			'effects/seriously.blend'
+		], function (Seriously) {
+			// declare our variables
+			var seriously, // the main object that holds the entire composition
+				blend,
+				reformat,
+				reformatRobot,
+				target; // a wrapper object for our target canvas
+
+			seriously = new Seriously();
+			target = seriously.target('#canvas');
+			blend = seriously.effect('blend');
+			reformat = seriously.transform('reformat');
+			reformatRobot = seriously.transform('reformat');
+
+			reformatRobot.source = '#robot';
+			reformatRobot.mode = 'cover';
+			reformatRobot.width = 640;
+			reformatRobot.height = 619;
+
+			reformat.source = '#bars';
+			reformat.mode = 'distort';
+			reformat.width = 640;
+			reformat.height = 619;
+
+			blend.bottom = reformatRobot;
+			blend.top = reformat;
+			blend.opacity = '#opacity';
+			blend.mode = '#mode';
+
+			target.source = blend;
+			seriously.go();
+		});
+	</script>
+</body>
+</html>

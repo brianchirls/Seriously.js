@@ -2,12 +2,12 @@
 (function (root, factory) {
 	'use strict';
 
-	if (typeof exports === 'object') {
-		// Node/CommonJS
-		factory(require('seriously'));
-	} else if (typeof define === 'function' && define.amd) {
+	if (typeof define === 'function' && define.amd) {
 		// AMD. Register as an anonymous module.
 		define(['seriously'], factory);
+	} else if (typeof exports === 'object') {
+		// Node/CommonJS
+		factory(require('seriously'));
 	} else {
 		if (!root.Seriously) {
 			root.Seriously = { plugin: function (name, opt) { this[name] = opt; } };
@@ -112,33 +112,35 @@
 			},
 			commonShader: true,
 			shader: function (inputs, shaderSource) {
-				shaderSource.fragment = '#ifdef GL_ES\n\n' +
-					'precision mediump float;\n\n' +
-					'#endif\n\n' +
-					'\n' +
-					'varying vec2 vTexCoord;\n' +
-					'varying vec4 vPosition;\n' +
-					'\n' +
-					'uniform sampler2D source;\n' +
-					'uniform sampler2D letters;\n' +
-					'uniform vec4 background;\n' +
-					'uniform vec2 resolution;\n' +
-					'\n' +
-					'const vec3 lumcoeff = vec3(0.2125,0.7154,0.0721);\n' +
-					'const vec2 fontSize = vec2(8.0, 8.0);\n' +
-					'\n' +
-					'vec4 lookup(float ascii) {\n' +
-					'	vec2 pos = mod(vTexCoord * resolution, fontSize) / vec2(752.0, fontSize.x) + vec2(ascii, 0.0);\n' +
-					'	return texture2D(letters, pos);\n' +
-					'}\n' +
-					'\n' +
-					'void main(void) {\n' +
-					'	vec4 sample = texture2D(source, vTexCoord);\n' +
-					'	float luma = dot(sample.rgb,lumcoeff);\n' +
-					'	vec4 clamped = vec4(floor(sample.rgb * 8.0) / 8.0, sample.a);\n' +
-					'	float char = floor(luma * 94.0) / 94.0;\n' +
-					'	gl_FragColor = mix(background, clamped, lookup(char).r);\n' +
-					'}\n';
+				shaderSource.fragment = [
+					'precision mediump float;',
+
+					'varying vec2 vTexCoord;',
+					'varying vec4 vPosition;',
+
+					'uniform sampler2D source;',
+					'uniform sampler2D letters;',
+					'uniform vec4 background;',
+					'uniform vec2 resolution;',
+
+					'const vec3 lumcoeff = vec3(0.2125, 0.7154, 0.0721);',
+					'const vec2 fontSize = vec2(8.0, 8.0);',
+
+					'vec4 lookup(float ascii) {',
+					'	vec2 pos = mod(vTexCoord * resolution, fontSize) / vec2(752.0, fontSize.x) + vec2(ascii, 0.0);',
+					'	return texture2D(letters, pos);',
+					'}',
+
+					'void main(void) {',
+					'	vec4 sample = texture2D(source, vTexCoord);',
+					'	vec4 clamped = vec4(floor(sample.rgb * 8.0) / 8.0, sample.a);',
+
+					'	float luma = dot(sample.rgb,lumcoeff);',
+					'	float char = floor(luma * 94.0) / 94.0;',
+
+					'	gl_FragColor = mix(background, clamped, lookup(char).r);',
+					'}'
+				].join('\n');
 
 				return shaderSource;
 			},
