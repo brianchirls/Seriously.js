@@ -67,6 +67,16 @@
 		hardmix: vectorBlendFormula('BlendHardMixf(base, blend)'),
 		reflect: vectorBlendFormula('BlendReflectf(base, blend)'),
 		glow: vectorBlendFormula('BlendReflectf(blend, base)')
+	},
+
+	/*
+	All blend modes other than "normal" effectively act as adjustment layers,
+	so the alpha channel of the resulting image is just a copy of the "bottom"
+	or "destination" layer. The "top" or "source" alpha is only used to dampen
+	the color effect.
+	*/
+	mixAlpha = {
+		normal: true
 	};
 
 	Seriously.plugin('accumulator', function () {
@@ -121,6 +131,7 @@
 					*/
 
 					'#define BlendFunction(base, blend) ' + blendModes[mode],
+					(mixAlpha[mode] ? '#define MIX_ALPHA' : ''),
 
 					'varying vec2 vTexCoord;',
 
@@ -129,24 +140,28 @@
 
 					'uniform float opacity;',
 
-					'vec3 BlendOpacity(vec4 base, vec4 blend, float opacity, float alpha) {',
-					'	vec3 baseRGB = base.rgb * blend.a * opacity;',
-					'	vec3 blendRGB = blend.rgb * blend.a * opacity;',
-					'	return (BlendFunction(baseRGB, blendRGB) + base.rgb * base.a * (1.0 - blend.a * opacity)) / alpha;',
+					'vec3 BlendOpacity(vec4 base, vec4 blend, float opacity) {',
+					//apply blend, then mix by (opacity * blend.a)
+					'	vec3 blendedColor = BlendFunction(base.rgb, blend.rgb);',
+					'	return mix(base.rgb, blendedColor, opacity * blend.a);',
 					'}',
 
 					'void main(void) {',
-					'	vec3 color;',
 					'	vec4 topPixel = texture2D(source, vTexCoord);',
 					'	vec4 bottomPixel = texture2D(previous, vTexCoord);',
 
-					'	float alpha = topPixel.a + bottomPixel.a * (1.0 - topPixel.a);',
-					'	if (alpha == 0.0) {',
-					'		color = vec3(0.0);',
+					'	if (topPixel.a == 0.0) {',
+					'		gl_FragColor = bottomPixel;',
 					'	} else {',
-					'		color = BlendOpacity(bottomPixel, topPixel, opacity, alpha);',
+					'		float alpha;',
+					'#ifdef MIX_ALPHA',
+					'		alpha = topPixel.a * opacity;',
+					'		alpha = alpha + bottomPixel.a * (1.0 - alpha);',
+					'#else',
+					'		alpha = bottomPixel.a;',
+					'#endif',
+					'		gl_FragColor = vec4(BlendOpacity(bottomPixel, topPixel, opacity), alpha);',
 					'	}',
-					'	gl_FragColor = vec4(color, alpha);',
 					'}'
 				].join('\n');
 
