@@ -754,11 +754,6 @@
 		Seriously.removeSource('obj');
 	});
 
-	module('Target');
-	/*
-	 * create target
-	*/
-
 	module('Inputs');
 	/*
 	 * all different types
@@ -1425,7 +1420,7 @@
 	});
 
 	module('Target');
-	test('Canvas Target', function () {
+	test('Canvas Target', 6, function () {
 		var seriously,
 			canvas,
 			target;
@@ -1802,6 +1797,7 @@
 			}
 
 			Seriously.logger.log = nop;
+			Seriously.logger.warn = nop;
 
 			tests--;
 			if (!tests) {
