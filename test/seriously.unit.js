@@ -1440,6 +1440,8 @@
 		ok(canvas.width === 29 && canvas.height === 19, 'target.width modifies canvas width, but not height');
 		target.height = 31;
 		ok(canvas.width === 29 && canvas.height === 31, 'target.height modifies canvas height, but not width');
+
+		seriously.destroy();
 	});
 
 	module('Destroy');
