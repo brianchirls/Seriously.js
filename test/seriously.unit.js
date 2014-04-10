@@ -1,5 +1,5 @@
 /*jslint devel: true, bitwise: true, browser: true, white: true, nomen: true, plusplus: true, maxerr: 50, indent: 4 */
-/* global module, test, asyncTest, expect, ok, equal, start, Seriously, require */
+/* global module, test, asyncTest, expect, ok, equal, start, Seriously, require, WebGLDebugUtils */
 (function () {
 	'use strict';
 
@@ -1443,6 +1443,165 @@
 
 		seriously.destroy();
 	});
+
+	asyncTest('WebGL Context Lost', function () {
+		var seriously,
+			canvas,
+			source,
+			effect,
+			target,
+
+			gl,
+			ext,
+
+			lost = false,
+			lostFired = false,
+			restored = false,
+			restoredFired = false,
+			renderCount = 0;
+
+		function loseContext() {
+			lost = true;
+			ext.loseContext();
+		}
+
+		function restoreContext() {
+			lost = false;
+			restored = true;
+			ext.restoreContext();
+		}
+
+		function resume() {
+			Seriously.logger.warn = nop;
+			Seriously.logger.log = nop;
+			seriously.destroy();
+			Seriously.removePlugin('test');
+			start();
+		}
+
+		expect(0);
+
+		canvas = document.createElement('canvas');
+		try {
+			gl = canvas.getContext('webgl');
+		} catch (e1) {
+		}
+
+		if (!gl) {
+			try {
+				gl = canvas.getContext('experimental-webgl');
+			} catch (e2) {
+			}
+		}
+
+		if (!gl) {
+			start();
+			return;
+		}
+
+		ext = gl.getExtension('WEBGL_lose_context') ||
+			gl.getExtension('MOZ_WEBGL_lose_context') ||
+			gl.getExtension('WEBKIT_WEBGL_lose_context');
+
+		if (!ext) {
+			/*
+			We can't run this test in internet explorer for now,
+			since IE11 doesn't support the `vertexAttrib1f` method,
+			which is requried by WebGLDebugUtils
+			*/
+			if (!gl.vertexAttrib1f) {
+				start();
+				return;
+			}
+			canvas = WebGLDebugUtils.makeLostContextSimulatingCanvas(canvas);
+			ext = canvas;
+		}
+
+		//every test should run once,
+		//except the render loop should run twice
+		expect(11);
+
+		Seriously.logger.log = function (s) {
+			console.log(s);
+			equal(s, 'WebGL context restored', 'context lost warning');
+		};
+
+		Seriously.logger.warn = function (s) {
+			console.log(s);
+			equal(s, 'WebGL context lost', 'context lost warning');
+		};
+
+		Seriously.plugin('test', {
+			title: 'Test Effect',
+			lostContext: function () {
+				ok(true, 'context lost callback fired');
+			},
+			inputs: {
+				source: {
+					type: 'image'
+				}
+			}
+		});
+
+		seriously = new Seriously();
+
+		source = seriously.source('#colorbars');
+
+		effect = seriously.effect('test');
+		effect.source = source;
+
+		target = seriously.target(canvas);
+		target.source = effect;
+
+		source.on('webglcontextlost', function () {
+			lostFired = true;
+			ok(lost, 'webglcontextlost event fired on source node');
+		});
+		effect.on('webglcontextlost', function () {
+			lostFired = true;
+			ok(lost, 'webglcontextlost event fired on effect node');
+		});
+		target.on('webglcontextlost', function () {
+			lostFired = true;
+			ok(lost, 'webglcontextlost event fired on target node');
+			setTimeout(restoreContext, 50);
+		});
+
+		source.on('webglcontextrestored', function () {
+			restoredFired = true;
+			ok(!lost && restored, 'webglcontextrestored event fired on source node');
+		});
+		effect.on('webglcontextrestored', function () {
+			restoredFired = true;
+			ok(!lost && restored, 'webglcontextrestored event fired on effect node');
+		});
+		target.on('webglcontextrestored', function () {
+			restoredFired = true;
+			ok(!lost && restored, 'webglcontextrestored event fired on target node');
+		});
+
+		seriously.go(function () {
+			renderCount++;
+			console.log('rendering', renderCount);
+
+			//sometimes it takes a while for webglcontextlost event to fire in Firefox
+			//don't need to run this so many times
+			if (renderCount <= 1 || lostFired) {
+				ok(!lostFired || restored, 'render loop only runs when context is not lost');
+			}
+		}, function () {
+			if (renderCount === 1) {
+				loseContext();
+			} else if (restored) {
+				resume();
+			}
+		});
+	});
+
+	/*
+	todo: May not be a bad idea to have another test here that removes
+	primary WebGL target node and creates a new one
+	*/
 
 	module('Destroy');
 	test('Destroy things', 15, function() {

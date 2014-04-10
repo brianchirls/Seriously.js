@@ -952,6 +952,7 @@
 			postCallbacks = [],
 			glCanvas,
 			gl,
+			primaryTarget,
 			rectangleModel,
 			commonShaders = {},
 			baseShader,
@@ -1022,6 +1023,8 @@
 
 			gl = context;
 			glCanvas = context.canvas;
+			glCanvas.addEventListener('webglcontextlost', destroyContext, false);
+			glCanvas.addEventListener('webglcontextrestored', restoreContext, false);
 
 			rectangleModel = buildRectangleModel(gl);
 
@@ -1050,6 +1053,193 @@
 			}
 		}
 
+		function restoreContext() {
+			var context,
+				target,
+				i,
+				node;
+
+			if (primaryTarget) {
+				target = primaryTarget.target;
+
+				//todo: if too many webglcontextlost events fired in too short a time, abort
+				//todo: consider allowing "manual" control of restoring context
+
+				if (target instanceof WebGLFramebuffer) {
+					Seriously.logger.warn('Unable to restore target built on WebGLFramebuffer');
+					return;
+				}
+
+				try {
+					if (window.WebGLDebugUtils && primaryTarget.debugContext) {
+						context = window.WebGLDebugUtils.makeDebugContext(target.getContext('webgl', {
+							alpha: true,
+							premultipliedAlpha: false,
+							preserveDrawingBuffer: true,
+							stencil: true
+						}));
+					} else {
+						context = target.getContext('webgl', {
+							alpha: true,
+							premultipliedAlpha: false,
+							preserveDrawingBuffer: true,
+							stencil: true
+						});
+					}
+				} catch (expError) {
+				}
+
+				if (!context) {
+					try {
+						context = target.getContext('experimental-webgl', {
+							alpha: true,
+							premultipliedAlpha: false,
+							preserveDrawingBuffer: true,
+							stencil: true
+						});
+					} catch (error) {
+					}
+				}
+
+				if (context) {
+					if (!gl) {
+						attachContext(context);
+					}
+					if (primaryTarget.renderToTexture) {
+						primaryTarget.frameBuffer = new FrameBuffer(gl, primaryTarget.width, primaryTarget.height, false);
+					} else {
+						primaryTarget.frameBuffer = {
+							frameBuffer: null
+						};
+					}
+
+					/*
+					Set all nodes dirty. In most cases, it should only be necessary
+					to set sources dirty, but we want to make sure unattached nodes are covered
+
+					This should get renderDaemon running again if necessary.
+					*/
+					for (i = 0; i < nodes.length; i++) {
+						node = nodes[i];
+						node.setDirty();
+						node.emit('webglcontextrestored');
+					}
+
+					Seriously.logger.log('WebGL context restored');
+				}
+			}
+		}
+
+		function destroyContext(event) {
+			// either webglcontextlost or primary target node has been destroyed
+			var i, node;
+
+			/*
+			todo: once multiple shared webgl resources are supported,
+			see if we can switch context to another existing one and
+			rebuild immediately
+			*/
+
+			if (event) {
+				Seriously.logger.warn('WebGL context lost');
+				/*
+				todo: if too many webglcontextlost events fired in too short a time,
+				don't preventDefault
+				*/
+				event.preventDefault();
+			}
+
+			//don't draw anymore until context is restored
+			if (rafId) {
+				cancelAnimFrame(rafId);
+				rafId = 0;
+			}
+
+			if (glCanvas) {
+				glCanvas.removeEventListener('webglcontextlost', destroyContext, false);
+			}
+
+			for (i = 0; i < effects.length; i++) {
+				node = effects[i];
+				node.gl = null;
+				node.initialized = false;
+				node.baseShader = null;
+				node.model = null;
+				node.frameBuffer = null;
+				node.texture = null;
+				if (node.shader) {
+					node.shader.destroy();
+				}
+				node.shaderDirty = true;
+				node.shader = null;
+				if (node.effect.lostContext) {
+					node.effect.lostContext.call(node);
+				}
+
+				/*
+				todo: do we need to set nodes to uready?
+				if so, make sure nodes never get set to ready unless gl exists
+				and make sure to set ready again when context is restored
+				*/
+
+				if (event) {
+					node.emit('webglcontextlost');
+				}
+			}
+
+			for (i = 0; i < sources.length; i++) {
+				node = sources[i];
+				//node.setUnready();
+				node.texture = null;
+				node.initialized = false;
+				node.allowRefresh = false;
+				if (event) {
+					node.emit('webglcontextlost');
+				}
+			}
+
+			for (i = 0; i < transforms.length; i++) {
+				node = transforms[i];
+				node.frameBuffer = null;
+				node.texture = null;
+				if (event) {
+					node.emit('webglcontextlost');
+				}
+			}
+
+			for (i = 0; i < targets.length; i++) {
+				node = targets[i];
+				node.model = false;
+				node.frameBuffer = null;
+				//texture?
+				if (event) {
+					node.emit('webglcontextlost');
+				}
+			}
+
+			if (baseShader && baseShader.destroy) {
+				baseShader.destroy();
+			}
+
+			//clean up rectangleModel
+			if (gl) {
+				gl.deleteBuffer(rectangleModel.vertex);
+				gl.deleteBuffer(rectangleModel.texCoord);
+				gl.deleteBuffer(rectangleModel.index);
+			}
+
+			if (rectangleModel) {
+				delete rectangleModel.vertex;
+				delete rectangleModel.texCoord;
+				delete rectangleModel.index;
+			}
+
+			rectangleModel = null;
+			baseShader = null;
+			gl = null;
+			glCanvas = null;
+		}
+
 		/*
 		runs on every frame, as long as there are media sources (img, video, canvas, etc.) to check,
 		dirty target nodes or pre/post callbacks to run. any sources that are updated are set to dirty,
@@ -1059,7 +1249,7 @@
 			var i, node, media,
 				keepRunning = false;
 
-			rafId = null;
+			rafId = 0;
 
 			if (preCallbacks.length) {
 				keepRunning = true;
@@ -2084,6 +2274,10 @@
 
 			function drawFn(shader, model, uniforms, frameBuffer, node, options) {
 				draw(shader, model, uniforms, frameBuffer, node || that, options);
+			}
+
+			if (!gl) {
+				return;
 			}
 
 			if (!this.initialized) {
@@ -3375,6 +3569,7 @@
 				height = parseInt(opts.height, 10),
 				matchedType = false,
 				i, element, elements, context,
+				debugContext = opts.debugContext,
 				frameBuffer;
 
 			Node.call(this, opts);
@@ -3420,13 +3615,16 @@
 
 				//todo: try to get a webgl context. if not, get a 2d context, and set up a different render function
 				try {
-					if (window.WebGLDebugUtils) {
+					if (window.WebGLDebugUtils && debugContext) {
 						context = window.WebGLDebugUtils.makeDebugContext(target.getContext('webgl', {
 							alpha: true,
 							premultipliedAlpha: false,
 							preserveDrawingBuffer: true,
 							stencil: true
 						}));
+						if (context) {
+							this.debugContext = true;
+						}
 					} else {
 						context = target.getContext('webgl', {
 							alpha: true,
@@ -3457,6 +3655,9 @@
 					this.use2D = true;
 				} else if (!gl || gl === context) {
 					//this is our main WebGL canvas
+					if (!primaryTarget) {
+						primaryTarget = this;
+					}
 					if (!gl) {
 						attachContext(context);
 					}
@@ -3599,7 +3800,7 @@
 
 			this.resize();
 
-			if (this.dirty) {
+			if (this.dirty && gl) {
 				if (!this.source) {
 					return;
 				}
@@ -3687,9 +3888,14 @@
 				targets.splice(i, 1);
 			}
 
-			//todo: if this.gl === gl, clear out context so we can start over
-
 			Node.prototype.destroy.call(this);
+
+			//clear out context so we can start over
+			if (this === primaryTarget) {
+				glCanvas.removeEventListener('webglcontextrestored', restoreContext, false);
+				destroyContext();
+				primaryTarget = null;
+			}
 		};
 
 		Transform = function (transformNode) {
@@ -4275,6 +4481,12 @@
 			}
 			delete this.effect;
 
+			if (this.frameBuffer) {
+				this.frameBuffer.destroy();
+				delete this.frameBuffer;
+				delete this.texture;
+			}
+
 			//stop watching any input elements
 			for (i in this.inputElements) {
 				if (this.inputElements.hasOwnProperty(i)) {
@@ -4440,7 +4652,7 @@
 			preCallbacks.length = 0;
 			postCallbacks.length = 0;
 			cancelAnimFrame(rafId);
-			rafId = null;
+			rafId = 0;
 		};
 
 		this.render = function () {
@@ -4460,24 +4672,6 @@
 				node.destroy();
 			}
 
-			if (baseShader) {
-				baseShader.destroy();
-				baseShader = null;
-			}
-
-			//clean up rectangleModel
-			if (gl) {
-				gl.deleteBuffer(rectangleModel.vertex);
-				gl.deleteBuffer(rectangleModel.texCoord);
-				gl.deleteBuffer(rectangleModel.index);
-			}
-
-			if (rectangleModel) {
-				delete rectangleModel.vertex;
-				delete rectangleModel.texCoord;
-				delete rectangleModel.index;
-			}
-
 			for (i in this) {
 				if (this.hasOwnProperty(i) && i !== 'isDestroyed') {
 					descriptor = Object.getOwnPropertyDescriptor(this, i);
@@ -4492,18 +4686,18 @@
 
 			baseFragmentShader = null;
 			baseVertexShader = null;
-			rectangleModel = null;
-			gl = null;
 			seriously = null;
+
+			//todo: do we really need to allocate new arrays here?
 			sources = [];
 			targets = [];
 			effects = [];
 			nodes = [];
+
 			preCallbacks.length = 0;
 			postCallbacks.length = 0;
 			cancelAnimFrame(rafId);
-			rafId = null;
-
+			rafId = 0;
 
 			isDestroyed = true;
 		};
