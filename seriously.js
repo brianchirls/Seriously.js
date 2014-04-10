@@ -520,7 +520,7 @@
 			input,
 			name;
 
-		function nop(value) {
+		function passThrough(value) {
 			return value;
 		}
 
@@ -587,7 +587,7 @@
 				input.shaderDirty = !!input.shaderDirty;
 
 				if (typeof input.validate !== 'function') {
-					input.validate = Seriously.inputValidators[input.type] || nop;
+					input.validate = Seriously.inputValidators[input.type] || passThrough;
 				}
 
 				if (!effect.defaultImageInput && input.type === 'image') {
@@ -744,7 +744,7 @@
 			obj;
 
 		function compileShader(source, fragment) {
-			var shader, i;
+			var shader, j;
 			if (fragment) {
 				shader = gl.createShader(gl.FRAGMENT_SHADER);
 			} else {
@@ -756,8 +756,8 @@
 
 			if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
 				source = source.split(/[\n\r]/);
-				for (i = 0; i < source.length; i++) {
-					source[i] = (i + 1) + ':\t' + source[i];
+				for (j = 0; j < source.length; j++) {
+					source[j] = (j + 1) + ':\t' + source[j];
 				}
 				source.unshift('Error compiling ' + (fragment ? 'fragment' : 'vertex') + ' shader:');
 				Seriously.logger.error(source.join('\n'));
@@ -902,7 +902,7 @@
 		this.program = program;
 
 		this.destroy = function () {
-			var i;
+			var key;
 
 			if (gl) {
 				gl.deleteProgram(program);
@@ -910,9 +910,9 @@
 				gl.deleteShader(fragmentShader);
 			}
 
-			for (i in this) {
-				if (this.hasOwnProperty(i)) {
-					delete this[i];
+			for (key in this) {
+				if (this.hasOwnProperty(key)) {
+					delete this[key];
 				}
 			}
 
@@ -1447,7 +1447,7 @@
 		function traceSources(node, original) {
 			var i,
 				source,
-				sources;
+				nodeSources;
 
 			if (!(node instanceof EffectNode) && !(node instanceof TransformNode)) {
 				return false;
@@ -1457,11 +1457,11 @@
 				return true;
 			}
 
-			sources = node.sources;
+			nodeSources = node.sources;
 
-			for (i in sources) {
-				if (sources.hasOwnProperty(i)) {
-					source = sources[i];
+			for (i in nodeSources) {
+				if (nodeSources.hasOwnProperty(i)) {
+					source = nodeSources[i];
 
 					if (source === original || traceSources(source, original)) {
 						return true;
@@ -2863,7 +2863,7 @@
 				}
 			}
 
-			for (i in this) {
+			for (key in this) {
 				if (this.hasOwnProperty(key) && key !== 'id') {
 					delete this[key];
 				}
@@ -2991,16 +2991,16 @@
 				plugin;
 
 			function sourcePlugin(hook, source, options, force) {
-				var plugin = seriousSources[hook];
-				if (plugin.definition) {
-					plugin = plugin.definition.call(that, source, options, force);
-					if (plugin) {
-						plugin = extend(extend({}, seriousSources[hook]), plugin);
+				var p = seriousSources[hook];
+				if (p.definition) {
+					p = p.definition.call(that, source, options, force);
+					if (p) {
+						p = extend(extend({}, seriousSources[hook]), p);
 					} else {
 						return null;
 					}
 				}
-				return plugin;
+				return p;
 			}
 
 			function compareSource(source) {
@@ -3904,7 +3904,7 @@
 				key;
 
 			function setInput(inputName, def, input) {
-				var key, lookup, value;
+				var inputKey, lookup, value;
 
 				lookup = me.inputElements[inputName];
 
@@ -3912,12 +3912,12 @@
 				if (typeof input === 'string' && isNaN(input)) {
 					if (def.type === 'enum') {
 						if (def.options && def.options.filter) {
-							key = String(input).toLowerCase();
+							inputKey = String(input).toLowerCase();
 
 							//todo: possible memory leak on this function?
 							value = def.options.filter(function (e) {
-								return (typeof e === 'string' && e.toLowerCase() === key) ||
-									(e.length && typeof e[0] === 'string' && e[0].toLowerCase() === key);
+								return (typeof e === 'string' && e.toLowerCase() === inputKey) ||
+									(e.length && typeof e[0] === 'string' && e[0].toLowerCase() === inputKey);
 							});
 
 							value = value.length;
@@ -3947,7 +3947,7 @@
 					if (!lookup) {
 						lookup = {
 							element: input,
-							listener: (function (name, element) {
+							listener: (function (element) {
 								return function () {
 									var oldValue, newValue;
 
@@ -3978,7 +3978,7 @@
 										element.value = newValue;
 									}
 								};
-							}(inputName, input))
+							}(input))
 						};
 
 						me.inputElements[inputName] = lookup;
@@ -4601,11 +4601,16 @@
 		};
 
 		this.target = function (target, options) {
-			var targetNode, i;
+			var targetNode,
+				renderToTexture,
+				targetRenderToTexture,
+				i;
 
+			renderToTexture = !!(options && options.renderToTexture);
 			for (i = 0; i < targets.length; i++) {
 				if (targets[i] === target || targets[i].target === target) {
-					if (!!(options && options.renderToTexture) === !!targets[i].renderToTexture) {
+					targetRenderToTexture = !!targets[i].renderToTexture;
+					if (renderToTexture === targetRenderToTexture) {
 						return targets[i].pub;
 					}
 				}
