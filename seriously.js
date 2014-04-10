@@ -432,7 +432,7 @@
 		}
 
 		if (testContext) {
-			canvas.addEventListener('webglcontextlost', function (event) {
+			canvas.addEventListener('webglcontextlost', function contextLost(event) {
 				/*
 				If/When context is lost, just clear testContext and create
 				a new one the next time it's needed
@@ -440,6 +440,7 @@
 				event.preventDefault();
 				if (testContext && testContext.canvas === this) {
 					testContext = undefined;
+					canvas.removeEventListener('webglcontextlost', contextLost, false);
 				}
 			}, false);
 		} else {
