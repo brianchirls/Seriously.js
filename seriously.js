@@ -411,6 +411,26 @@
 		}
 	}, true);
 
+	function getWebGlContext(canvas, options) {
+		var context;
+		try {
+			if (window.WebGLDebugUtils && options && options.debugContext) {
+				context = window.WebGLDebugUtils.makeDebugContext(canvas.getContext('webgl', options));
+			} else {
+				context = canvas.getContext('webgl', options);
+			}
+		} catch (expError) {
+		}
+
+		if (!context) {
+			try {
+				context = canvas.getContext('experimental-webgl', options);
+			} catch (error) {
+			}
+		}
+		return context;
+	}
+
 	function getTestContext() {
 		var canvas;
 
@@ -419,17 +439,7 @@
 		}
 
 		canvas = document.createElement('canvas');
-		try {
-			testContext = canvas.getContext('webgl');
-		} catch (webglError) {
-		}
-
-		if (!testContext) {
-			try {
-				testContext = canvas.getContext('experimental-webgl');
-			} catch (expWebglError) {
-			}
-		}
+		testContext = getWebGlContext(canvas);
 
 		if (testContext) {
 			canvas.addEventListener('webglcontextlost', function contextLost(event) {
@@ -1021,10 +1031,20 @@
 		function attachContext(context) {
 			var i, node;
 
+			if (gl) {
+				return;
+			}
+
+			context.canvas.addEventListener('webglcontextlost', destroyContext, false);
+			context.canvas.addEventListener('webglcontextrestored', restoreContext, false);
+
+			if (context.isContextLost()) {
+				Seriously.logger.warn('Unable to attach lost WebGL context. Will try again when context is restored.');
+				return;
+			}
+
 			gl = context;
 			glCanvas = context.canvas;
-			glCanvas.addEventListener('webglcontextlost', destroyContext, false);
-			glCanvas.addEventListener('webglcontextrestored', restoreContext, false);
 
 			rectangleModel = buildRectangleModel(gl);
 
@@ -1059,52 +1079,33 @@
 				i,
 				node;
 
-			if (primaryTarget) {
+			if (primaryTarget && !gl) {
 				target = primaryTarget.target;
 
 				//todo: if too many webglcontextlost events fired in too short a time, abort
 				//todo: consider allowing "manual" control of restoring context
 
 				if (target instanceof WebGLFramebuffer) {
-					Seriously.logger.warn('Unable to restore target built on WebGLFramebuffer');
+					Seriously.logger.error('Unable to restore target built on WebGLFramebuffer');
 					return;
 				}
 
-				try {
-					if (window.WebGLDebugUtils && primaryTarget.debugContext) {
-						context = window.WebGLDebugUtils.makeDebugContext(target.getContext('webgl', {
-							alpha: true,
-							premultipliedAlpha: false,
-							preserveDrawingBuffer: true,
-							stencil: true
-						}));
-					} else {
-						context = target.getContext('webgl', {
-							alpha: true,
-							premultipliedAlpha: false,
-							preserveDrawingBuffer: true,
-							stencil: true
-						});
-					}
-				} catch (expError) {
-				}
-
-				if (!context) {
-					try {
-						context = target.getContext('experimental-webgl', {
-							alpha: true,
-							premultipliedAlpha: false,
-							preserveDrawingBuffer: true,
-							stencil: true
-						});
-					} catch (error) {
-					}
-				}
+				context = getWebGlContext(target, {
+					alpha: true,
+					premultipliedAlpha: false,
+					preserveDrawingBuffer: true,
+					stencil: true,
+					debugContext: primaryTarget.debugContext
+				});
 
 				if (context) {
-					if (!gl) {
-						attachContext(context);
+					if (context.isContextLost()) {
+						Seriously.logger.error('Unable to restore WebGL Context');
+						return;
 					}
+
+					attachContext(context);
+
 					if (primaryTarget.renderToTexture) {
 						primaryTarget.frameBuffer = new FrameBuffer(gl, primaryTarget.width, primaryTarget.height, false);
 					} else {
@@ -3613,40 +3614,17 @@
 				width = target.width;
 				height = target.height;
 
-				//todo: try to get a webgl context. if not, get a 2d context, and set up a different render function
-				try {
-					if (window.WebGLDebugUtils && debugContext) {
-						context = window.WebGLDebugUtils.makeDebugContext(target.getContext('webgl', {
-							alpha: true,
-							premultipliedAlpha: false,
-							preserveDrawingBuffer: true,
-							stencil: true
-						}));
-						if (context) {
-							this.debugContext = true;
-						}
-					} else {
-						context = target.getContext('webgl', {
-							alpha: true,
-							premultipliedAlpha: false,
-							preserveDrawingBuffer: true,
-							stencil: true
-						});
-					}
-				} catch (expError) {
-				}
-
-				if (!context) {
-					try {
-						context = target.getContext('experimental-webgl', {
-							alpha: true,
-							premultipliedAlpha: false,
-							preserveDrawingBuffer: true,
-							stencil: true
-						});
-					} catch (error) {
-					}
-				}
+				/*
+				try to get a webgl context. if not, get a 2d context,
+				and set up a different render function
+				*/
+				context = getWebGlContext(target, {
+					alpha: true,
+					premultipliedAlpha: false,
+					preserveDrawingBuffer: true,
+					stencil: true,
+					debugContext: debugContext
+				});
 
 				if (!context) {
 					context = target.getContext('2d');
@@ -3663,7 +3641,9 @@
 					}
 					this.render = this.renderWebGL;
 					if (opts.renderToTexture) {
-						this.frameBuffer = new FrameBuffer(gl, width, height, false);
+						if (gl) {
+							this.frameBuffer = new FrameBuffer(gl, width, height, false);
+						}
 					} else {
 						this.frameBuffer = {
 							frameBuffer: frameBuffer || null
