@@ -15,14 +15,27 @@
 		#controls input {
 			width: 400px;
 		}
+
+		#canvas {
+			float: left;
+			margin-right: 8px;
+			width: 640px;
+			height: 619px;
+		}
+
+		body .rs-base {
+			position: static;
+		}
 	</style>
 </head>
 <body>
 	<img src="../../examples/images/robot.jpg" id="robot"/>
-	<canvas id="canvas" width="640" height="619"></canvas>
+	<canvas id="canvas" width="640" height="662"></canvas>
 	<div id="controls">
 		<div><label for="amount">Blur</label><input type="range" id="amount" min="0" max="1" step="0.001" value="0.5"/></div>
+		<button id="button">Oscillate: Start</button>
 	</div>
+	<script src="../../lib/rStats.js"></script>
 	<script src="../../lib/require.js"></script>
 	<script>
 		require.config({
@@ -35,18 +48,114 @@
 		], function (Seriously) {
 			// declare our variables
 			var seriously, // the main object that holds the entire composition
-				blur,
-				target; // a wrapper object for our target canvas
+				blur, // blur effect node
+				target, // a wrapper object for our target canvas
+				reformat,
+
+				lastRender = 0,
+				oscillating = false,
+				direction = 1,
+				amount,
+				x,
+
+				control = document.getElementById('amount'),
+				canvas = document.getElementById('canvas'),
+				rS, // stats object
+
+				devicePixelRatio = window.devicePixelRatio || 1;
+
+			// take advantage of retina/HighDPI display
+			canvas.width = 640 * devicePixelRatio;
+			canvas.height = 662 * devicePixelRatio;
+
+			// set up stats
+			rS = new rStats({
+				CSSPath: '../',
+				values: {
+					frame: { caption: 'Total frame time (ms)', over: 16 },
+					fps: { caption: 'Framerate (FPS)', below: 30 },
+					calls: { caption: 'Calls (three.js)', over: 3000 },
+					raf: { caption: 'Time since last rAF (ms)' },
+					rstats: { caption: 'rStats update (ms)' }
+				},
+				groups: [
+					{ caption: 'Framerate', values: [ 'fps', 'raf' ] },
+					{ caption: 'Frame Budget', values: [ 'frame', 'texture', 'setup', 'Render' ] }
+				],
+				fractions: [
+					{ base: 'frame', steps: [ 'Compute Animation', 'Render' ] }
+				]
+			});
 
 			seriously = new Seriously();
-			target = seriously.target('#canvas');
-			blur = seriously.effect('blur');
-			blur.source = seriously.source('#robot');
 
+			reformat = seriously.transform('reformat');
+			reformat.source = '#robot';
+			reformat.width = canvas.width;
+			reformat.height = canvas.height;
+
+			blur = seriously.effect('blur');
+			blur.source = reformat;
 			blur.amount = '#amount';
 
+			target = seriously.target('#canvas');
 			target.source = blur;
-			seriously.go();
+
+			seriously.go(function () {
+				// callback runs before render
+				var now;
+
+				rS('frame').start();
+
+				rS('frame').start();
+				rS('rAF').tick();
+				rS('FPS').frame();
+
+				rS('Compute Animation').start();
+				if (oscillating) {
+					now = Date.now();
+					if (lastRender) {
+						if (amount <= 0.01 || amount >= 0.99) {
+							direction *= -1;
+						}
+						x += direction * (now - lastRender) * Math.PI / 1000;
+						amount = (1 - Math.cos(x)) / 2;
+						control.value = amount;
+						blur.amount = amount;
+					}
+					lastRender = now;
+				}
+				rS('Compute Animation').end();
+
+				rS('Render').start();
+			}, function () {
+				// callback runs after render
+				rS('Render').end();
+				rS('frame').end();
+				rS().update();
+			});
+
+			document.getElementById('button').addEventListener('click', function () {
+				if (oscillating) {
+					oscillating = false;
+					lastRender = 0;
+
+					// set back to manual control
+					blur.amount = control;
+
+					this.innerHTML = 'Oscillate: Start';
+				} else {
+					oscillating = true;
+
+					// take over manual control
+					amount = parseFloat(control.value);
+
+					// figure out where in the oscillating cycle we are
+					x = Math.acos(1 - 2 * amount);
+
+					this.innerHTML = 'Oscillate: Stop';
+				}
+			});
 		});
 	</script>
 </body>
