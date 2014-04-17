@@ -75,12 +75,6 @@
 					'void main(void) {',
 					'	vec4 mapPixel = texture2D(map, texCoordMap);',
 					'	vec2 pos = texCoordSource + (mapPixel.xy - offset) * mapScale * amount;',
-					/*
-					'	vec2 pos = vec2(' +
-							'texCoordSource.x + (mapPixel.x - offset) * mapScale.x * amount, ' +
-							'texCoordSource.y + (mapPixel.y - offset) * mapScale.y * amount' +
-						');',
-					*/
 
 					'	if (pos.x < 0.0 || pos.x > 1.0 || pos.y < 0.0 || pos.y > 1.0) {',
 					'		' + fillMode,
