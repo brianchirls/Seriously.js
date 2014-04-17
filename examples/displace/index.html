@@ -1,0 +1,59 @@
+<!DOCTYPE HTML>
+<html lang="en-US">
+	<head>
+		<meta charset="UTF-8">
+		<title>Seriously.js Displacement Example</title>
+		<style type="text/css">
+
+		body {
+			background-color: #666;
+			margin: 0;
+		}
+
+		</style>
+	</head>
+	<body>
+		<img id="image" src="../images/xbcontroller.jpg" style="display: none"/>
+		<canvas id="canvas" width="1024" height="768"></canvas>
+	</body>
+	<script type="text/javascript" src="../../seriously.js"></script>
+	<script type="text/javascript" src="../../sources/seriously.depth.js"></script>
+	<script type="text/javascript" src="../../effects/seriously.displacement.js"></script>
+	<script type="text/javascript">
+
+	(function () {
+
+		var seriously = Seriously(),
+			displace = seriously.effect('displacement'),
+			scale = seriously.transform('2d'),
+			target = seriously.target('#canvas');
+
+		displace.map = seriously.source('depth', '#image');
+		displace.source = '#image';
+
+		displace.offset = 0;
+		displace.mapScale = [0, 0];
+
+		//scale the image so we don't see bare edges revealed by displacement
+		scale.source = displace;
+		scale.scale(1.1);
+
+		target.source = scale;
+
+		//todo: show preview of depth image in thumbnail
+
+		window.addEventListener('mousemove', function(evt) {
+			var x = evt.pageX,
+				y = evt.pageY;
+
+			displace.mapScale = [
+				0.04 * x / window.innerWidth - 0.02,
+				-(0.04 * y / window.innerHeight - 0.02)
+			];
+		}, false);
+
+		seriously.go();
+	}());
+	
+	</script>
+</html>
