@@ -288,7 +288,7 @@
 
 					'	texCoordBottom = adjusted / resBottom + HALF;',
 					'	texCoordTop = adjusted / resTop + HALF;',
-					'}\n'
+					'}'
 				].join('\n');
 
 				shaderSource.fragment = [
