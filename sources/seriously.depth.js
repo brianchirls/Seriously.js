@@ -56,6 +56,10 @@
 		function cleanUp() {
 		}
 
+		/*
+		todo: what happens if src of source image changes? can we adapt?
+		*/
+
 		function initialize() {
 			if (!destroyed) {
 				that.width = depthImage.naturalWidth;

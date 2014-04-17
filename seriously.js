@@ -2289,7 +2289,7 @@
 				this.buildShader();
 			}
 
-			if (this.dirty) {
+			if (this.dirty && this.ready) {
 				for (i in this.sources) {
 					if (this.sources.hasOwnProperty(i) &&
 						(!effect.requires || effect.requires.call(this, i, this.inputs))) {
@@ -3782,7 +3782,7 @@
 
 			this.resize();
 
-			if (this.dirty && gl) {
+			if (gl && this.dirty && this.ready) {
 				if (!this.source) {
 					return;
 				}
