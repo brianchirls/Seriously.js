@@ -2359,8 +2359,6 @@
 					} else {
 						this.uniforms.transform = identity;
 					}
-
-					this.resize();
 				} else {
 					value = input.validate.call(this, value, input, this.inputs[name]);
 					uniform = value;
@@ -2374,6 +2372,10 @@
 
 				if (input.uniform) {
 					this.uniforms[input.uniform] = uniform;
+				}
+
+				if (input.type === 'image') {
+					this.resize();
 				}
 
 				if (input.shaderDirty) {
