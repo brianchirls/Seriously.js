@@ -1444,6 +1444,80 @@
 		seriously.destroy();
 	});
 
+	test('Multiple Canvas Targets', function () {
+		var seriously,
+			source,
+			sourceCanvas,
+			ctx,
+			pixels,
+			t1,
+			t2,
+			canvas1,
+			canvas2,
+			error,
+			incompatible,
+			comparison = [ //image is upside down
+				0, 0, 255, 255,
+				255, 255, 255, 255,
+				255, 0, 0, 255,
+				0, 255, 0, 255
+			];
+
+		incompatible = Seriously.incompatible();
+
+		canvas1 = document.createElement('canvas');
+		canvas2 = document.createElement('canvas');
+
+		canvas2.width = 2;
+		canvas2.height = 2;
+
+		seriously = new Seriously();
+		t1 = seriously.target(canvas1);
+
+		try {
+			t2 = seriously.target(canvas2);
+		} catch (e) {
+			error = e;
+		}
+
+		equal(error && error.message, 'Only one WebGL target canvas allowed. Set allowSecondaryWebGL option to create secondary context.', 'Creating target node on second canvas throws an error');
+
+		t1.destroy();
+
+		canvas1 = document.createElement('canvas');
+		t1 = seriously.target(canvas1);
+		ok(t1.original === canvas1, 'Second canvas target node created after original is destroyed.');
+
+		t2 = seriously.target(canvas2, {
+			allowSecondaryWebGL: true
+		});
+		ok(t2.original === canvas2, 'Second WebGL canvas target node created with allowSecondaryWebGL option.');
+
+		sourceCanvas = document.createElement('canvas');
+		sourceCanvas.width = 2;
+		sourceCanvas.height = 2;
+
+		ctx = sourceCanvas.getContext && sourceCanvas.getContext('2d');
+		ctx.fillStyle = '#f00'; //red
+		ctx.fillRect(0, 0, 1, 1);
+		ctx.fillStyle = '#0f0'; //green
+		ctx.fillRect(1, 0, 1, 1);
+		ctx.fillStyle = '#00f'; //blue
+		ctx.fillRect(0, 1, 1, 1);
+		ctx.fillStyle = '#fff'; //white
+		ctx.fillRect(1, 1, 1, 1);
+
+		source = seriously.source(sourceCanvas);
+		t2.source = source;
+		error = null;
+		try {
+			pixels = t2.readPixels(0, 0, 2, 2);
+		} catch (e) {
+			error = e;
+		}
+		ok(incompatible && error || !error && pixels && compare(pixels, comparison), 'Secondary WebGL target rendered accurately.');
+	});
+
 	asyncTest('WebGL Context Lost', function () {
 		var seriously,
 			canvas,

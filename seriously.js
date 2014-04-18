@@ -1493,8 +1493,6 @@
 			this.listeners = {};
 
 			this.id = nodeId;
-			nodes.push(this);
-			nodesById[nodeId] = this;
 			nodeId++;
 		};
 
@@ -1548,6 +1546,7 @@
 		};
 
 		Node.prototype.readPixels = function (x, y, width, height, dest) {
+			var nodeGl = this.gl || gl;
 
 			if (!gl) {
 				//todo: is this the best approach?
@@ -1558,6 +1557,7 @@
 
 			if (!this.frameBuffer) {
 				this.initFrameBuffer();
+				this.setDirty();
 			}
 
 			//todo: should we render here?
@@ -1570,8 +1570,8 @@
 				throw new Error('Incompatible array type');
 			}
 
-			gl.bindFramebuffer(gl.FRAMEBUFFER, this.frameBuffer.frameBuffer); //todo: are we sure about this?
-			gl.readPixels(x, y, width, height, gl.RGBA, gl.UNSIGNED_BYTE, dest);
+			nodeGl.bindFramebuffer(gl.FRAMEBUFFER, this.frameBuffer.frameBuffer);
+			nodeGl.readPixels(x, y, width, height, gl.RGBA, gl.UNSIGNED_BYTE, dest);
 
 			return dest;
 		};
@@ -2024,6 +2024,7 @@
 				hasImage = false;
 
 			Node.call(this, options);
+			this.gl = gl;
 
 			this.effectRef = seriousEffects[hook];
 			this.sources = {};
@@ -2087,6 +2088,8 @@
 
 			this.pub = new Effect(this);
 
+			nodes.push(this);
+			nodesById[this.id] = this;
 			effects.push(this);
 
 			allEffectsByHook[hook].push(this);
@@ -3168,6 +3171,8 @@
 
 			this.pub = new Source(this);
 
+			nodes.push(this);
+			nodesById[this.id] = this;
 			sources.push(this);
 			allSourcesByHook[this.hook].push(this);
 
@@ -3573,7 +3578,8 @@
 				matchedType = false,
 				i, element, elements, context,
 				debugContext = opts.debugContext,
-				frameBuffer;
+				frameBuffer,
+				triedWebGl = false;
 
 			Node.call(this, opts);
 
@@ -3595,7 +3601,6 @@
 
 				target = element;
 			} else if (target instanceof WebGLFramebuffer) {
-
 				frameBuffer = target;
 
 				if (opts instanceof HTMLCanvasElement) {
@@ -3616,23 +3621,26 @@
 				width = target.width;
 				height = target.height;
 
-				/*
-				try to get a webgl context. if not, get a 2d context,
-				and set up a different render function
-				*/
-				context = getWebGlContext(target, {
-					alpha: true,
-					premultipliedAlpha: false,
-					preserveDrawingBuffer: true,
-					stencil: true,
-					debugContext: debugContext
-				});
+				//try to get a webgl context.
+				if (!gl || gl.canvas !== target && opts.allowSecondaryWebGL) {
+					triedWebGl = true;
+					context = getWebGlContext(target, {
+						alpha: true,
+						premultipliedAlpha: false,
+						preserveDrawingBuffer: true,
+						stencil: true,
+						debugContext: debugContext
+					});
+				}
 
 				if (!context) {
-					context = target.getContext('2d');
-					//todo: set up ImageData and alternative drawing method (or drawImage)
-					this.render = this.render2D;
-					this.use2D = true;
+					if (!opts.allowSecondaryWebGL && gl.canvas !== target) {
+						throw new Error('Only one WebGL target canvas allowed. Set allowSecondaryWebGL option to create secondary context.');
+					}
+
+					this.render = nop;
+					Seriously.logger.log('Unable to create WebGL context.');
+					//throw new Error('Unable to create WebGL context.');
 				} else if (!gl || gl === context) {
 					//this is our main WebGL canvas
 					if (!primaryTarget) {
@@ -3651,18 +3659,16 @@
 							frameBuffer: frameBuffer || null
 						};
 					}
-				} else if (context !== gl) {
+				} else {
 					//set up alternative drawing method using ArrayBufferView
 					this.gl = context;
+
 					//this.pixels = new Uint8Array(width * height * 4);
-					//todo: probably need another framebuffer for renderToTexture
-					if (frameBuffer) {
-						this.frameBuffer = {
-							frameBuffer: frameBuffer
-						};
-					} else {
-						this.frameBuffer = new FrameBuffer(this.gl, width, height, false);
-					}
+					//todo: probably need another framebuffer for renderToTexture?
+					//todo: handle lost context on secondary webgl
+					this.frameBuffer = {
+						frameBuffer: frameBuffer || null
+					};
 					this.shader = new ShaderProgram(this.gl, baseVertexShader, baseFragmentShader);
 					this.model = buildRectangleModel.call(this, this.gl);
 
@@ -3674,8 +3680,6 @@
 					this.gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 
 					this.render = this.renderSecondaryWebGL;
-				} else {
-					//todo: this should theoretically never happen
 				}
 
 				matchedType = true;
@@ -3704,6 +3708,8 @@
 
 			this.pub = new Target(this);
 
+			nodes.push(this);
+			nodesById[this.id] = this;
 			targets.push(this);
 		};
 
@@ -3818,12 +3824,18 @@
 		};
 
 		TargetNode.prototype.renderSecondaryWebGL = function () {
+			var width,
+				height,
+				matrix,
+				x,
+				y;
+
 			if (this.dirty && this.source) {
 				this.emit('render');
 				this.source.render();
 
-				var width = this.source.width,
-					height = this.source.height;
+				width = this.source.width;
+				height = this.source.height;
 
 				if (!this.pixels || this.pixels.length !== width * height * 4) {
 					this.pixels = new Uint8Array(width * height * 4);
@@ -3833,15 +3845,30 @@
 
 				this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, width, height, 0, this.gl.RGBA, this.gl.UNSIGNED_BYTE, this.pixels);
 
+				if (this.source.width === width && this.source.height === height) {
+					this.uniforms.transform = this.source.cumulativeMatrix || identity;
+				} else if (this.transformDirty) {
+					matrix = this.transform;
+					mat4.copy(matrix, this.source.cumulativeMatrix || identity);
+					x = this.source.width / this.width;
+					y = this.source.height / this.height;
+					matrix[0] *= x;
+					matrix[1] *= x;
+					matrix[2] *= x;
+					matrix[3] *= x;
+					matrix[4] *= y;
+					matrix[5] *= y;
+					matrix[6] *= y;
+					matrix[7] *= y;
+					this.uniforms.transform = matrix;
+					this.transformDirty = false;
+				}
+
 				this.uniforms.source = this.texture;
 				draw(this.shader, this.model, this.uniforms, null, this);
 
 				this.dirty = false;
 			}
-		};
-
-		TargetNode.prototype.render2D = function () {
-			//todo: make this actually do something?
 		};
 
 		TargetNode.prototype.removeSource = function (source) {
@@ -4196,8 +4223,6 @@
 			this.transformRef = seriousTransforms[hook];
 			this.hook = hook;
 			this.id = nodeId;
-			nodes.push(this);
-			nodesById[nodeId] = this;
 			nodeId++;
 
 			this.options = options;
@@ -4247,6 +4272,9 @@
 					}
 				}
 			}
+
+			nodes.push(this);
+			nodesById[this.id] = this;
 
 			this.pub = new Transform(this);
 
@@ -4454,6 +4482,29 @@
 			return this.texture;
 		};
 
+		TransformNode.prototype.readPixels = function (x, y, width, height, dest) {
+			var nodeGl = this.gl || gl;
+
+			if (!gl) {
+				//todo: is this the best approach?
+				throw new Error('Cannot read pixels until a canvas is connected');
+			}
+
+			//todo: check on x, y, width, height
+			this.render(true);
+
+			if (dest === undefined) {
+				dest = new Uint8Array(width * height * 4);
+			} else if (!dest instanceof Uint8Array) {
+				throw new Error('Incompatible array type');
+			}
+
+			nodeGl.bindFramebuffer(gl.FRAMEBUFFER, this.frameBuffer.frameBuffer);
+			nodeGl.readPixels(x, y, width, height, gl.RGBA, gl.UNSIGNED_BYTE, dest);
+
+			return dest;
+		};
+
 		TransformNode.prototype.destroy = function () {
 			var i, key, item, hook = this.hook;
 
@@ -4588,6 +4639,10 @@
 				targetRenderToTexture,
 				i;
 
+			/*
+			Returns existing target if duplicate texture is passed
+			todo: do the same for duplicate canvas
+			*/
 			renderToTexture = !!(options && options.renderToTexture);
 			for (i = 0; i < targets.length; i++) {
 				if (targets[i] === target || targets[i].target === target) {
