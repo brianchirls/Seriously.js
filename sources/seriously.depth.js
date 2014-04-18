@@ -68,6 +68,69 @@
 			}
 		}
 
+		function parseArrayBuffer(arrayBuffer) {
+			var byteArray = new Uint8Array(arrayBuffer), // this.response == uInt8Array.buffer
+				boundaries = [],
+
+				str = '',
+				i, j, k,
+				tmp,
+				tmpStr,
+				length,
+				offset,
+				match;
+
+			if (byteArray[0] == 0xff && byteArray[1] == 0xd8) {
+				//look for boundaries
+				for (i = 0; i < byteArray.byteLength; i++) {
+					if (byteArray[i] == 0xff && byteArray[i + 1] == 0xe1) {
+						boundaries.push(i);
+						i++;
+					}
+				}
+				boundaries.push(byteArray.byteLength);
+
+				for (j = 2; j < boundaries.length - 1; j++) {
+					if (byteArray[boundaries[j]] == 0xff && byteArray[boundaries[j] + 1] == 0xe1) {
+						length = byteArray[boundaries[j] + 2] * 256 + byteArray[boundaries[j] + 3];
+						offset = 0;
+						for (k = 0; k < length; k++) {
+							if (byteArray[boundaries[j] + 3 + k] === 0x00 && byteArray[boundaries[j] + 4 + k] === 0x04) {
+								offset = k + 8 + 1;
+							}
+						}
+						tmp = new ArrayBuffer(length - offset);
+						memcpy(tmp, 0, arrayBuffer, boundaries[j] + 2 + offset, length - offset);
+						tmpStr = ab2str(tmp);
+						str += tmpStr;
+					}
+				}
+
+				match = depthRegex.exec(str);
+				if (match === null) {
+					Seriously.logger.error('JPEG file does not include depth image.');
+					return false;
+				}
+
+				if (!depthImage) {
+					depthImage = document.createElement('img');
+				}
+				depthImage.src = 'data:image/png;base64,' + match[1];
+
+				if (!depthImage.complete || !depthImage.naturalWidth) {
+					depthImage.addEventListener('load', initialize, true);
+					depthImage.addEventListener('error', function (evt) {
+						//todo: report error loading depth image
+					}, true);
+				} else {
+					initialize();
+				}
+			} else {
+				Seriously.logger.error('Unable to load depth image. File is not a JPEG.');
+				return false;
+			}
+		}
+
 		if (force) {
 			if (typeof source === 'string') {
 				element = document.querySelector(source);
@@ -75,7 +138,9 @@
 				element = source;
 			}
 
-			if (options && options.url) {
+			if (element instanceof window.ArrayBuffer) {
+				parseArrayBuffer(source);
+			} else if (options && options.url) {
 				url = options.url;
 			} else if (element && element instanceof window.HTMLImageElement &&
 					(element.tagName === 'IMG' || force)) {
@@ -96,77 +161,21 @@
 				xhr.responseType = 'arraybuffer';
 
 				xhr.onload = function() {
-					var arrayBuffer = this.response,
-						byteArray = new Uint8Array(arrayBuffer), // this.response == uInt8Array.buffer
-						boundaries = [],
-
-						str = '',
-						i, j, k,
-						tmp,
-						tmpStr,
-						length,
-						offset,
-						match;
-
-					if (byteArray[0] == 0xff && byteArray[1] == 0xd8) {
-						//look for boundaries
-						for (i = 0; i < byteArray.byteLength; i++) {
-							if (byteArray[i] == 0xff && byteArray[i + 1] == 0xe1) {
-								boundaries.push(i);
-								i++;
-							}
-						}
-						boundaries.push(byteArray.byteLength);
-
-						for (j = 2; j < boundaries.length - 1; j++) {
-							if (byteArray[boundaries[j]] == 0xff && byteArray[boundaries[j] + 1] == 0xe1) {
-								length = byteArray[boundaries[j] + 2] * 256 + byteArray[boundaries[j] + 3];
-								offset = 0;
-								for (k = 0; k < length; k++) {
-									if (byteArray[boundaries[j] + 3 + k] === 0x00 && byteArray[boundaries[j] + 4 + k] === 0x04) {
-										offset = k + 8 + 1;
-									}
-								}
-								tmp = new ArrayBuffer(length - offset);
-								memcpy(tmp, 0, arrayBuffer, boundaries[j] + 2 + offset, length - offset);
-								tmpStr = ab2str(tmp);
-								str += tmpStr;
-							}
-						}
-
-						match = depthRegex.exec(str);
-						if (match === null) {
-							//todo: report error, depth not found
-							return;
-						}
-
-						depthImage.src = 'data:image/png;base64,' + match[1];
-
-						if (!depthImage.complete || !depthImage.naturalWidth) {
-							depthImage.addEventListener('load', initialize, true);
-							depthImage.addEventListener('error', function (evt) {
-								//todo: report error loading depth image
-							}, true);
-						} else {
-							initialize();
-						}
-					} else {
-						//todo: report error, File is not a JPEG
-					}
+					parseArrayBuffer(this.response);
 				};
 
 				xhr.send();
-
-				return {
-					deferTexture: true,
-					source: depthImage,
-					render: Object.getPrototypeOf(this).renderImageCanvas,
-					destroy: function () {
-						destroyed = true;
-						cleanUp();
-					}
-				};
 			}
+
+			return !depthImage ? false : {
+				deferTexture: true,
+				source: depthImage,
+				render: Object.getPrototypeOf(this).renderImageCanvas,
+				destroy: function () {
+					destroyed = true;
+					cleanUp();
+				}
+			};
 
 		}
 	}, {
