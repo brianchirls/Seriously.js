@@ -1936,13 +1936,18 @@
 		}
 
 		function checkImageFail(img) {
-			var canvas, ctx;
+			var canvas, ctx,
+				incompatible = Seriously.incompatible();
 
 			Seriously.logger.log = function (s) {
 				equal(s, 'Unable to access cross-domain image', 'Warning logged to console');
 			};
 
 			Seriously.logger.warn = function (s) {
+				if (incompatible && s === 'Unable to access WebGL.') {
+					//skip webgl warning
+					return;
+				}
 				equal(s, 'Image not loaded', 'Warning logged to console');
 			};
 

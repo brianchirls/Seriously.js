@@ -434,7 +434,7 @@
 	function getTestContext() {
 		var canvas;
 
-		if (testContext || !window.WebGLRenderingContext) {
+		if (testContext || !window.WebGLRenderingContext || incompatibility) {
 			return testContext;
 		}
 
