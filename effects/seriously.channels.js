@@ -94,7 +94,7 @@
 				var s, j;
 				s = inputs[name];
 				if (!s) {
-					s = inputs[name] = inputs.source;
+					s = me.sources[name] = inputs[name] = inputs.source;
 				}
 
 				j = sources.indexOf(s);
