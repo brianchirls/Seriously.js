@@ -53,9 +53,6 @@
 
 			destroyed = false;
 
-		function cleanUp() {
-		}
-
 		/*
 		todo: what happens if src of source image changes? can we adapt?
 		*/
@@ -73,7 +70,7 @@
 				boundaries = [],
 
 				str = '',
-				i, j, k,
+				i, j,
 				tmp,
 				tmpStr,
 				length,
@@ -83,24 +80,24 @@
 			if (byteArray[0] == 0xff && byteArray[1] == 0xd8) {
 				//look for boundaries
 				for (i = 0; i < byteArray.byteLength; i++) {
-					if (byteArray[i] == 0xff && byteArray[i + 1] == 0xe1) {
+					if (byteArray[i] === 0xff && byteArray[i + 1] === 0xe1) {
 						boundaries.push(i);
 						i++;
 					}
 				}
 				boundaries.push(byteArray.byteLength);
 
-				for (j = 2; j < boundaries.length - 1; j++) {
-					if (byteArray[boundaries[j]] == 0xff && byteArray[boundaries[j] + 1] == 0xe1) {
+				for (j = 0; j < boundaries.length - 1; j++) {
+					if (byteArray[boundaries[j]] === 0xff && byteArray[boundaries[j] + 1] === 0xe1) {
 						length = byteArray[boundaries[j] + 2] * 256 + byteArray[boundaries[j] + 3];
-						offset = 0;
-						for (k = 0; k < length; k++) {
-							if (byteArray[boundaries[j] + 3 + k] === 0x00 && byteArray[boundaries[j] + 4 + k] === 0x04) {
-								offset = k + 8 + 1;
-							}
+						offset = 79;
+						if (offset > length) {
+							offset = 0;
 						}
+						length += 2;
+
 						tmp = new ArrayBuffer(length - offset);
-						memcpy(tmp, 0, arrayBuffer, boundaries[j] + 2 + offset, length - offset);
+						memcpy(tmp, 0, arrayBuffer, boundaries[j] + offset, length - offset);
 						tmpStr = ab2str(tmp);
 						str += tmpStr;
 					}
@@ -115,12 +112,13 @@
 				if (!depthImage) {
 					depthImage = document.createElement('img');
 				}
+
 				depthImage.src = 'data:image/png;base64,' + match[1];
 
 				if (!depthImage.complete || !depthImage.naturalWidth) {
 					depthImage.addEventListener('load', initialize, true);
 					depthImage.addEventListener('error', function (evt) {
-						//todo: report error loading depth image
+						Seriously.logger.error('Error loading depth image.', evt);
 					}, true);
 				} else {
 					initialize();
@@ -173,7 +171,6 @@
 				render: Object.getPrototypeOf(this).renderImageCanvas,
 				destroy: function () {
 					destroyed = true;
-					cleanUp();
 				}
 			};
 
