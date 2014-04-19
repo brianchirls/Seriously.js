@@ -2194,7 +2194,7 @@
 		};
 
 
-		EffectNode.prototype.setTarget = function (target) {
+		EffectNode.prototype.addTarget = function (target) {
 			var i;
 			for (i = 0; i < this.targets.length; i++) {
 				if (this.targets[i] === target) {
@@ -2326,7 +2326,28 @@
 		EffectNode.prototype.setInput = function (name, value) {
 			var input, uniform,
 				sourceKeys,
-				source;
+				source,
+				me = this;
+
+			function disconnectSource() {
+				var previousSource = me.sources[name],
+					key;
+
+				/*
+				remove this node from targets of previously connected source node,
+				but only if the source node is not being used as another input
+				*/
+				if (previousSource) {
+					for (key in me.sources) {
+						if (key !== name &&
+								me.sources.hasOwnProperty(key) &&
+								me.sources[key] === previousSource) {
+							return;
+						}
+					}
+					previousSource.removeTarget(me);
+				}
+			}
 
 			if (this.effect.inputs.hasOwnProperty(name)) {
 				input = this.effect.inputs[name];
@@ -2337,16 +2358,14 @@
 						value = findInputNode(value);
 
 						if (value !== this.sources[name]) {
-							if (this.sources[name]) {
-								this.sources[name].removeTarget(this);
-							}
+							disconnectSource();
 
 							if (traceSources(value, this)) {
 								throw new Error('Attempt to make cyclical connection.');
 							}
 
 							this.sources[name] = value;
-							value.setTarget(this);
+							value.addTarget(this);
 						}
 					} else {
 						delete this.sources[name];
@@ -2379,16 +2398,15 @@
 
 				if (input.type === 'image') {
 					this.resize();
+					if (value && value.ready) {
+						this.setReady();
+					} else {
+						this.setUnready();
+					}
 				}
 
 				if (input.shaderDirty) {
 					this.shaderDirty = true;
-				}
-
-				if (value && value.ready) {
-					this.setReady();
-				} else {
-					this.setUnready();
 				}
 
 				this.setDirty();
@@ -3214,7 +3232,7 @@
 			}
 		};
 
-		SourceNode.prototype.setTarget = function (target) {
+		SourceNode.prototype.addTarget = function (target) {
 			var i;
 			for (i = 0; i < this.targets.length; i++) {
 				if (this.targets[i] === target) {
@@ -3729,7 +3747,7 @@
 					this.source.removeTarget(this);
 				}
 				this.source = newSource;
-				newSource.setTarget(this);
+				newSource.addTarget(this);
 
 				if (newSource && newSource.ready) {
 					this.setReady();
@@ -4339,7 +4357,7 @@
 				this.source.removeTarget(this);
 			}
 			this.source = newSource;
-			newSource.setTarget(this);
+			newSource.addTarget(this);
 
 			if (newSource && newSource.ready) {
 				this.setReady();
@@ -4349,7 +4367,7 @@
 			this.resize();
 		};
 
-		TransformNode.prototype.setTarget = function (target) {
+		TransformNode.prototype.addTarget = function (target) {
 			var i;
 			for (i = 0; i < this.targets.length; i++) {
 				if (this.targets[i] === target) {

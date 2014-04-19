@@ -74,10 +74,6 @@
 				return shaderSource;
 			},
 			inputs: {
-				source: {
-					type: 'image',
-					uniform: 'source'
-				},
 				noiseScale: {
 					type: 'vector',
 					dimensions: 2,
