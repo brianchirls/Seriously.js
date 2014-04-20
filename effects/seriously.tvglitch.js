@@ -100,8 +100,6 @@
 			},
 			commonShader: true,
 			shader: function (inputs, shaderSource) {
-				//baseShader = this.baseShader;
-
 				shaderSource.fragment = [
 					'precision mediump float;',
 
@@ -109,7 +107,6 @@
 					'#define HardLight(top, bottom)  (1.0 - 2.0 * (1.0 - top) * (1.0 - bottom))',
 
 					'varying vec2 vTexCoord;',
-					'varying vec4 vPosition;',
 
 					'uniform sampler2D source;',
 					'uniform sampler2D particles;',
@@ -172,7 +169,7 @@
 					'		pixel.rgb *= (1.0 - scanlines);',
 					'	}',
 
-					'	float f = (1.0 - vPosition.x * vPosition.x) * (1.0 - vPosition.y * vPosition.y);',
+					'	float f = (1.0 - gl_FragCoord.x * gl_FragCoord.x) * (1.0 - gl_FragCoord.y * gl_FragCoord.y);',
 					'	float frame = clamp( frameSharpness * (pow(f, frameShape) - frameLimit), 0.0, 1.0);',
 
 					//'	gl_FragColor.r = vec4(1.0);',

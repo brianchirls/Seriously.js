@@ -114,7 +114,6 @@
 					'varying vec2 vTexCoord;',
 					'varying vec2 vTexCoordA;',
 					'varying vec2 vTexCoordB;',
-					'varying vec4 vPosition;',
 
 					'uniform float angle;',
 					'varying float c;',
@@ -139,8 +138,6 @@
 					'	vTexCoordA = adjustedTexCoord / resolutionA + 0.5;',
 					'	vTexCoordB = adjustedTexCoord / resolutionB + 0.5;',
 					'	vTexCoord = texCoord;',
-
-					'	vPosition = gl_Position;',
 					'}'
 				].join('\n');
 				shaderSource.fragment = [
@@ -149,7 +146,6 @@
 					'varying vec2 vTexCoord;',
 					'varying vec2 vTexCoordA;',
 					'varying vec2 vTexCoordB;',
-					'varying vec4 vPosition;',
 
 					'varying float c;',
 					'varying float s;',

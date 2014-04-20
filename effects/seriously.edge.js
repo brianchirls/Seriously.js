@@ -88,7 +88,6 @@
 				'precision mediump float;',
 
 				'varying vec2 vTexCoord;',
-				'varying vec4 vPosition;',
 
 				'uniform sampler2D source;',
 				'uniform float pixelWidth;',

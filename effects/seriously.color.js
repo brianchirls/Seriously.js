@@ -24,7 +24,6 @@
 				'precision mediump float;\n',
 
 				'varying vec2 vTexCoord;',
-				'varying vec4 vPosition;',
 
 				'uniform vec4 color;',
 

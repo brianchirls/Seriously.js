@@ -4823,7 +4823,6 @@
 			'uniform mat4 transform;',
 
 			'varying vec2 vTexCoord;',
-			'varying vec4 vPosition;',
 
 			'void main(void) {',
 			// first convert to screen space
@@ -4835,7 +4834,6 @@
 			'	gl_Position.z = screenPosition.z * 2.0 / (resolution.x / resolution.y);',
 			'	gl_Position.w = screenPosition.w;',
 			'	vTexCoord = texCoord;',
-			'	vPosition = gl_Position;',
 			'}\n'
 		].join('\n');
 
@@ -4843,7 +4841,6 @@
 			'precision mediump float;',
 
 			'varying vec2 vTexCoord;',
-			'varying vec4 vPosition;',
 
 			'uniform sampler2D source;',
 

@@ -95,7 +95,6 @@ http://v002.info/plugins/v002-blurs/
 					'uniform mat4 transform;',
 
 					'varying vec2 vTexCoord;',
-					'varying vec4 vPosition;',
 
 					'uniform vec2 direction;',
 					'uniform float amount;',
@@ -128,7 +127,6 @@ http://v002.info/plugins/v002-blurs/
 					'	gl_Position.xy = screenPosition.xy * 2.0 / resolution;',
 					'	gl_Position.z = screenPosition.z * 2.0 / (resolution.x / resolution.y);',
 					'	vTexCoord = texCoord;',
-					'	vPosition = gl_Position;',
 
 					'	one = vec2(1.0, 1.0) * inputScale;',
 					'	if (inputScale < 1.0) {',
@@ -163,7 +161,6 @@ http://v002.info/plugins/v002-blurs/
 					'precision mediump float;\n',
 
 					'varying vec2 vTexCoord;',
-					'varying vec4 vPosition;',
 
 					'uniform sampler2D source;',
 					'uniform float angle;',

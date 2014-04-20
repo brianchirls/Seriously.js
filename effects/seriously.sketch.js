@@ -27,7 +27,6 @@
 
 				//todo: make adjust adjustable
 				'varying vec2 vTexCoord;',
-				'varying vec4 vPosition;',
 
 				'uniform sampler2D source;',
 				'uniform vec2 resolution;',
