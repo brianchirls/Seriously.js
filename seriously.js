@@ -4658,8 +4658,7 @@
 				i;
 
 			/*
-			Returns existing target if duplicate texture is passed
-			todo: do the same for duplicate canvas
+			Returns existing target if duplicate texture or canvas is passed
 			*/
 			renderToTexture = !!(options && options.renderToTexture);
 			for (i = 0; i < targets.length; i++) {

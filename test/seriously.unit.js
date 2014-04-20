@@ -1418,10 +1418,11 @@
 	});
 
 	module('Target');
-	test('Canvas Target', 6, function () {
+	test('Canvas Target', 7, function () {
 		var seriously,
 			canvas,
-			target;
+			target,
+			dupTarget;
 
 		seriously = new Seriously();
 		canvas = document.createElement('canvas');
@@ -1433,6 +1434,9 @@
 		equal(target.height, 19, 'target.height');
 		equal(target.original, canvas, 'target.original');
 		equal(target.inputs.source.type, 'image', 'target.inputs.source');
+
+		dupTarget = seriously.target(canvas);
+		equal(target, dupTarget, 'return existing target node if given the same canvas');
 
 		target.width = 29;
 		ok(canvas.width === 29 && canvas.height === 19, 'target.width modifies canvas width, but not height');
