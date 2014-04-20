@@ -163,7 +163,7 @@
 	 * define plugin
 	*/
 
-	test('Remove Plugin', 3, function () {
+	test('Remove Plugin', 4, function () {
 		var p, s, error, e, allEffects;
 
 		p = Seriously.plugin('removeme', {});
@@ -177,9 +177,7 @@
 		allEffects = Seriously.effects();
 		ok(allEffects.removeme === undefined, 'Plugin no longer listed.');
 
-		/*
-		 * todo: test that created effect is destroyed
-		 */
+		ok(e.isDestroyed(), 'Effect node destroyed when its plugin is removed.');
 
 		try {
 			s.effect('removeme');
