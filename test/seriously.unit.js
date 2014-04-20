@@ -1670,11 +1670,6 @@
 		});
 	});
 
-	/*
-	todo: May not be a bad idea to have another test here that removes
-	primary WebGL target node and creates a new one
-	*/
-
 	module('Destroy');
 	test('Destroy things', 15, function() {
 		var seriously, source, target, effect, transform, canvas;
