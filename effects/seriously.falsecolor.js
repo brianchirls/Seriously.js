@@ -28,15 +28,16 @@
 
 				'uniform sampler2D source;',
 				'uniform float amount;',
-				'uniform vec4 dark;',
-				'uniform vec4 light;',
+				'uniform vec4 black;',
+				'uniform vec4 white;',
 
 				'const vec3 luma = vec3(0.2125, 0.7154, 0.0721);',
 
 				'void main(void) {',
 				'	vec4 pixel = texture2D(source, vTexCoord);',
 				'	float luminance = dot(pixel.rgb, luma);',
-				'	gl_FragColor = vec4( mix(dark.rgb, light.rgb, luminance), pixel.a);',
+				'	vec4 result = mix(black, white, luminance);',
+				'	gl_FragColor = vec4(result.rgb, pixel.a * result.a);',
 				'}'
 			].join('\n');
 			return shaderSource;
@@ -48,14 +49,14 @@
 				uniform: 'source',
 				shaderDirty: false
 			},
-			dark: {
+			black: {
 				type: 'color',
-				uniform: 'dark',
+				uniform: 'black',
 				defaultValue: [0, 0, 0.5, 1]
 			},
-			light: {
+			white: {
 				type: 'color',
-				uniform: 'light',
+				uniform: 'white',
 				defaultValue: [1, 0, 0, 1]
 			}
 		},
