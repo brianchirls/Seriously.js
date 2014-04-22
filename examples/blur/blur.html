@@ -72,18 +72,11 @@
 			rS = new rStats({
 				CSSPath: '../',
 				values: {
-					frame: { caption: 'Total frame time (ms)', over: 16 },
 					fps: { caption: 'Framerate (FPS)', below: 30 },
-					calls: { caption: 'Calls (three.js)', over: 3000 },
-					raf: { caption: 'Time since last rAF (ms)' },
-					rstats: { caption: 'rStats update (ms)' }
+					raf: { caption: 'Time since last rAF (ms)' }
 				},
 				groups: [
-					{ caption: 'Framerate', values: [ 'fps', 'raf' ] },
-					{ caption: 'Frame Budget', values: [ 'frame', 'texture', 'setup', 'Render' ] }
-				],
-				fractions: [
-					{ base: 'frame', steps: [ 'Compute Animation', 'Render' ] }
+					{ caption: 'Framerate', values: [ 'fps', 'raf' ] }
 				]
 			});
 
@@ -105,13 +98,9 @@
 				// callback runs before render
 				var now;
 
-				rS('frame').start();
-
-				rS('frame').start();
 				rS('rAF').tick();
 				rS('FPS').frame();
 
-				rS('Compute Animation').start();
 				if (oscillating) {
 					now = Date.now();
 					if (lastRender) {
@@ -125,13 +114,8 @@
 					}
 					lastRender = now;
 				}
-				rS('Compute Animation').end();
-
-				rS('Render').start();
 			}, function () {
 				// callback runs after render
-				rS('Render').end();
-				rS('frame').end();
 				rS().update();
 			});
 
