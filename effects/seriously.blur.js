@@ -287,10 +287,6 @@ http://v002.info/plugins/v002-blurs/
 					fbVertical = null;
 				}
 
-				if (baseShader) {
-					baseShader.destroy();
-				}
-
 				loopUniforms = null;
 			}
 		};
