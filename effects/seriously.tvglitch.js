@@ -183,7 +183,9 @@
 				return shaderSource;
 			},
 			resize: function () {
-				particleFrameBuffer.resize(1, Math.max(1, this.height / 2));
+				if (particleFrameBuffer) {
+					particleFrameBuffer.resize(1, Math.max(1, this.height / 2));
+				}
 			},
 			draw: function (shader, model, uniforms, frameBuffer, parent) {
 				var doParticles = (lastTime !== this.inputs.time),
