@@ -14,3 +14,7 @@ Attribution-NonCommercial 2.0 Generic (CC BY-NC 2.0)
 https://www.flickr.com/photos/45610102@N02/4611180427
 by Peter Femto
 Attribution-NonCommercial-ShareAlike 2.0 Generic (CC BY-NC-SA 2.0)
+
+## Panorama
+by Jimmy Ferbuson
+http://www.jwjferguson.com
