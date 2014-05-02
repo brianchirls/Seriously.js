@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Seriously.js Color Generator</title>
+	<style type="text/css">
+
+	label {
+		display: block;
+	}
+
+	input[type=range] {
+		width: 400px;
+	}
+
+	#canvas {
+		border: black solid 1px;
+	}
+
+	</style>
+</head>
+<body>
+	<canvas id="canvas" width="600" height="400"></canvas>
+	<div>
+		<label>Width <input type="range" id="width" min="1" max="600" step="0.0001" value="600"/></label>
+		<label>Height <input type="range" id="height" min="1" max="400" step="0.0001" value="200"/></label>
+		<label>Color <input type="text" id="color" value="fuchsia"/></label>
+	</div>
+
+	<script src="../../seriously.js"></script>
+	<script src="../../effects/seriously.color.js"></script>
+	<script>
+	(function() {
+		//main code goes here
+
+		// declare our variables
+		var seriously, // the main object that holds the entire composition
+			color, // a color effect
+			target; // a wrapper object for our target canvas
+
+		seriously = new Seriously();
+		color = seriously.effect('color');
+		target = seriously.target('#canvas');
+
+		color.width = '#width';
+		color.height = '#height';
+		color.color = document.getElementById('color');
+
+		// connect all our nodes in the right order
+		target.source = color;
+		seriously.go();
+
+	}());
+	</script>
+</body>
+</html>
