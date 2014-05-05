@@ -51,14 +51,14 @@
 		multiply: '(base * blend)',
 		average: '(base + blend / TWO)',
 		add: 'min(base + blend, ONE)',
-		subtract: 'max(base + blend - ONE, ZERO)',
+		subtract: 'max(base - blend, ZERO)',
 		difference: 'abs(base - blend)',
 		negation: '(ONE - abs(ONE - base - blend))',
 		exclusion: '(base + blend - TWO * base * blend)',
 		screen: '(ONE - ((ONE - base) * (ONE - blend)))',
 		lineardodge: 'min(base + blend, ONE)',
 		phoenix: '(min(base, blend) - max(base, blend) + ONE)',
-		linearburn: 'max(base + blend - ONE, ZERO)', //same as subtract?
+		linearburn: 'max(base + blend - ONE, ZERO)',
 
 		hue: 'BlendHue(base, blend)',
 		saturation: 'BlendSaturation(base, blend)',
@@ -314,9 +314,8 @@
 					*/
 
 					'#define BlendAddf(base, blend)			min(base + blend, 1.0)',
-					'#define BlendSubtractf(base, blend)	max(base + blend - 1.0, 0.0)',
 					'#define BlendLinearDodgef(base, blend)	BlendAddf(base, blend)',
-					'#define BlendLinearBurnf(base, blend)	BlendSubtractf(base, blend)',
+					'#define BlendLinearBurnf(base, blend)	max(base + blend - 1.0, 0.0)',
 					'#define BlendLightenf(base, blend)		max(blend, base)',
 					'#define BlendDarkenf(base, blend)		min(blend, base)',
 					'#define BlendLinearLightf(base, blend)	(blend < 0.5 ? BlendLinearBurnf(base, (2.0 * blend)) : BlendLinearDodgef(base, (2.0 * (blend - 0.5))))',
