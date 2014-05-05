@@ -229,7 +229,7 @@
 					['multiply', 'Multiply'],
 					['average', 'Average'],
 					['add', 'Add'],
-					['substract', 'Substract'],
+					['subtract', 'Subtract'],
 					['difference', 'Difference'],
 					['negation', 'Negation'],
 					['exclusion', 'Exclusion'],
