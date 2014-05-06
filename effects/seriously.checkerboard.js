@@ -86,11 +86,6 @@
 			},
 			inPlace: true,
 			inputs: {
-				source: {
-					type: 'image',
-					uniform: 'source',
-					shaderDirty: false
-				},
 				anchor: {
 					type: 'vector',
 					uniform: 'anchor',

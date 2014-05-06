@@ -1,0 +1,145 @@
+<!DOCTYPE HTML>
+<html lang="en-US">
+	<head>
+		<meta charset="UTF-8">
+		<title>Seriously.js Displacement Example</title>
+		<style type="text/css">
+
+		body {
+			background-color: #666;
+			margin: 0;
+			font-family: sans-serif;
+		}
+
+		#prompt {
+			position: fixed;
+			top: 0;
+			left: 0;
+			background-color: rgba(0, 0, 0, 0.4);
+			color: #ccc;
+			padding: 0 8px;
+			margin: 12px;
+		}
+
+		#prompt p {
+			margin: 8px 0;
+		}
+
+		/*
+		#thumbnail {
+			position: fixed;
+			bottom: 20px;
+			right: 20px;
+			max-width: 15%;
+			max-height: 15%;
+			display: inline-block;
+		}
+
+		#canvas {
+			width: 100%;
+			height: 100%;
+		}
+		*/
+
+		</style>
+	</head>
+	<body>
+		<img id="image" src="../images/xbcontroller.jpg" style="display: none"/>
+		<canvas id="canvas" width="1024" height="768"></canvas>
+		<!--<div id="thumbnail"></div>-->
+		<div id="prompt">
+			<p>Move mouse to change perspective.</p>
+			<p>Drag and drop or select a JPG file taken with Android Camera using Lens Blur option.</p>
+			<input type="file" id="file" accept="image/jpeg"/>
+		</div>
+	</body>
+	<script type="text/javascript" src="../../util/medialoader.js"></script>
+	<script type="text/javascript" src="../../seriously.js"></script>
+	<script type="text/javascript" src="../../sources/seriously.depth.js"></script>
+	<script type="text/javascript" src="../../effects/seriously.displacement.js"></script>
+	<script type="text/javascript">
+
+	(function () {
+
+		var seriously = Seriously(),
+			displace = seriously.effect('displacement'),
+			scale = seriously.transform('2d'),
+			target = seriously.target('#canvas'),
+			originalMapSource = seriously.source('depth', '#image'),
+			source,
+			map,
+			thumbnail = document.getElementById('thumbnail');
+
+		displace.map = originalMapSource;
+		displace.source = '#image';
+
+		displace.offset = 0;
+		displace.mapScale = [0, 0];
+
+		//scale the image so we don't see bare edges revealed by displacement
+		scale.source = displace;
+		scale.scale(1.1);
+
+		target.source = scale;
+
+		//todo: show preview of depth image in thumbnail
+
+		window.addEventListener('mousemove', function(evt) {
+			var x = evt.pageX,
+				y = evt.pageY;
+
+			displace.mapScale = [
+				0.04 * x / window.innerWidth - 0.02,
+				-(0.04 * y / window.innerHeight - 0.02)
+			];
+		}, false);
+
+		medialoader = new MediaLoader(function (file) {
+			var reader,
+				element,
+				newMapSource;
+
+			//load actual image
+			element = document.createElement('img');
+			//element.onload = resizeCanvas;
+			element.src = URL.createObjectURL(file);
+
+			//load depth map
+			reader = new FileReader();
+			reader.onload = function () {
+				try {
+					newMapSource = seriously.source('depth', reader.result);
+				} catch (e) {
+				}
+				if (newMapSource) {
+					if (source) {
+						source.destroy();
+					}
+					if (map) {
+						map.destroy();
+					}
+					map = newMapSource;
+					source = seriously.source(element);
+					displace.map = map;
+					displace.source = source;
+					target.width = source.width;
+					target.height = source.height;
+
+					//thumbnail.innerHTML = '';
+					//thumbnail.appendChild(map.original);
+				}
+			};
+			reader.readAsArrayBuffer(file);
+
+			return false;
+		}, {
+			input: '#file',
+			format: 'file',
+			types: ['image/jpeg']
+		});
+
+		seriously.go();
+	}());
+	
+	</script>
+</html>

@@ -173,7 +173,6 @@
 					'uniform mat4 transform;',
 
 					'varying vec2 vTexCoord;',
-					'varying vec4 vPosition;',
 
 					'void main(void) {',
 					// first convert to screen space
@@ -186,14 +185,12 @@
 					'	gl_Position.xy *= layerResolution / resolution;',
 					'	gl_Position.w = screenPosition.w;',
 					'	vTexCoord = texCoord;',
-					'	vPosition = gl_Position;',
 					'}\n'
 				].join('\n');
 
 				shaderSource.fragment = [
 					'precision mediump float;',
 					'varying vec2 vTexCoord;',
-					'varying vec4 vPosition;',
 					'uniform sampler2D source;',
 					'uniform float opacity;',
 					'void main(void) {',

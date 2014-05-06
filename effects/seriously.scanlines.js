@@ -24,7 +24,6 @@
 					'precision mediump float;',
 
 					'varying vec2 vTexCoord;',
-					'varying vec4 vPosition;',
 
 					'uniform sampler2D source;',
 					'uniform float lines;',
@@ -35,7 +34,7 @@
 
 					'void main(void) {',
 					'	vec4 pixel = texture2D(source, vTexCoord);',
-					'	float darken = 2.0 * abs( fract(vPosition.y * lines / 2.0) - 0.5);',
+					'	float darken = 2.0 * abs( fract(gl_FragCoord.y * lines / 2.0) - 0.5);',
 					'	darken = clamp(darken - width + 0.5, 0.0, 1.0);',
 					'	darken = 1.0 - ((1.0 - darken) * intensity);',
 					'	gl_FragColor = vec4(pixel.rgb * darken, 1.0);',
