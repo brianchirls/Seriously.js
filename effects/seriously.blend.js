@@ -165,10 +165,10 @@
 				this.setDirty();
 			}
 
-			this.uniforms.resBottom[0] = bottom.width;
-			this.uniforms.resBottom[1] = bottom.height;
-			this.uniforms.resTop[0] = top.width;
-			this.uniforms.resTop[1] = top.height;
+			this.uniforms.resBottom[0] = bottom && bottom.width || 1;
+			this.uniforms.resBottom[1] = bottom && bottom.height || 1;
+			this.uniforms.resTop[0] = top && top.width || 1;
+			this.uniforms.resTop[1] = top && top.height || 1;
 
 			if (topUniforms) {
 				if (bottom) {
