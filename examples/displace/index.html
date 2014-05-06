@@ -49,9 +49,11 @@
 		<!--<div id="thumbnail"></div>-->
 		<div id="prompt">
 			<p>Move mouse to change perspective.</p>
-			<p>Drag and drop a JPG file taken with Android Camera using Lens Blur option.</p>
+			<p>Drag and drop or select a JPG file taken with Android Camera using Lens Blur option.</p>
+			<input type="file" id="file" accept="image/jpeg"/>
 		</div>
 	</body>
+	<script type="text/javascript" src="../../util/medialoader.js"></script>
 	<script type="text/javascript" src="../../seriously.js"></script>
 	<script type="text/javascript" src="../../sources/seriously.depth.js"></script>
 	<script type="text/javascript" src="../../effects/seriously.displacement.js"></script>
@@ -92,56 +94,49 @@
 			];
 		}, false);
 
-		document.body.addEventListener('dragover', function (e) {
-			e = e || event;
-			e.preventDefault();
-			return false;
-		}, false);
-
-		document.body.addEventListener('drop', function (evt) {
-			var file = evt.dataTransfer.files[0],
-				reader,
+		medialoader = new MediaLoader(function (file) {
+			var reader,
 				element,
 				newMapSource;
 
-			evt.preventDefault();
+			//load actual image
+			element = document.createElement('img');
+			//element.onload = resizeCanvas;
+			element.src = URL.createObjectURL(file);
 
-			if (file.type === 'image/jpeg') {
-				//load actual image
-				element = document.createElement('img');
-				//element.onload = resizeCanvas;
-				element.src = URL.createObjectURL(file);
-
-				//load depth map
-				reader = new FileReader();
-				reader.onload = function () {
-					try {
-						newMapSource = seriously.source('depth', reader.result);
-					} catch (e) {
+			//load depth map
+			reader = new FileReader();
+			reader.onload = function () {
+				try {
+					newMapSource = seriously.source('depth', reader.result);
+				} catch (e) {
+				}
+				if (newMapSource) {
+					if (source) {
+						source.destroy();
 					}
-					if (newMapSource) {
-						if (source) {
-							source.destroy();
-						}
-						if (map) {
-							map.destroy();
-						}
-						map = newMapSource;
-						source = seriously.source(element);
-						displace.map = map;
-						displace.source = source;
-						target.width = source.width;
-						target.height = source.height;
-
-						//thumbnail.innerHTML = '';
-						//thumbnail.appendChild(map.original);
+					if (map) {
+						map.destroy();
 					}
-				};
-				reader.readAsArrayBuffer(file);
-			}
+					map = newMapSource;
+					source = seriously.source(element);
+					displace.map = map;
+					displace.source = source;
+					target.width = source.width;
+					target.height = source.height;
+
+					//thumbnail.innerHTML = '';
+					//thumbnail.appendChild(map.original);
+				}
+			};
+			reader.readAsArrayBuffer(file);
 
 			return false;
-		}, true);
+		}, {
+			input: '#file',
+			format: 'file',
+			types: ['image/jpeg']
+		});
 
 		seriously.go();
 	}());
