@@ -35,6 +35,7 @@ Full documentation is in progress at the [wiki](https://github.com/brianchirls/S
 - [Color Cube](http://www.youtube.com/watch?v=rfQ8rKGTVlg&t=24m30s)
 - [Daltonize](http://www.daltonize.org/p/about.html)
 - Directional Blur
+- Displacement Map
 - Dither
 - Edge Detect
 - Emboss
@@ -54,6 +55,7 @@ Full documentation is in progress at the [wiki](https://github.com/brianchirls/S
 - Linear Transfer
 - Luma Key
 - Night Vision
+- Panorama
 - Polar Coordinates
 - Ripple
 - Scanlines
@@ -64,6 +66,7 @@ Full documentation is in progress at the [wiki](https://github.com/brianchirls/S
 - Throttle Frame Rate
 - Tone Adjust
 - TV Glitch
+- Vibrance
 - Vignette
 - White Balance
 
