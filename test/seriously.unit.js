@@ -1,5 +1,5 @@
 /*jslint devel: true, bitwise: true, browser: true, white: true, nomen: true, plusplus: true, maxerr: 50, indent: 4 */
-/* global module, test, asyncTest, expect, ok, equal, start, Seriously, require */
+/* global module, test, asyncTest, expect, ok, equal, start, Seriously, require, WebGLDebugUtils */
 (function () {
 	'use strict';
 
@@ -163,7 +163,7 @@
 	 * define plugin
 	*/
 
-	test('Remove Plugin', 3, function () {
+	test('Remove Plugin', 4, function () {
 		var p, s, error, e, allEffects;
 
 		p = Seriously.plugin('removeme', {});
@@ -177,9 +177,7 @@
 		allEffects = Seriously.effects();
 		ok(allEffects.removeme === undefined, 'Plugin no longer listed.');
 
-		/*
-		 * todo: test that created effect is destroyed
-		 */
+		ok(e.isDestroyed(), 'Effect node destroyed when its plugin is removed.');
 
 		try {
 			s.effect('removeme');
@@ -753,11 +751,6 @@
 		Seriously.removeSource('func');
 		Seriously.removeSource('obj');
 	});
-
-	module('Target');
-	/*
-	 * create target
-	*/
 
 	module('Inputs');
 	/*
@@ -1425,10 +1418,11 @@
 	});
 
 	module('Target');
-	test('Canvas Target', function () {
+	test('Canvas Target', 7, function () {
 		var seriously,
 			canvas,
-			target;
+			target,
+			dupTarget;
 
 		seriously = new Seriously();
 		canvas = document.createElement('canvas');
@@ -1441,10 +1435,247 @@
 		equal(target.original, canvas, 'target.original');
 		equal(target.inputs.source.type, 'image', 'target.inputs.source');
 
+		dupTarget = seriously.target(canvas);
+		equal(target, dupTarget, 'return existing target node if given the same canvas');
+
 		target.width = 29;
 		ok(canvas.width === 29 && canvas.height === 19, 'target.width modifies canvas width, but not height');
 		target.height = 31;
 		ok(canvas.width === 29 && canvas.height === 31, 'target.height modifies canvas height, but not width');
+
+		seriously.destroy();
+	});
+
+	test('Multiple Canvas Targets', function () {
+		var seriously,
+			source,
+			sourceCanvas,
+			ctx,
+			pixels,
+			t1,
+			t2,
+			canvas1,
+			canvas2,
+			error,
+			incompatible,
+			comparison = [ //image is upside down
+				0, 0, 255, 255,
+				255, 255, 255, 255,
+				255, 0, 0, 255,
+				0, 255, 0, 255
+			];
+
+		incompatible = Seriously.incompatible();
+
+		expect(incompatible ? 3 : 4);
+
+		canvas1 = document.createElement('canvas');
+		canvas2 = document.createElement('canvas');
+
+		canvas2.width = 2;
+		canvas2.height = 2;
+
+		seriously = new Seriously();
+		t1 = seriously.target(canvas1);
+
+		try {
+			t2 = seriously.target(canvas2);
+		} catch (e) {
+			error = e;
+		}
+
+		if (!incompatible) {
+			equal(error && error.message, 'Only one WebGL target canvas allowed. Set allowSecondaryWebGL option to create secondary context.', 'Creating target node on second canvas throws an error');
+		}
+
+		t1.destroy();
+
+		canvas1 = document.createElement('canvas');
+		t1 = seriously.target(canvas1);
+		ok(t1.original === canvas1, 'Second canvas target node created after original is destroyed.');
+
+		t2 = seriously.target(canvas2, {
+			allowSecondaryWebGL: true
+		});
+		ok(t2.original === canvas2, 'Second WebGL canvas target node created with allowSecondaryWebGL option.');
+
+		sourceCanvas = document.createElement('canvas');
+		sourceCanvas.width = 2;
+		sourceCanvas.height = 2;
+
+		ctx = sourceCanvas.getContext && sourceCanvas.getContext('2d');
+		ctx.fillStyle = '#f00'; //red
+		ctx.fillRect(0, 0, 1, 1);
+		ctx.fillStyle = '#0f0'; //green
+		ctx.fillRect(1, 0, 1, 1);
+		ctx.fillStyle = '#00f'; //blue
+		ctx.fillRect(0, 1, 1, 1);
+		ctx.fillStyle = '#fff'; //white
+		ctx.fillRect(1, 1, 1, 1);
+
+		source = seriously.source(sourceCanvas);
+		t2.source = source;
+		error = null;
+		try {
+			pixels = t2.readPixels(0, 0, 2, 2);
+		} catch (e) {
+			error = e;
+		}
+		ok(incompatible && error || !error && pixels && compare(pixels, comparison), 'Secondary WebGL target rendered accurately.');
+	});
+
+	asyncTest('WebGL Context Lost', function () {
+		var seriously,
+			canvas,
+			source,
+			effect,
+			target,
+
+			gl,
+			ext,
+
+			lost = false,
+			lostFired = false,
+			restored = false,
+			restoredFired = false,
+			renderCount = 0;
+
+		function loseContext() {
+			lost = true;
+			ext.loseContext();
+		}
+
+		function restoreContext() {
+			lost = false;
+			restored = true;
+			ext.restoreContext();
+		}
+
+		function resume() {
+			Seriously.logger.warn = nop;
+			Seriously.logger.log = nop;
+			seriously.destroy();
+			Seriously.removePlugin('test');
+			start();
+		}
+
+		expect(0);
+
+		canvas = document.createElement('canvas');
+		try {
+			gl = canvas.getContext('webgl');
+		} catch (e1) {
+		}
+
+		if (!gl) {
+			try {
+				gl = canvas.getContext('experimental-webgl');
+			} catch (e2) {
+			}
+		}
+
+		if (!gl) {
+			start();
+			return;
+		}
+
+		ext = gl.getExtension('WEBGL_lose_context') ||
+			gl.getExtension('MOZ_WEBGL_lose_context') ||
+			gl.getExtension('WEBKIT_WEBGL_lose_context');
+
+		if (!ext) {
+			/*
+			We can't run this test in internet explorer for now,
+			since IE11 doesn't support the `vertexAttrib1f` method,
+			which is requried by WebGLDebugUtils
+			*/
+			if (!gl.vertexAttrib1f) {
+				start();
+				return;
+			}
+			canvas = WebGLDebugUtils.makeLostContextSimulatingCanvas(canvas);
+			ext = canvas;
+		}
+
+		//every test should run once,
+		//except the render loop should run twice
+		expect(11);
+
+		Seriously.logger.log = function (s) {
+			console.log(s);
+			equal(s, 'WebGL context restored', 'context lost warning');
+		};
+
+		Seriously.logger.warn = function (s) {
+			console.log(s);
+			equal(s, 'WebGL context lost', 'context lost warning');
+		};
+
+		Seriously.plugin('test', {
+			title: 'Test Effect',
+			lostContext: function () {
+				ok(true, 'context lost callback fired');
+			},
+			inputs: {
+				source: {
+					type: 'image'
+				}
+			}
+		});
+
+		seriously = new Seriously();
+
+		source = seriously.source('#colorbars');
+
+		effect = seriously.effect('test');
+		effect.source = source;
+
+		target = seriously.target(canvas);
+		target.source = effect;
+
+		source.on('webglcontextlost', function () {
+			lostFired = true;
+			ok(lost, 'webglcontextlost event fired on source node');
+		});
+		effect.on('webglcontextlost', function () {
+			lostFired = true;
+			ok(lost, 'webglcontextlost event fired on effect node');
+		});
+		target.on('webglcontextlost', function () {
+			lostFired = true;
+			ok(lost, 'webglcontextlost event fired on target node');
+			setTimeout(restoreContext, 50);
+		});
+
+		source.on('webglcontextrestored', function () {
+			restoredFired = true;
+			ok(!lost && restored, 'webglcontextrestored event fired on source node');
+		});
+		effect.on('webglcontextrestored', function () {
+			restoredFired = true;
+			ok(!lost && restored, 'webglcontextrestored event fired on effect node');
+		});
+		target.on('webglcontextrestored', function () {
+			restoredFired = true;
+			ok(!lost && restored, 'webglcontextrestored event fired on target node');
+		});
+
+		seriously.go(function () {
+			renderCount++;
+			console.log('rendering', renderCount);
+
+			//sometimes it takes a while for webglcontextlost event to fire in Firefox
+			//don't need to run this so many times
+			if (renderCount <= 1 || lostFired) {
+				ok(!lostFired || restored, 'render loop only runs when context is not lost');
+			}
+		}, function () {
+			if (renderCount === 1) {
+				loseContext();
+			} else if (restored) {
+				resume();
+			}
+		});
 	});
 
 	module('Destroy');
@@ -1780,13 +2011,18 @@
 		}
 
 		function checkImageFail(img) {
-			var canvas, ctx;
+			var canvas, ctx,
+				incompatible = Seriously.incompatible();
 
 			Seriously.logger.log = function (s) {
 				equal(s, 'Unable to access cross-domain image', 'Warning logged to console');
 			};
 
 			Seriously.logger.warn = function (s) {
+				if (incompatible && s === 'Unable to access WebGL.') {
+					//skip webgl warning
+					return;
+				}
 				equal(s, 'Image not loaded', 'Warning logged to console');
 			};
 
@@ -1802,6 +2038,7 @@
 			}
 
 			Seriously.logger.log = nop;
+			Seriously.logger.warn = nop;
 
 			tests--;
 			if (!tests) {

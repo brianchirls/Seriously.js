@@ -94,7 +94,7 @@
 				var s, j;
 				s = inputs[name];
 				if (!s) {
-					s = inputs[name] = inputs.source;
+					s = me.sources[name] = inputs[name] = inputs.source;
 				}
 
 				j = sources.indexOf(s);
@@ -208,7 +208,6 @@
 					'precision mediump float;',
 
 					'varying vec2 vTexCoord;',
-					'varying vec4 vPosition;',
 					'uniform mat4 channels;',
 					'uniform sampler2D source;',
 					//'uniform sampler2D previous;',

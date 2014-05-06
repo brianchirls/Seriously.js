@@ -51,14 +51,22 @@
 		multiply: '(base * blend)',
 		average: '(base + blend / TWO)',
 		add: 'min(base + blend, ONE)',
-		subtract: 'max(base + blend - ONE, ZERO)',
+		subtract: 'max(base - blend, ZERO)',
+		divide: 'base / blend',
 		difference: 'abs(base - blend)',
 		negation: '(ONE - abs(ONE - base - blend))',
 		exclusion: '(base + blend - TWO * base * blend)',
 		screen: '(ONE - ((ONE - base) * (ONE - blend)))',
 		lineardodge: 'min(base + blend, ONE)',
 		phoenix: '(min(base, blend) - max(base, blend) + ONE)',
-		linearburn: 'max(base + blend - ONE, ZERO)', //same as subtract?
+		linearburn: 'max(base + blend - ONE, ZERO)',
+
+		hue: 'BlendHue(base, blend)',
+		saturation: 'BlendSaturation(base, blend)',
+		color: 'BlendColor(base, blend)',
+		luminosity: 'BlendLuminosity(base, blend)',
+		darkercolor: 'BlendDarkerColor(base, blend)',
+		lightercolor: 'BlendLighterColor(base, blend)',
 
 		overlay: vectorBlendFormula('base < 0.5 ? (2.0 * base * blend) : (1.0 - 2.0 * (1.0 - base) * (1.0 - blend))'),
 		softlight: vectorBlendFormula('blend < 0.5 ? (2.0 * base * blend + base * base * (1.0 - 2.0 * blend)) : (sqrt(base) * (2.0 * blend - 1.0) + 2.0 * base * (1.0 - blend))'),
@@ -157,10 +165,10 @@
 				this.setDirty();
 			}
 
-			this.uniforms.resBottom[0] = bottom.width;
-			this.uniforms.resBottom[1] = bottom.height;
-			this.uniforms.resTop[0] = top.width;
-			this.uniforms.resTop[1] = top.height;
+			this.uniforms.resBottom[0] = bottom && bottom.width || 1;
+			this.uniforms.resBottom[1] = bottom && bottom.height || 1;
+			this.uniforms.resTop[0] = top && top.width || 1;
+			this.uniforms.resTop[1] = top && top.height || 1;
 
 			if (topUniforms) {
 				if (bottom) {
@@ -288,7 +296,7 @@
 
 					'	texCoordBottom = adjusted / resBottom + HALF;',
 					'	texCoordTop = adjusted / resTop + HALF;',
-					'}\n'
+					'}'
 				].join('\n');
 
 				shaderSource.fragment = [
@@ -299,10 +307,16 @@
 					'const vec3 HALF = vec3(0.5);',
 					'const vec3 TWO = vec3(2.0);',
 
+					/*
+					Linear Light is another contrast-increasing mode
+					If the blend color is darker than midgray, Linear Light darkens the image
+					by decreasing the brightness. If the blend color is lighter than midgray,
+					the result is a brighter image due to increased brightness.
+					*/
+
 					'#define BlendAddf(base, blend)			min(base + blend, 1.0)',
-					'#define BlendSubtractf(base, blend)	max(base + blend - 1.0, 0.0)',
 					'#define BlendLinearDodgef(base, blend)	BlendAddf(base, blend)',
-					'#define BlendLinearBurnf(base, blend)	BlendSubtractf(base, blend)',
+					'#define BlendLinearBurnf(base, blend)	max(base + blend - 1.0, 0.0)',
 					'#define BlendLightenf(base, blend)		max(blend, base)',
 					'#define BlendDarkenf(base, blend)		min(blend, base)',
 					'#define BlendLinearLightf(base, blend)	(blend < 0.5 ? BlendLinearBurnf(base, (2.0 * blend)) : BlendLinearDodgef(base, (2.0 * (blend - 0.5))))',
@@ -317,11 +331,124 @@
 					'#define BlendReflectf(base, blend)		((blend == 1.0) ? blend : min(base * base / (1.0 - blend), 1.0))',
 
 					/*
-					Linear Light is another contrast-increasing mode
-					If the blend color is darker than midgray, Linear Light darkens the image
-					by decreasing the brightness. If the blend color is lighter than midgray,
-					the result is a brighter image due to increased brightness.
+					RGB/HSL conversion functions needed for Color, Saturation, Hue, Luminosity, etc.
 					*/
+
+					'vec3 RGBToHSL(vec3 color) {',
+					'	vec3 hsl;', // init to 0 to avoid warnings ? (and reverse if + remove first part)
+
+					'	float fmin = min(min(color.r, color.g), color.b);',    //Min. value of RGB
+					'	float fmax = max(max(color.r, color.g), color.b);',    //Max. value of RGB
+					'	float delta = fmax - fmin;',             //Delta RGB value
+
+					'	hsl.z = (fmax + fmin) / 2.0;', // Luminance
+
+					'	if (delta == 0.0) {',		//This is a gray, no chroma...
+					'		hsl.x = 0.0;',	// Hue
+					'		hsl.y = 0.0;',	// Saturation
+					'	} else {',                                    //Chromatic data...
+					'		if (hsl.z < 0.5)',
+					'			hsl.y = delta / (fmax + fmin);', // Saturation
+					'		else',
+					'			hsl.y = delta / (2.0 - fmax - fmin);', // Saturation
+
+					'		float deltaR = (((fmax - color.r) / 6.0) + (delta / 2.0)) / delta;',
+					'		float deltaG = (((fmax - color.g) / 6.0) + (delta / 2.0)) / delta;',
+					'		float deltaB = (((fmax - color.b) / 6.0) + (delta / 2.0)) / delta;',
+
+					'		if (color.r == fmax )',
+					'			hsl.x = deltaB - deltaG;', // Hue
+					'		else if (color.g == fmax)',
+					'			hsl.x = (1.0 / 3.0) + deltaR - deltaB;', // Hue
+					'		else if (color.b == fmax)',
+					'			hsl.x = (2.0 / 3.0) + deltaG - deltaR;', // Hue
+
+					'		if (hsl.x < 0.0)',
+					'			hsl.x += 1.0;', // Hue
+					'		else if (hsl.x > 1.0)',
+					'			hsl.x -= 1.0;', // Hue
+					'	}',
+
+					'	return hsl;',
+					'}',
+
+					'float HueToRGB(float f1, float f2, float hue) {',
+					'	if (hue < 0.0)',
+					'		hue += 1.0;',
+					'	else if (hue > 1.0)',
+					'		hue -= 1.0;',
+					'	float res;',
+					'	if ((6.0 * hue) < 1.0)',
+					'		res = f1 + (f2 - f1) * 6.0 * hue;',
+					'	else if ((2.0 * hue) < 1.0)',
+					'		res = f2;',
+					'	else if ((3.0 * hue) < 2.0)',
+					'		res = f1 + (f2 - f1) * ((2.0 / 3.0) - hue) * 6.0;',
+					'	else',
+					'		res = f1;',
+					'	return res;',
+					'}',
+
+					'vec3 HSLToRGB(vec3 hsl) {',
+					'	vec3 rgb;',
+
+					'	if (hsl.y == 0.0)',
+					'		rgb = vec3(hsl.z);', // Luminance
+					'	else {',
+					'		float f2;',
+
+					'		if (hsl.z < 0.5)',
+					'			f2 = hsl.z * (1.0 + hsl.y);',
+					'		else',
+					'			f2 = (hsl.z + hsl.y) - (hsl.y * hsl.z);',
+
+					'		float f1 = 2.0 * hsl.z - f2;',
+
+					'		rgb.r = HueToRGB(f1, f2, hsl.x + (1.0/3.0));',
+					'		rgb.g = HueToRGB(f1, f2, hsl.x);',
+					'		rgb.b= HueToRGB(f1, f2, hsl.x - (1.0/3.0));',
+					'	}',
+
+					'	return rgb;',
+					'}',
+
+					// Hue Blend mode creates the result color by combining the luminance and saturation of the base color with the hue of the blend color.
+					'vec3 BlendHue(vec3 base, vec3 blend) {',
+					'	vec3 baseHSL = RGBToHSL(base);',
+					'	return HSLToRGB(vec3(RGBToHSL(blend).r, baseHSL.g, baseHSL.b));',
+					'}',
+
+					// Saturation Blend mode creates the result color by combining the luminance and hue of the base color with the saturation of the blend color.
+					'vec3 BlendSaturation(vec3 base, vec3 blend) {',
+					'	vec3 baseHSL = RGBToHSL(base);',
+					'	return HSLToRGB(vec3(baseHSL.r, RGBToHSL(blend).g, baseHSL.b));',
+					'}',
+
+					// Color Mode keeps the brightness of the base color and applies both the hue and saturation of the blend color.
+					'vec3 BlendColor(vec3 base, vec3 blend) {',
+					'	vec3 blendHSL = RGBToHSL(blend);',
+					'	return HSLToRGB(vec3(blendHSL.r, blendHSL.g, RGBToHSL(base).b));',
+					'}',
+
+					// Luminosity Blend mode creates the result color by combining the hue and saturation of the base color with the luminance of the blend color.
+					'vec3 BlendLuminosity(vec3 base, vec3 blend) {',
+					'	vec3 baseHSL = RGBToHSL(base);',
+					'	return HSLToRGB(vec3(baseHSL.r, baseHSL.g, RGBToHSL(blend).b));',
+					'}',
+
+					// Compares the total of all channel values for the blend and base color and displays the higher value color.
+					'vec3 BlendLighterColor(vec3 base, vec3 blend) {',
+					'	float baseTotal = base.r + base.g + base.b;',
+					'	float blendTotal = blend.r + blend.g + blend.b;',
+					'	return blendTotal > baseTotal ? blend : base;',
+					'}',
+
+					// Compares the total of all channel values for the blend and base color and displays the lower value color.
+					'vec3 BlendDarkerColor(vec3 base, vec3 blend) {',
+					'	float baseTotal = base.r + base.g + base.b;',
+					'	float blendTotal = blend.r + blend.g + blend.b;',
+					'	return blendTotal < baseTotal ? blend : base;',
+					'}',
 
 					'#define BlendFunction(base, blend) ' + blendModes[mode],
 
@@ -431,6 +558,7 @@
 						['average', 'Average'],
 						['add', 'Add'],
 						['subtract', 'Subtract'],
+						['divide', 'Divide'],
 						['difference', 'Difference'],
 						['negation', 'Negation'],
 						['exclusion', 'Exclusion'],
@@ -448,7 +576,13 @@
 						['hardmix', 'Hard Mix'],
 						['reflect', 'Reflect'],
 						['glow', 'Glow'],
-						['phoenix', 'Phoenix']
+						['phoenix', 'Phoenix'],
+						['hue', 'Hue'],
+						['saturation', 'Saturation'],
+						['color', 'color'],
+						['luminosity', 'Luminosity'],
+						['darkercolor', 'Darker Color'],
+						['lightercolor', 'Lighter Color']
 					],
 					update: function () {
 						updateDrawFunction();

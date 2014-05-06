@@ -42,12 +42,13 @@
 					'precision mediump float;',
 
 					'varying vec2 vTexCoord;',
-					'varying vec4 vPosition;',
 
 					'uniform float amount;',
 					'uniform vec2 noiseScale;',
 					'uniform vec2 noiseOffset;',
 					'uniform float time;',
+					'uniform vec4 black;',
+					'uniform vec4 white;',
 
 					utilities.shader.noiseHelpers,
 					utilities.shader.snoise3d,
@@ -67,17 +68,13 @@
 				shaderSource.fragment += [
 					'	total *= amount / ' + fmtFloat(adjust) + ';',
 					'	total = (total + 1.0)/ 2.0;',
-					'	gl_FragColor = vec4(total, total, total, 1.0);',
+					'	gl_FragColor = mix(black, white, total);',
 					'}'
 				].join('\n');
 
 				return shaderSource;
 			},
 			inputs: {
-				source: {
-					type: 'image',
-					uniform: 'source'
-				},
 				noiseScale: {
 					type: 'vector',
 					dimensions: 2,
@@ -128,6 +125,16 @@
 					step: 1,
 					update: resize,
 					defaultValue: 0
+				},
+				black: {
+					type: 'color',
+					uniform: 'black',
+					defaultValue: [0, 0, 0, 1]
+				},
+				white: {
+					type: 'color',
+					uniform: 'white',
+					defaultValue: [1, 1, 1, 1]
 				}
 			}
 		};

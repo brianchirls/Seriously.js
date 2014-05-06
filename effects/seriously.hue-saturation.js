@@ -36,7 +36,6 @@
 				'uniform float saturation;',
 
 				'varying vec2 vTexCoord;',
-				'varying vec4 vPosition;',
 
 				'varying vec3 weights;',
 
@@ -55,14 +54,12 @@
 				'	gl_Position.xy = screenPosition.xy * 2.0 / resolution;',
 				'	gl_Position.z = screenPosition.z * 2.0 / (resolution.x / resolution.y);',
 				'	vTexCoord = texCoord;',
-				'	vPosition = gl_Position;',
 				'}'
 			].join('\n');
 			shaderSource.fragment = [
 				'precision mediump float;',
 
 				'varying vec2 vTexCoord;',
-				'varying vec4 vPosition;',
 
 				'varying vec3 weights;',
 

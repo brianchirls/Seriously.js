@@ -60,6 +60,18 @@
 	]);
 
 	Seriously.plugin('edge', {
+		initialize: function (initialize) {
+			initialize();
+
+			this.uniforms.pixelWidth = 1 / this.width;
+			this.uniforms.pixelHeight = 1 / this.height;
+
+			if (this.inputs.mode === 'sobel') {
+				this.uniforms['G[0]'] = sobelMatrixConstants;
+			} else {
+				this.uniforms['G[0]'] = freiChenMatrixConstants;
+			}
+		},
 		shader: function (inputs, shaderSource) {
 			var defines;
 
@@ -76,7 +88,6 @@
 				'precision mediump float;',
 
 				'varying vec2 vTexCoord;',
-				'varying vec4 vPosition;',
 
 				'uniform sampler2D source;',
 				'uniform float pixelWidth;',
@@ -127,18 +138,9 @@
 
 			return shaderSource;
 		},
-		draw: function (shader, model, uniforms, frameBuffer, parent) {
-
-			uniforms.pixelWidth = 1 / this.width;
-			uniforms.pixelHeight = 1 / this.height;
-
-			if (this.inputs.mode === 'sobel') {
-				uniforms['G[0]'] = sobelMatrixConstants;
-			} else {
-				uniforms['G[0]'] = freiChenMatrixConstants;
-			}
-
-			parent(shader, model, uniforms, frameBuffer);
+		resize: function () {
+			this.uniforms.pixelWidth = 1 / this.width;
+			this.uniforms.pixelHeight = 1 / this.height;
 		},
 		inputs: {
 			source: {
@@ -152,7 +154,14 @@
 				options: [
 					['sobel', 'Sobel'],
 					['frei-chen', 'Frei-Chen']
-				]
+				],
+				update: function () {
+					if (this.inputs.mode === 'sobel') {
+						this.uniforms['G[0]'] = sobelMatrixConstants;
+					} else {
+						this.uniforms['G[0]'] = freiChenMatrixConstants;
+					}
+				}
 			}
 		},
 		description: 'Edge Detect',

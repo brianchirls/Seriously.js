@@ -26,7 +26,6 @@
 				'#define BlendOverlayf(base, blend) (base < 0.5 ? (2.0 * base * blend) : (1.0 - 2.0 * (1.0 - base) * (1.0 - blend)))',
 				'#define BlendOverlay(base, blend)		Blend(base, blend, BlendOverlayf)',
 				'varying vec2 vTexCoord;',
-				'varying vec4 vPosition;',
 
 				'uniform sampler2D source;',
 

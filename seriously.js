@@ -411,28 +411,38 @@
 		}
 	}, true);
 
+	function getWebGlContext(canvas, options) {
+		var context;
+		try {
+			if (window.WebGLDebugUtils && options && options.debugContext) {
+				context = window.WebGLDebugUtils.makeDebugContext(canvas.getContext('webgl', options));
+			} else {
+				context = canvas.getContext('webgl', options);
+			}
+		} catch (expError) {
+		}
+
+		if (!context) {
+			try {
+				context = canvas.getContext('experimental-webgl', options);
+			} catch (error) {
+			}
+		}
+		return context;
+	}
+
 	function getTestContext() {
 		var canvas;
 
-		if (testContext || !window.WebGLRenderingContext) {
+		if (testContext || !window.WebGLRenderingContext || incompatibility) {
 			return testContext;
 		}
 
 		canvas = document.createElement('canvas');
-		try {
-			testContext = canvas.getContext('webgl');
-		} catch (webglError) {
-		}
-
-		if (!testContext) {
-			try {
-				testContext = canvas.getContext('experimental-webgl');
-			} catch (expWebglError) {
-			}
-		}
+		testContext = getWebGlContext(canvas);
 
 		if (testContext) {
-			canvas.addEventListener('webglcontextlost', function (event) {
+			canvas.addEventListener('webglcontextlost', function contextLost(event) {
 				/*
 				If/When context is lost, just clear testContext and create
 				a new one the next time it's needed
@@ -440,6 +450,7 @@
 				event.preventDefault();
 				if (testContext && testContext.canvas === this) {
 					testContext = undefined;
+					canvas.removeEventListener('webglcontextlost', contextLost, false);
 				}
 			}, false);
 		} else {
@@ -519,7 +530,7 @@
 			input,
 			name;
 
-		function nop(value) {
+		function passThrough(value) {
 			return value;
 		}
 
@@ -586,7 +597,7 @@
 				input.shaderDirty = !!input.shaderDirty;
 
 				if (typeof input.validate !== 'function') {
-					input.validate = Seriously.inputValidators[input.type] || nop;
+					input.validate = Seriously.inputValidators[input.type] || passThrough;
 				}
 
 				if (!effect.defaultImageInput && input.type === 'image') {
@@ -743,7 +754,7 @@
 			obj;
 
 		function compileShader(source, fragment) {
-			var shader, i;
+			var shader, j;
 			if (fragment) {
 				shader = gl.createShader(gl.FRAGMENT_SHADER);
 			} else {
@@ -755,8 +766,8 @@
 
 			if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
 				source = source.split(/[\n\r]/);
-				for (i = 0; i < source.length; i++) {
-					source[i] = (i + 1) + ':\t' + source[i];
+				for (j = 0; j < source.length; j++) {
+					source[j] = (j + 1) + ':\t' + source[j];
 				}
 				source.unshift('Error compiling ' + (fragment ? 'fragment' : 'vertex') + ' shader:');
 				Seriously.logger.error(source.join('\n'));
@@ -901,7 +912,7 @@
 		this.program = program;
 
 		this.destroy = function () {
-			var i;
+			var key;
 
 			if (gl) {
 				gl.deleteProgram(program);
@@ -909,9 +920,9 @@
 				gl.deleteShader(fragmentShader);
 			}
 
-			for (i in this) {
-				if (this.hasOwnProperty(i)) {
-					delete this[i];
+			for (key in this) {
+				if (this.hasOwnProperty(key)) {
+					delete this[key];
 				}
 			}
 
@@ -951,6 +962,7 @@
 			postCallbacks = [],
 			glCanvas,
 			gl,
+			primaryTarget,
 			rectangleModel,
 			commonShaders = {},
 			baseShader,
@@ -1019,6 +1031,18 @@
 		function attachContext(context) {
 			var i, node;
 
+			if (gl) {
+				return;
+			}
+
+			context.canvas.addEventListener('webglcontextlost', destroyContext, false);
+			context.canvas.addEventListener('webglcontextrestored', restoreContext, false);
+
+			if (context.isContextLost()) {
+				Seriously.logger.warn('Unable to attach lost WebGL context. Will try again when context is restored.');
+				return;
+			}
+
 			gl = context;
 			glCanvas = context.canvas;
 
@@ -1049,6 +1073,174 @@
 			}
 		}
 
+		function restoreContext() {
+			var context,
+				target,
+				i,
+				node;
+
+			if (primaryTarget && !gl) {
+				target = primaryTarget.target;
+
+				//todo: if too many webglcontextlost events fired in too short a time, abort
+				//todo: consider allowing "manual" control of restoring context
+
+				if (target instanceof WebGLFramebuffer) {
+					Seriously.logger.error('Unable to restore target built on WebGLFramebuffer');
+					return;
+				}
+
+				context = getWebGlContext(target, {
+					alpha: true,
+					premultipliedAlpha: false,
+					preserveDrawingBuffer: true,
+					stencil: true,
+					debugContext: primaryTarget.debugContext
+				});
+
+				if (context) {
+					if (context.isContextLost()) {
+						Seriously.logger.error('Unable to restore WebGL Context');
+						return;
+					}
+
+					attachContext(context);
+
+					if (primaryTarget.renderToTexture) {
+						primaryTarget.frameBuffer = new FrameBuffer(gl, primaryTarget.width, primaryTarget.height, false);
+					} else {
+						primaryTarget.frameBuffer = {
+							frameBuffer: null
+						};
+					}
+
+					/*
+					Set all nodes dirty. In most cases, it should only be necessary
+					to set sources dirty, but we want to make sure unattached nodes are covered
+
+					This should get renderDaemon running again if necessary.
+					*/
+					for (i = 0; i < nodes.length; i++) {
+						node = nodes[i];
+						node.setDirty();
+						node.emit('webglcontextrestored');
+					}
+
+					Seriously.logger.log('WebGL context restored');
+				}
+			}
+		}
+
+		function destroyContext(event) {
+			// either webglcontextlost or primary target node has been destroyed
+			var i, node;
+
+			/*
+			todo: once multiple shared webgl resources are supported,
+			see if we can switch context to another existing one and
+			rebuild immediately
+			*/
+
+			if (event) {
+				Seriously.logger.warn('WebGL context lost');
+				/*
+				todo: if too many webglcontextlost events fired in too short a time,
+				don't preventDefault
+				*/
+				event.preventDefault();
+			}
+
+			//don't draw anymore until context is restored
+			if (rafId) {
+				cancelAnimFrame(rafId);
+				rafId = 0;
+			}
+
+			if (glCanvas) {
+				glCanvas.removeEventListener('webglcontextlost', destroyContext, false);
+			}
+
+			for (i = 0; i < effects.length; i++) {
+				node = effects[i];
+				node.gl = null;
+				node.initialized = false;
+				node.baseShader = null;
+				node.model = null;
+				node.frameBuffer = null;
+				node.texture = null;
+				if (node.shader) {
+					node.shader.destroy();
+				}
+				node.shaderDirty = true;
+				node.shader = null;
+				if (node.effect.lostContext) {
+					node.effect.lostContext.call(node);
+				}
+
+				/*
+				todo: do we need to set nodes to uready?
+				if so, make sure nodes never get set to ready unless gl exists
+				and make sure to set ready again when context is restored
+				*/
+
+				if (event) {
+					node.emit('webglcontextlost');
+				}
+			}
+
+			for (i = 0; i < sources.length; i++) {
+				node = sources[i];
+				//node.setUnready();
+				node.texture = null;
+				node.initialized = false;
+				node.allowRefresh = false;
+				if (event) {
+					node.emit('webglcontextlost');
+				}
+			}
+
+			for (i = 0; i < transforms.length; i++) {
+				node = transforms[i];
+				node.frameBuffer = null;
+				node.texture = null;
+				if (event) {
+					node.emit('webglcontextlost');
+				}
+			}
+
+			for (i = 0; i < targets.length; i++) {
+				node = targets[i];
+				node.model = false;
+				node.frameBuffer = null;
+				//texture?
+				if (event) {
+					node.emit('webglcontextlost');
+				}
+			}
+
+			if (baseShader && baseShader.destroy) {
+				baseShader.destroy();
+			}
+
+			//clean up rectangleModel
+			if (gl) {
+				gl.deleteBuffer(rectangleModel.vertex);
+				gl.deleteBuffer(rectangleModel.texCoord);
+				gl.deleteBuffer(rectangleModel.index);
+			}
+
+			if (rectangleModel) {
+				delete rectangleModel.vertex;
+				delete rectangleModel.texCoord;
+				delete rectangleModel.index;
+			}
+
+			rectangleModel = null;
+			baseShader = null;
+			gl = null;
+			glCanvas = null;
+		}
+
 		/*
 		runs on every frame, as long as there are media sources (img, video, canvas, etc.) to check,
 		dirty target nodes or pre/post callbacks to run. any sources that are updated are set to dirty,
@@ -1058,7 +1250,7 @@
 			var i, node, media,
 				keepRunning = false;
 
-			rafId = null;
+			rafId = 0;
 
 			if (preCallbacks.length) {
 				keepRunning = true;
@@ -1256,7 +1448,7 @@
 		function traceSources(node, original) {
 			var i,
 				source,
-				sources;
+				nodeSources;
 
 			if (!(node instanceof EffectNode) && !(node instanceof TransformNode)) {
 				return false;
@@ -1266,11 +1458,11 @@
 				return true;
 			}
 
-			sources = node.sources;
+			nodeSources = node.sources;
 
-			for (i in sources) {
-				if (sources.hasOwnProperty(i)) {
-					source = sources[i];
+			for (i in nodeSources) {
+				if (nodeSources.hasOwnProperty(i)) {
+					source = nodeSources[i];
 
 					if (source === original || traceSources(source, original)) {
 						return true;
@@ -1301,8 +1493,6 @@
 			this.listeners = {};
 
 			this.id = nodeId;
-			nodes.push(this);
-			nodesById[nodeId] = this;
 			nodeId++;
 		};
 
@@ -1356,6 +1546,7 @@
 		};
 
 		Node.prototype.readPixels = function (x, y, width, height, dest) {
+			var nodeGl = this.gl || gl;
 
 			if (!gl) {
 				//todo: is this the best approach?
@@ -1366,6 +1557,7 @@
 
 			if (!this.frameBuffer) {
 				this.initFrameBuffer();
+				this.setDirty();
 			}
 
 			//todo: should we render here?
@@ -1378,8 +1570,8 @@
 				throw new Error('Incompatible array type');
 			}
 
-			gl.bindFramebuffer(gl.FRAMEBUFFER, this.frameBuffer.frameBuffer); //todo: are we sure about this?
-			gl.readPixels(x, y, width, height, gl.RGBA, gl.UNSIGNED_BYTE, dest);
+			nodeGl.bindFramebuffer(gl.FRAMEBUFFER, this.frameBuffer.frameBuffer);
+			nodeGl.readPixels(x, y, width, height, gl.RGBA, gl.UNSIGNED_BYTE, dest);
 
 			return dest;
 		};
@@ -1832,6 +2024,7 @@
 				hasImage = false;
 
 			Node.call(this, options);
+			this.gl = gl;
 
 			this.effectRef = seriousEffects[hook];
 			this.sources = {};
@@ -1895,6 +2088,8 @@
 
 			this.pub = new Effect(this);
 
+			nodes.push(this);
+			nodesById[this.id] = this;
 			effects.push(this);
 
 			allEffectsByHook[hook].push(this);
@@ -1999,7 +2194,7 @@
 		};
 
 
-		EffectNode.prototype.setTarget = function (target) {
+		EffectNode.prototype.addTarget = function (target) {
 			var i;
 			for (i = 0; i < this.targets.length; i++) {
 				if (this.targets[i] === target) {
@@ -2085,6 +2280,10 @@
 				draw(shader, model, uniforms, frameBuffer, node || that, options);
 			}
 
+			if (!gl) {
+				return;
+			}
+
 			if (!this.initialized) {
 				this.initialize();
 			}
@@ -2093,7 +2292,7 @@
 				this.buildShader();
 			}
 
-			if (this.dirty) {
+			if (this.dirty && this.ready) {
 				for (i in this.sources) {
 					if (this.sources.hasOwnProperty(i) &&
 						(!effect.requires || effect.requires.call(this, i, this.inputs))) {
@@ -2127,7 +2326,28 @@
 		EffectNode.prototype.setInput = function (name, value) {
 			var input, uniform,
 				sourceKeys,
-				source;
+				source,
+				me = this;
+
+			function disconnectSource() {
+				var previousSource = me.sources[name],
+					key;
+
+				/*
+				remove this node from targets of previously connected source node,
+				but only if the source node is not being used as another input
+				*/
+				if (previousSource) {
+					for (key in me.sources) {
+						if (key !== name &&
+								me.sources.hasOwnProperty(key) &&
+								me.sources[key] === previousSource) {
+							return;
+						}
+					}
+					previousSource.removeTarget(me);
+				}
+			}
 
 			if (this.effect.inputs.hasOwnProperty(name)) {
 				input = this.effect.inputs[name];
@@ -2138,16 +2358,14 @@
 						value = findInputNode(value);
 
 						if (value !== this.sources[name]) {
-							if (this.sources[name]) {
-								this.sources[name].removeTarget(this);
-							}
+							disconnectSource();
 
 							if (traceSources(value, this)) {
 								throw new Error('Attempt to make cyclical connection.');
 							}
 
 							this.sources[name] = value;
-							value.setTarget(this);
+							value.addTarget(this);
 						}
 					} else {
 						delete this.sources[name];
@@ -2163,8 +2381,6 @@
 					} else {
 						this.uniforms.transform = identity;
 					}
-
-					this.resize();
 				} else {
 					value = input.validate.call(this, value, input, this.inputs[name]);
 					uniform = value;
@@ -2180,14 +2396,17 @@
 					this.uniforms[input.uniform] = uniform;
 				}
 
-				if (input.shaderDirty) {
-					this.shaderDirty = true;
+				if (input.type === 'image') {
+					this.resize();
+					if (value && value.ready) {
+						this.setReady();
+					} else {
+						this.setUnready();
+					}
 				}
 
-				if (value && value.ready) {
-					this.setReady();
-				} else {
-					this.setUnready();
+				if (input.shaderDirty) {
+					this.shaderDirty = true;
 				}
 
 				this.setDirty();
@@ -2668,7 +2887,7 @@
 				}
 			}
 
-			for (i in this) {
+			for (key in this) {
 				if (this.hasOwnProperty(key) && key !== 'id') {
 					delete this[key];
 				}
@@ -2796,16 +3015,16 @@
 				plugin;
 
 			function sourcePlugin(hook, source, options, force) {
-				var plugin = seriousSources[hook];
-				if (plugin.definition) {
-					plugin = plugin.definition.call(that, source, options, force);
-					if (plugin) {
-						plugin = extend(extend({}, seriousSources[hook]), plugin);
+				var p = seriousSources[hook];
+				if (p.definition) {
+					p = p.definition.call(that, source, options, force);
+					if (p) {
+						p = extend(extend({}, seriousSources[hook]), p);
 					} else {
 						return null;
 					}
 				}
-				return plugin;
+				return p;
 			}
 
 			function compareSource(source) {
@@ -2970,6 +3189,8 @@
 
 			this.pub = new Source(this);
 
+			nodes.push(this);
+			nodesById[this.id] = this;
 			sources.push(this);
 			allSourcesByHook[this.hook].push(this);
 
@@ -3011,7 +3232,7 @@
 			}
 		};
 
-		SourceNode.prototype.setTarget = function (target) {
+		SourceNode.prototype.addTarget = function (target) {
 			var i;
 			for (i = 0; i < this.targets.length; i++) {
 				if (this.targets[i] === target) {
@@ -3374,7 +3595,9 @@
 				height = parseInt(opts.height, 10),
 				matchedType = false,
 				i, element, elements, context,
-				frameBuffer;
+				debugContext = opts.debugContext,
+				frameBuffer,
+				triedWebGl = false;
 
 			Node.call(this, opts);
 
@@ -3396,7 +3619,6 @@
 
 				target = element;
 			} else if (target instanceof WebGLFramebuffer) {
-
 				frameBuffer = target;
 
 				if (opts instanceof HTMLCanvasElement) {
@@ -3417,68 +3639,54 @@
 				width = target.width;
 				height = target.height;
 
-				//todo: try to get a webgl context. if not, get a 2d context, and set up a different render function
-				try {
-					if (window.WebGLDebugUtils) {
-						context = window.WebGLDebugUtils.makeDebugContext(target.getContext('webgl', {
-							alpha: true,
-							premultipliedAlpha: false,
-							preserveDrawingBuffer: true,
-							stencil: true
-						}));
-					} else {
-						context = target.getContext('webgl', {
-							alpha: true,
-							premultipliedAlpha: false,
-							preserveDrawingBuffer: true,
-							stencil: true
-						});
-					}
-				} catch (expError) {
+				//try to get a webgl context.
+				if (!gl || gl.canvas !== target && opts.allowSecondaryWebGL) {
+					triedWebGl = true;
+					context = getWebGlContext(target, {
+						alpha: true,
+						premultipliedAlpha: false,
+						preserveDrawingBuffer: true,
+						stencil: true,
+						debugContext: debugContext
+					});
 				}
 
 				if (!context) {
-					try {
-						context = target.getContext('experimental-webgl', {
-							alpha: true,
-							premultipliedAlpha: false,
-							preserveDrawingBuffer: true,
-							stencil: true
-						});
-					} catch (error) {
+					if (!opts.allowSecondaryWebGL && gl && gl.canvas !== target) {
+						throw new Error('Only one WebGL target canvas allowed. Set allowSecondaryWebGL option to create secondary context.');
 					}
-				}
 
-				if (!context) {
-					context = target.getContext('2d');
-					//todo: set up ImageData and alternative drawing method (or drawImage)
-					this.render = this.render2D;
-					this.use2D = true;
+					this.render = nop;
+					Seriously.logger.log('Unable to create WebGL context.');
+					//throw new Error('Unable to create WebGL context.');
 				} else if (!gl || gl === context) {
 					//this is our main WebGL canvas
+					if (!primaryTarget) {
+						primaryTarget = this;
+					}
 					if (!gl) {
 						attachContext(context);
 					}
 					this.render = this.renderWebGL;
 					if (opts.renderToTexture) {
-						this.frameBuffer = new FrameBuffer(gl, width, height, false);
+						if (gl) {
+							this.frameBuffer = new FrameBuffer(gl, width, height, false);
+						}
 					} else {
 						this.frameBuffer = {
 							frameBuffer: frameBuffer || null
 						};
 					}
-				} else if (context !== gl) {
+				} else {
 					//set up alternative drawing method using ArrayBufferView
 					this.gl = context;
+
 					//this.pixels = new Uint8Array(width * height * 4);
-					//todo: probably need another framebuffer for renderToTexture
-					if (frameBuffer) {
-						this.frameBuffer = {
-							frameBuffer: frameBuffer
-						};
-					} else {
-						this.frameBuffer = new FrameBuffer(this.gl, width, height, false);
-					}
+					//todo: probably need another framebuffer for renderToTexture?
+					//todo: handle lost context on secondary webgl
+					this.frameBuffer = {
+						frameBuffer: frameBuffer || null
+					};
 					this.shader = new ShaderProgram(this.gl, baseVertexShader, baseFragmentShader);
 					this.model = buildRectangleModel.call(this, this.gl);
 
@@ -3490,8 +3698,6 @@
 					this.gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 
 					this.render = this.renderSecondaryWebGL;
-				} else {
-					//todo: this should theoretically never happen
 				}
 
 				matchedType = true;
@@ -3520,6 +3726,8 @@
 
 			this.pub = new Target(this);
 
+			nodes.push(this);
+			nodesById[this.id] = this;
 			targets.push(this);
 		};
 
@@ -3539,7 +3747,7 @@
 					this.source.removeTarget(this);
 				}
 				this.source = newSource;
-				newSource.setTarget(this);
+				newSource.addTarget(this);
 
 				if (newSource && newSource.ready) {
 					this.setReady();
@@ -3598,7 +3806,7 @@
 
 			this.resize();
 
-			if (this.dirty) {
+			if (gl && this.dirty && this.ready) {
 				if (!this.source) {
 					return;
 				}
@@ -3634,12 +3842,18 @@
 		};
 
 		TargetNode.prototype.renderSecondaryWebGL = function () {
+			var width,
+				height,
+				matrix,
+				x,
+				y;
+
 			if (this.dirty && this.source) {
 				this.emit('render');
 				this.source.render();
 
-				var width = this.source.width,
-					height = this.source.height;
+				width = this.source.width;
+				height = this.source.height;
 
 				if (!this.pixels || this.pixels.length !== width * height * 4) {
 					this.pixels = new Uint8Array(width * height * 4);
@@ -3649,15 +3863,30 @@
 
 				this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, width, height, 0, this.gl.RGBA, this.gl.UNSIGNED_BYTE, this.pixels);
 
+				if (this.source.width === width && this.source.height === height) {
+					this.uniforms.transform = this.source.cumulativeMatrix || identity;
+				} else if (this.transformDirty) {
+					matrix = this.transform;
+					mat4.copy(matrix, this.source.cumulativeMatrix || identity);
+					x = this.source.width / this.width;
+					y = this.source.height / this.height;
+					matrix[0] *= x;
+					matrix[1] *= x;
+					matrix[2] *= x;
+					matrix[3] *= x;
+					matrix[4] *= y;
+					matrix[5] *= y;
+					matrix[6] *= y;
+					matrix[7] *= y;
+					this.uniforms.transform = matrix;
+					this.transformDirty = false;
+				}
+
 				this.uniforms.source = this.texture;
 				draw(this.shader, this.model, this.uniforms, null, this);
 
 				this.dirty = false;
 			}
-		};
-
-		TargetNode.prototype.render2D = function () {
-			//todo: make this actually do something?
 		};
 
 		TargetNode.prototype.removeSource = function (source) {
@@ -3686,9 +3915,14 @@
 				targets.splice(i, 1);
 			}
 
-			//todo: if this.gl === gl, clear out context so we can start over
-
 			Node.prototype.destroy.call(this);
+
+			//clear out context so we can start over
+			if (this === primaryTarget) {
+				glCanvas.removeEventListener('webglcontextrestored', restoreContext, false);
+				destroyContext();
+				primaryTarget = null;
+			}
 		};
 
 		Transform = function (transformNode) {
@@ -3697,7 +3931,7 @@
 				key;
 
 			function setInput(inputName, def, input) {
-				var key, lookup, value;
+				var inputKey, lookup, value;
 
 				lookup = me.inputElements[inputName];
 
@@ -3705,12 +3939,12 @@
 				if (typeof input === 'string' && isNaN(input)) {
 					if (def.type === 'enum') {
 						if (def.options && def.options.filter) {
-							key = String(input).toLowerCase();
+							inputKey = String(input).toLowerCase();
 
 							//todo: possible memory leak on this function?
 							value = def.options.filter(function (e) {
-								return (typeof e === 'string' && e.toLowerCase() === key) ||
-									(e.length && typeof e[0] === 'string' && e[0].toLowerCase() === key);
+								return (typeof e === 'string' && e.toLowerCase() === inputKey) ||
+									(e.length && typeof e[0] === 'string' && e[0].toLowerCase() === inputKey);
 							});
 
 							value = value.length;
@@ -3740,7 +3974,7 @@
 					if (!lookup) {
 						lookup = {
 							element: input,
-							listener: (function (name, element) {
+							listener: (function (element) {
 								return function () {
 									var oldValue, newValue;
 
@@ -3771,7 +4005,7 @@
 										element.value = newValue;
 									}
 								};
-							}(inputName, input))
+							}(input))
 						};
 
 						me.inputElements[inputName] = lookup;
@@ -4007,8 +4241,6 @@
 			this.transformRef = seriousTransforms[hook];
 			this.hook = hook;
 			this.id = nodeId;
-			nodes.push(this);
-			nodesById[nodeId] = this;
 			nodeId++;
 
 			this.options = options;
@@ -4058,6 +4290,9 @@
 					}
 				}
 			}
+
+			nodes.push(this);
+			nodesById[this.id] = this;
 
 			this.pub = new Transform(this);
 
@@ -4122,7 +4357,7 @@
 				this.source.removeTarget(this);
 			}
 			this.source = newSource;
-			newSource.setTarget(this);
+			newSource.addTarget(this);
 
 			if (newSource && newSource.ready) {
 				this.setReady();
@@ -4132,7 +4367,7 @@
 			this.resize();
 		};
 
-		TransformNode.prototype.setTarget = function (target) {
+		TransformNode.prototype.addTarget = function (target) {
 			var i;
 			for (i = 0; i < this.targets.length; i++) {
 				if (this.targets[i] === target) {
@@ -4265,6 +4500,29 @@
 			return this.texture;
 		};
 
+		TransformNode.prototype.readPixels = function (x, y, width, height, dest) {
+			var nodeGl = this.gl || gl;
+
+			if (!gl) {
+				//todo: is this the best approach?
+				throw new Error('Cannot read pixels until a canvas is connected');
+			}
+
+			//todo: check on x, y, width, height
+			this.render(true);
+
+			if (dest === undefined) {
+				dest = new Uint8Array(width * height * 4);
+			} else if (!dest instanceof Uint8Array) {
+				throw new Error('Incompatible array type');
+			}
+
+			nodeGl.bindFramebuffer(gl.FRAMEBUFFER, this.frameBuffer.frameBuffer);
+			nodeGl.readPixels(x, y, width, height, gl.RGBA, gl.UNSIGNED_BYTE, dest);
+
+			return dest;
+		};
+
 		TransformNode.prototype.destroy = function () {
 			var i, key, item, hook = this.hook;
 
@@ -4273,6 +4531,12 @@
 				this.plugin.destroy.call(this);
 			}
 			delete this.effect;
+
+			if (this.frameBuffer) {
+				this.frameBuffer.destroy();
+				delete this.frameBuffer;
+				delete this.texture;
+			}
 
 			//stop watching any input elements
 			for (i in this.inputElements) {
@@ -4388,11 +4652,19 @@
 		};
 
 		this.target = function (target, options) {
-			var targetNode, i;
+			var targetNode,
+				renderToTexture,
+				targetRenderToTexture,
+				i;
 
+			/*
+			Returns existing target if duplicate texture or canvas is passed
+			*/
+			renderToTexture = !!(options && options.renderToTexture);
 			for (i = 0; i < targets.length; i++) {
 				if (targets[i] === target || targets[i].target === target) {
-					if (!!(options && options.renderToTexture) === !!targets[i].renderToTexture) {
+					targetRenderToTexture = !!targets[i].renderToTexture;
+					if (renderToTexture === targetRenderToTexture) {
 						return targets[i].pub;
 					}
 				}
@@ -4439,7 +4711,7 @@
 			preCallbacks.length = 0;
 			postCallbacks.length = 0;
 			cancelAnimFrame(rafId);
-			rafId = null;
+			rafId = 0;
 		};
 
 		this.render = function () {
@@ -4459,24 +4731,6 @@
 				node.destroy();
 			}
 
-			if (baseShader) {
-				baseShader.destroy();
-				baseShader = null;
-			}
-
-			//clean up rectangleModel
-			if (gl) {
-				gl.deleteBuffer(rectangleModel.vertex);
-				gl.deleteBuffer(rectangleModel.texCoord);
-				gl.deleteBuffer(rectangleModel.index);
-			}
-
-			if (rectangleModel) {
-				delete rectangleModel.vertex;
-				delete rectangleModel.texCoord;
-				delete rectangleModel.index;
-			}
-
 			for (i in this) {
 				if (this.hasOwnProperty(i) && i !== 'isDestroyed') {
 					descriptor = Object.getOwnPropertyDescriptor(this, i);
@@ -4491,18 +4745,18 @@
 
 			baseFragmentShader = null;
 			baseVertexShader = null;
-			rectangleModel = null;
-			gl = null;
 			seriously = null;
+
+			//todo: do we really need to allocate new arrays here?
 			sources = [];
 			targets = [];
 			effects = [];
 			nodes = [];
+
 			preCallbacks.length = 0;
 			postCallbacks.length = 0;
 			cancelAnimFrame(rafId);
-			rafId = null;
-
+			rafId = 0;
 
 			isDestroyed = true;
 		};
@@ -4569,7 +4823,6 @@
 			'uniform mat4 transform;',
 
 			'varying vec2 vTexCoord;',
-			'varying vec4 vPosition;',
 
 			'void main(void) {',
 			// first convert to screen space
@@ -4581,7 +4834,6 @@
 			'	gl_Position.z = screenPosition.z * 2.0 / (resolution.x / resolution.y);',
 			'	gl_Position.w = screenPosition.w;',
 			'	vTexCoord = texCoord;',
-			'	vPosition = gl_Position;',
 			'}\n'
 		].join('\n');
 
@@ -4589,7 +4841,6 @@
 			'precision mediump float;',
 
 			'varying vec2 vTexCoord;',
-			'varying vec4 vPosition;',
 
 			'uniform sampler2D source;',
 

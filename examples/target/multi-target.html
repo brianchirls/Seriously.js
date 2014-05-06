@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Seriously.js Multiple Target Example</title>
+</head>
+<body>
+	<img id="image" src="../images/field.jpg" style="display: none"/>
+	<div id="thumbs">
+		<canvas id="thumb0" width="340" height="209"></canvas>
+		<canvas id="thumb1" width="340" height="209"></canvas>
+		<canvas id="thumb2" width="340" height="209"></canvas>
+	</div>
+	<canvas id="main" width="1024" height="628"></canvas>
+
+	<script src="../../seriously.js"></script>
+	<script src="../../effects/seriously.split.js"></script>
+	<script src="../../effects/seriously.colorcomplements.js"></script>
+	<script src="../../effects/seriously.bleach-bypass.js"></script>
+	<script src="../../effects/seriously.hue-saturation.js"></script>
+	<script>
+	(function() {
+		var seriously = new Seriously(), // the main object that holds the entire composition
+			source, // wrapper object for source image
+			effects = [
+				seriously.effect('bleach-bypass'),
+				seriously.effect('colorcomplements'),
+				seriously.effect('hue-saturation')
+			],
+			split1,
+			split2,
+			target; // a wrapper object for our target canvas
+
+		//create main WebGL canvas first!
+		target = seriously.target('#main');
+
+		effects[2].saturation = -1;
+
+		effects.forEach(function (effect, i) {
+			var reformat,
+				target;
+
+			target = seriously.target('#thumb' + i, {
+				allowSecondaryWebGL: true
+			});
+
+			effect.source = '#image';
+
+			reformat = seriously.transform('reformat');
+			reformat.width = target.width;
+			reformat.height = target.height;
+			reformat.source = effect;
+
+			target.source = reformat;
+		});
+
+		split1 = seriously.effect('split');
+		split1.sourceA = effects[0];
+		split1.sourceB = effects[1];
+		split1.fuzzy = 0.1;
+		split1.split = 1 / 3;
+		split1.angle = Math.PI / 16;
+
+		split2 = seriously.effect('split');
+		split2.sourceA = effects[2];
+		split2.sourceB = split1;
+		split2.fuzzy = 0.1;
+		split2.split = 2 / 3;
+		split2.angle = Math.PI / 16;
+
+		target.source = split2;
+
+		seriously.go();
+	}());
+	</script>
+</body>
+</html>

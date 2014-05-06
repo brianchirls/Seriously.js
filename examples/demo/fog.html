@@ -1,0 +1,202 @@
+<!DOCTYPE HTML>
+<html lang="en-US">
+	<head>
+		<meta charset="UTF-8">
+		<title>Seriously.js Depth Fog Example</title>
+		<style type="text/css">
+
+		body {
+			background-color: #666;
+			margin: 0;
+			font-family: sans-serif;
+		}
+
+		#prompt {
+			position: fixed;
+			top: 0;
+			left: 0;
+			background-color: rgba(0, 0, 0, 0.4);
+			color: #ccc;
+			padding: 0 8px;
+			margin: 12px;
+		}
+
+		#prompt p,
+		#prompt div {
+			margin: 8px 0;
+		}
+
+		#prompt input[type=range] {
+			width: 300px;
+		}
+
+		</style>
+	</head>
+	<body>
+		<img id="image" src="../images/table.jpg" style="display: none"/>
+		<canvas id="canvas" width="1024" height="768"></canvas>
+		<div id="prompt">
+			<p>Drag and drop or select a JPG file taken with Android Camera using Lens Blur option.</p>
+			<input type="file" id="file" accept="image/jpeg"/>
+			<div>
+				<label>Fog <input type="range" id="intercept" min="-1" max="1" step="0.001" value="0"/></label>
+			</div>
+			<div>
+				<input type="checkbox" id="original" checked/><label for="original">Use original (un-blurred) image</label>
+			</div>
+		</div>
+	</body>
+	<script type="text/javascript" src="../../util/medialoader.js"></script>
+	<script type="text/javascript" src="../../seriously.js"></script>
+	<script type="text/javascript" src="../../sources/seriously.depthmap.js"></script>
+	<script type="text/javascript" src="../../effects/seriously.simplex.js"></script>
+	<script type="text/javascript" src="../../effects/seriously.channels.js"></script>
+	<script type="text/javascript" src="../../effects/seriously.falsecolor.js"></script>
+	<script type="text/javascript" src="../../effects/seriously.blend.js"></script>
+	<script type="text/javascript" src="../../effects/seriously.linear-transfer.js"></script>
+	<script type="text/javascript">
+
+	(function () {
+
+		var mediaLoader,
+			seriously = Seriously(),
+			transfer = seriously.effect('linear-transfer'),
+			simplex = seriously.effect('simplex'),
+			channels = seriously.effect('channels'),
+			falsecolor = seriously.effect('falsecolor'),
+			blend = seriously.effect('blend'),
+			blendAlpha = seriously.effect('blend'),
+			target = seriously.target('#canvas'),
+
+			image = document.getElementById('image'),
+			blurredSource,
+			unblurredSource,
+			depthMapSource = seriously.source('depthmap', image),
+
+			useOriginal = document.getElementById('original'),
+
+			start = Date.now() / 1000,
+			noiseOffset = [0, 0],
+			props = {
+				slope: [1, 1, 1, 1],
+				intercept: [0, 0, 0, 0]
+			};
+
+		function refreshImage() {
+			if (useOriginal.checked) {
+				if (!unblurredSource) {
+					unblurredSource = seriously.source('depthmap-original', image);
+				}
+				blend.bottom = unblurredSource;
+			} else {
+				if (!blurredSource) {
+					blurredSource = seriously.source(image);
+				}
+				blend.bottom = blurredSource;
+			}
+		}
+
+		//generate "fog" with simplex noise
+		simplex.width = target.width;
+		simplex.height = target.height;
+		simplex.octaves = 3;
+		simplex.noiseScale = [1.6, 1.5];
+		simplex.black = [0.2, 0.2, 0.2, 1];
+
+		//adjust "distance" of fog by moving depth channel value up/down
+		transfer.source = depthMapSource;
+		transfer.slope = props.slope;
+		transfer.intercept = props.intercept;
+
+		//set depth value as alpha channel of fog
+		channels.source = simplex;
+		channels.alphaSource = transfer;
+		channels.alpha = 'red';
+
+		//apply fog to image with "screen" blend mode
+		blend.top = channels;
+		blend.mode = 'screen';
+		refreshImage();
+
+		target.source = blend;
+
+		seriously.go(function () {
+			//animate fog
+			var time = (Date.now() / 1000 - start) % 1000;
+			simplex.time = time / 10;
+
+			noiseOffset[0] = time / 10;
+			simplex.noiseOffset = noiseOffset;
+		});
+
+		//todo: show preview of depth image in thumbnail
+
+		[/*'slope', */'intercept'].forEach(function (prop) {
+			document.getElementById(prop).addEventListener('input', function () {
+				var i, val;
+				val = parseFloat(this.value);
+				for (i = 0; i < 3; i++) {
+					props[prop][i] = val;
+				}
+				transfer[prop] = props[prop];
+			}, false);
+		});
+
+		useOriginal.addEventListener('change', refreshImage, false);
+
+		medialoader = new MediaLoader(function (file) {
+			var element,
+				reader,
+				newMapSource;
+
+			//load actual image
+			element = document.createElement('img');
+			//element.onload = resizeCanvas;
+			element.src = URL.createObjectURL(file);
+
+			//load depth map
+			reader = new FileReader();
+			reader.onload = function () {
+				try {
+					newMapSource = seriously.source('depthmap', reader.result);
+				} catch (e) {
+				}
+				if (newMapSource) {
+					if (depthMapSource) {
+						depthMapSource.destroy();
+					}
+
+					if (unblurredSource) {
+						unblurredSource.destroy();
+					}
+					unblurredSource = null;
+
+					if (blurredSource) {
+						blurredSource.destroy();
+					}
+					blurredSource = null;
+
+					image = element;
+					refreshImage();
+
+					depthMapSource = newMapSource;
+					transfer.source = depthMapSource;
+
+					target.width = newMapSource.width;
+					target.height = newMapSource.height;
+
+					//thumbnail.innerHTML = '';
+					//thumbnail.appendChild(map.original);
+				}
+			};
+			reader.readAsArrayBuffer(file);
+
+		}, {
+			input: '#file',
+			format: 'file',
+			types: ['image/jpeg']
+		});
+	}());
+	
+	</script>
+</html>

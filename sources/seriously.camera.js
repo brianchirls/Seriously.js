@@ -69,7 +69,7 @@
 			}
 
 			opts = {};
-			if (source) {
+			if (source && typeof source === 'object') {
 				//copy over constraints
 				for (key in source) {
 					if (source.hasOwnProperty(key)) {
