@@ -3652,7 +3652,7 @@
 				}
 
 				if (!context) {
-					if (!opts.allowSecondaryWebGL && gl.canvas !== target) {
+					if (!opts.allowSecondaryWebGL && gl && gl.canvas !== target) {
 						throw new Error('Only one WebGL target canvas allowed. Set allowSecondaryWebGL option to create secondary context.');
 					}
 

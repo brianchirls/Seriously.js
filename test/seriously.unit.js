@@ -1467,6 +1467,8 @@
 
 		incompatible = Seriously.incompatible();
 
+		expect(incompatible ? 3 : 4);
+
 		canvas1 = document.createElement('canvas');
 		canvas2 = document.createElement('canvas');
 
@@ -1482,7 +1484,9 @@
 			error = e;
 		}
 
-		equal(error && error.message, 'Only one WebGL target canvas allowed. Set allowSecondaryWebGL option to create secondary context.', 'Creating target node on second canvas throws an error');
+		if (!incompatible) {
+			equal(error && error.message, 'Only one WebGL target canvas allowed. Set allowSecondaryWebGL option to create secondary context.', 'Creating target node on second canvas throws an error');
+		}
 
 		t1.destroy();
 
