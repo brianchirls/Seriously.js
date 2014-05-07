@@ -541,6 +541,7 @@
 				}
 
 				input = effect.inputs[name];
+				input.name = name;
 
 				if (isNaN(input.min)) {
 					input.min = -Infinity;
@@ -960,6 +961,7 @@
 			aliases = {},
 			preCallbacks = [],
 			postCallbacks = [],
+			defaultInputs = {},
 			glCanvas,
 			gl,
 			primaryTarget,
@@ -2021,7 +2023,10 @@
 
 		EffectNode = function (hook, options) {
 			var key, name, input,
-				hasImage = false;
+				hasImage = false,
+				defaultValue,
+				defaults,
+				defaultSources = {};
 
 			Node.call(this, options);
 			this.gl = gl;
@@ -2054,15 +2059,23 @@
 				this.effect = extend({}, this.effectRef);
 			}
 
-			//todo: set up frame buffer(s), inputs, transforms, stencils, draw method. allow plugin to override
-
 			this.uniforms.transform = identity;
 			this.inputs = {};
+			defaults = defaultInputs[hook];
 			for (name in this.effect.inputs) {
 				if (this.effect.inputs.hasOwnProperty(name)) {
 					input = this.effect.inputs[name];
 
-					this.inputs[name] = input.defaultValue;
+					defaultValue = input.validate.call(this, input.defaultValue, input);
+					if (defaults && defaults[name] !== undefined) {
+						defaultValue = input.validate.call(this, defaults[name], input, input.defaultValue, defaultValue);
+						defaults[name] = defaultValue;
+						if (input.type === 'image') {
+							defaultSources[name] = defaultValue;
+						}
+					}
+
+					this.inputs[name] = defaultValue;
 					if (input.uniform) {
 						this.uniforms[input.uniform] = input.defaultValue;
 					}
@@ -2093,6 +2106,12 @@
 			effects.push(this);
 
 			allEffectsByHook[hook].push(this);
+
+			for (name in defaultSources) {
+				if (defaultSources.hasOwnProperty(name)) {
+					this.setInput(name, defaultSources[name]);
+				}
+			}
 		};
 
 		extend(EffectNode, Node);
@@ -2327,7 +2346,8 @@
 			var input, uniform,
 				sourceKeys,
 				source,
-				me = this;
+				me = this,
+				defaultValue;
 
 			function disconnectSource() {
 				var previousSource = me.sources[name],
@@ -2382,7 +2402,12 @@
 						this.uniforms.transform = identity;
 					}
 				} else {
-					value = input.validate.call(this, value, input, this.inputs[name]);
+					if (defaultInputs[this.hook] && defaultInputs[this.hook][name] !== undefined) {
+						defaultValue = defaultInputs[this.hook][name];
+					} else {
+						defaultValue = input.defaultValue;
+					}
+					value = input.validate.call(this, value, input, defaultValue, this.inputs[name]);
 					uniform = value;
 				}
 
@@ -4686,6 +4711,37 @@
 			}
 		};
 
+		this.defaults = function (hook, options) {
+			var key;
+
+			if (!hook) {
+				if (hook === null) {
+					for (key in defaultInputs) {
+						if (defaultInputs.hasOwnProperty(key)) {
+							delete defaultInputs[key];
+						}
+					}
+				}
+				return;
+			}
+
+			if (typeof hook === 'object') {
+				for (key in hook) {
+					if (hook.hasOwnProperty(key)) {
+						this.defaults(key, hook[key]);
+					}
+				}
+
+				return;
+			}
+
+			if (options === null) {
+				delete defaultInputs[hook];
+			} else if (typeof options === 'object') {
+				defaultInputs[hook] = extend({}, options);
+			}
+		};
+
 		this.go = function (pre, post) {
 			var i;
 
@@ -4854,6 +4910,8 @@
 			//'	}',
 			'}'
 		].join('\n');
+
+		this.defaults(options.defaults);
 	}
 
 	Seriously.incompatible = function (hook) {
@@ -5094,7 +5152,7 @@
 
 	//todo: validators should not allocate new objects/arrays if input is valid
 	Seriously.inputValidators = {
-		color: function (value, input, oldValue) {
+		color: function (value, input, defaultValue, oldValue) {
 			var s, a, i, computed, bg;
 
 			a = oldValue || [];
@@ -5214,9 +5272,9 @@
 			a[0] = a[1] = a[2] = a[3] = 0;
 			return a;
 		},
-		number: function (value, input) {
+		number: function (value, input, defaultValue) {
 			if (isNaN(value)) {
-				return input.defaultValue || 0;
+				return defaultValue || 0;
 			}
 
 			value = parseFloat(value);
@@ -5235,7 +5293,7 @@
 
 			return value;
 		},
-		'enum': function (value, input) {
+		'enum': function (value, input, defaultValue) {
 			var options = input.options || [],
 				filtered;
 
@@ -5247,9 +5305,9 @@
 				return value;
 			}
 
-			return input.defaultValue || '';
+			return defaultValue || '';
 		},
-		vector: function (value, input, oldValue) {
+		vector: function (value, input, defaultValue, oldValue) {
 			var a, i, s, n = input.dimensions || 4;
 
 			a = oldValue || [];

@@ -1156,6 +1156,81 @@
 		Seriously.removePlugin('testVectorInput');
 	});
 
+	test('Defaults', 8, function (argument) {
+		var seriously,
+			effect,
+			source;
+
+		Seriously.plugin('testDefaults', {
+			inputs: {
+				number: {
+					type: 'number',
+					defaultValue: 42
+				},
+				badNumber: {
+					type: 'number',
+					defaultValue: 9
+				},
+				source: {
+					type: 'image'
+				}
+			}
+		});
+
+		// Passed as an option to the Seriously constructor
+		seriously = new Seriously({
+			defaults: {
+				testDefaults: {
+					number: 1337,
+					badNumber: 'not a number'
+				}
+			}
+		});
+
+		effect = seriously.effect('testDefaults');
+		equal(effect.number, 1337, 'Default set when passed as an option to the Seriously constructor');
+		equal(effect.badNumber, 9, 'Invalid default value ignored');
+		effect.destroy();
+
+		// reset all defaults
+		seriously.defaults(null);
+		effect = seriously.effect('testDefaults');
+		equal(effect.number, 42, 'All defaults reset successfully');
+		seriously.destroy();
+
+		// defaults method on the Seriously instance
+		seriously = new Seriously();
+		seriously.defaults({
+			testDefaults: {
+				number: 43
+			}
+		});
+
+		effect = seriously.effect('testDefaults');
+		equal(effect.number, 43, 'Default set with defaults method');
+		effect.number = 7;
+		effect.number = 'not a number';
+		equal(effect.number, 43, 'New default used when trying to set an invalid value');
+		effect.destroy();
+
+		source = seriously.source('#colorbars');
+		seriously.defaults('testDefaults', {
+			source: source
+		});
+
+		effect = seriously.effect('testDefaults');
+		equal(effect.source, source, 'Default image input set with defaults method');
+		equal(effect.number, 42, 'Default value reset by setting to a different hash');
+		effect.destroy();
+
+		seriously.defaults('testDefaults', null);
+		effect = seriously.effect('testDefaults');
+		ok(!effect.source, 'Defaults reset for single effect');
+
+		seriously.destroy();
+		Seriously.removePlugin('testDefaults');
+	});
+
 	module('Transform');
 	test('Basic Transformations', 8, function () {
 		var seriously, source, target,
