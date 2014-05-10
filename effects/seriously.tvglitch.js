@@ -206,7 +206,7 @@
 					vsyncPeriod = 1;
 					uniforms.vsync = 0;
 				}
-				uniforms.time = (this.inputs.time % (10000 * vsyncPeriod)) / 1000;
+				uniforms.time = (this.inputs.time % (1000 * vsyncPeriod));
 				uniforms.distortion = Math.random() * this.inputs.distortion;
 
 				//render particle canvas and attach uniform
