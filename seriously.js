@@ -3132,6 +3132,7 @@
 								that.resize();
 							}
 
+							that.setDirty();
 							that.setReady();
 						}
 					}, true);
