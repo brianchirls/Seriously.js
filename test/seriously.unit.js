@@ -752,11 +752,9 @@
 		Seriously.removeSource('obj');
 	});
 
-	asyncTest('Update Source node when src changes #63', function () {
+	asyncTest('Update Source node when src changes #63', 2, function () {
 		var seriously,
 			source,
-			canvas,
-			target,
 			img,
 
 			src1 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFklEQVQIW2P8z8DwnxFIMAJpIGBgAAA8/Qb9DqS16QAAAABJRU5ErkJggg== ',
@@ -764,34 +762,25 @@
 
 		function imageLoaded() {
 			source.off('ready', imageLoaded);
+			source.on('resize', function () {
+				ok(img.src === src2, 'Source image updated');
+				equal(source.width, img.naturalWidth, 'Source dimensions updated');
 
+				seriously.destroy();
+				start();
+			});
+
+			// load second src
 			img.src = src2;
-			//source.on()
 		}
 
 		seriously = new Seriously();
-
-		// set up target and canvas to force render
-		canvas = document.createElement('canvas');
-		target = seriously.target(canvas);
 
 		// load first src
 		img = document.createElement('img');
 		img.src = src1;
 
 		source = seriously.source(img);
-		target.source = source;
-
-		target.render();
-
-		source.on('render', function () {
-			ok(img.src === src2, 'Source image updated');
-			equal(source.width, img.naturalWidth, 'Source dimensions updated');
-
-			seriously.destroy();
-			start();
-		});
-		target.go();
 
 		if (source.isReady()) {
 			imageLoaded();
