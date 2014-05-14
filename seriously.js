@@ -3062,8 +3062,12 @@
 				}
 
 				if (source.videoWidth) {
-					that.width = source.videoWidth;
-					that.height = source.videoHeight;
+					if (that.width !== source.videoWidth || that.height !== source.videoHeight) {
+						that.width = source.videoWidth;
+						that.height = source.videoHeight;
+						that.resize();
+					}
+
 					if (deferTexture) {
 						that.setReady();
 					}
@@ -3118,15 +3122,19 @@
 
 					if (!source.complete || !source.naturalWidth) {
 						deferTexture = true;
+					}
 
-						source.addEventListener('load', function () {
-							if (!that.isDestroyed) {
+					source.addEventListener('load', function () {
+						if (!that.isDestroyed) {
+							if (that.width !== source.naturalWidth || that.height !== source.naturalHeight) {
 								that.width = source.naturalWidth;
 								that.height = source.naturalHeight;
-								that.setReady();
+								that.resize();
 							}
-						}, true);
-					}
+
+							that.setReady();
+						}
+					}, true);
 
 					this.render = this.renderImageCanvas;
 					matchedType = true;
@@ -3137,8 +3145,8 @@
 						initializeVideo();
 					} else {
 						deferTexture = true;
-						source.addEventListener('loadedmetadata', initializeVideo, true);
 					}
+					source.addEventListener('loadedmetadata', initializeVideo, true);
 
 					this.render = this.renderVideo;
 					matchedType = true;
