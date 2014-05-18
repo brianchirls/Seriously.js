@@ -255,7 +255,8 @@
 				uniform: 'split',
 				defaultValue: 0.5,
 				min: 0,
-				max: 1
+				max: 1,
+				updateSources: true
 			},
 			angle: {
 				type: 'number',

@@ -485,6 +485,72 @@
 		Seriously.removePlugin('test');
 	});
 
+	test('Update Source', 3, function () {
+		var seriously,
+			ready,
+			unready,
+			combine;
+
+		Seriously.plugin('combine', {
+			requires: function (source) {
+				if (source === 'sometimes' && !this.inputs.useBoth) {
+					return false;
+				}
+
+				return true;
+			},
+			inputs: {
+				always: {
+					type: 'image'
+				},
+				sometimes: {
+					type: 'image'
+				},
+				useBoth: {
+					type: 'boolean',
+					updateSources: true,
+					defaultValue: true
+				}
+			}
+		});
+
+		Seriously.source('ready', function (source) {
+			return {
+			};
+		}, {
+			title: 'Always Ready'
+		});
+
+		Seriously.source('unready', function (source) {
+			return {
+				deferTexture: true
+			};
+		}, {
+			title: 'Never Ready'
+		});
+
+		seriously = new Seriously();
+		ready = seriously.source('ready');
+		unready = seriously.source('unready');
+		combine = seriously.effect('combine');
+
+		ok(!combine.isReady(), 'Effect is not ready when no sources are connected');
+
+		combine.always = ready;
+		combine.sometimes = unready;
+
+		ok(!combine.isReady(), 'Effect is not ready when source is not ready');
+
+		combine.useBoth = false;
+
+		ok(combine.isReady(), 'Effect is ready when unready source is not required');
+
+		seriously.destroy();
+		Seriously.removeSource('ready');
+		Seriously.removeSource('unready');
+		Seriously.removePlugin('combine');
+	});
+
 	module('Source');
 	/*
 	 * create source: all different types

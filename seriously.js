@@ -2096,7 +2096,7 @@
 				}
 			}
 
-			this.ready = !hasImage;
+			this.updateReady();
 			this.inPlace = this.effect.inPlace;
 
 			this.pub = new Effect(this);
@@ -2158,60 +2158,44 @@
 			}
 		};
 
-		EffectNode.prototype.setReady = function () {
+		EffectNode.prototype.updateReady = function () {
 			var i,
 				input,
-				key;
+				key,
+				effect,
+				ready = true,
+				method;
 
-			if (!this.ready) {
-				for (key in this.effect.inputs) {
-					if (this.effect.inputs.hasOwnProperty(key)) {
-						input = this.effect.inputs[key];
-						if (input.type === 'image' &&
-								(!this.sources[key] || !this.sources[key].ready)) {
-							return;
-						}
+			effect = this.effect;
+			for (key in effect.inputs) {
+				if (effect.inputs.hasOwnProperty(key)) {
+					input = this.effect.inputs[key];
+					if (input.type === 'image' &&
+							(!this.sources[key] || !this.sources[key].ready) &&
+							(!effect.requires || effect.requires.call(this, key, this.inputs))
+							) {
+						ready = false;
+						break;
 					}
 				}
+			}
 
-				this.ready = true;
-				this.emit('ready');
+			if (this.ready !== ready) {
+				this.ready = ready;
+				this.emit(ready ? 'ready' : 'unready');
+				method = ready ? 'setReady' : 'setUnready'
+
 				if (this.targets) {
 					for (i = 0; i < this.targets.length; i++) {
-						this.targets[i].setReady();
+						this.targets[i][method]();
 					}
 				}
 			}
 		};
 
-		EffectNode.prototype.setUnready = function () {
-			var i,
-				input,
-				key;
+		EffectNode.prototype.setReady = EffectNode.prototype.updateReady;
 
-			if (this.ready) {
-				for (key in this.effect.inputs) {
-					if (this.effect.inputs.hasOwnProperty(key)) {
-						input = this.effect.inputs[key];
-						if (input.type === 'image' &&
-								(!this.sources[key] || !this.sources[key].ready)) {
-							this.ready = false;
-							break;
-						}
-					}
-				}
-
-				if (!this.ready) {
-					this.emit('unready');
-					if (this.targets) {
-						for (i = 0; i < this.targets.length; i++) {
-							this.targets[i].setUnready();
-						}
-					}
-				}
-			}
-		};
-
+		EffectNode.prototype.setUnready = EffectNode.prototype.updateReady;
 
 		EffectNode.prototype.addTarget = function (target) {
 			var i;
@@ -2289,7 +2273,7 @@
 		};
 
 		EffectNode.prototype.render = function () {
-			var i,
+			var key,
 				frameBuffer,
 				effect = this.effect,
 				that = this,
@@ -2312,15 +2296,15 @@
 			}
 
 			if (this.dirty && this.ready) {
-				for (i in this.sources) {
-					if (this.sources.hasOwnProperty(i) &&
-						(!effect.requires || effect.requires.call(this, i, this.inputs))) {
+				for (key in this.sources) {
+					if (this.sources.hasOwnProperty(key) &&
+						(!effect.requires || effect.requires.call(this, key, this.inputs))) {
 
 						//todo: set source texture in case it changes?
 						//sourcetexture = this.sources[i].render() || this.sources[i].texture
 
-						inPlace = typeof this.inPlace === 'function' ? this.inPlace(i) : this.inPlace;
-						this.sources[i].render(!inPlace);
+						inPlace = typeof this.inPlace === 'function' ? this.inPlace(key) : this.inPlace;
+						this.sources[key].render(!inPlace);
 					}
 				}
 
@@ -2423,11 +2407,9 @@
 
 				if (input.type === 'image') {
 					this.resize();
-					if (value && value.ready) {
-						this.setReady();
-					} else {
-						this.setUnready();
-					}
+					this.updateReady();
+				} else if (input.updateSources) {
+					this.updateReady();
 				}
 
 				if (input.shaderDirty) {

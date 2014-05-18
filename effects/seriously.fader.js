@@ -36,6 +36,9 @@
 			].join('\n');
 			return shaderSource;
 		},
+		requires: function (sourceName, inputs) {
+			return inputs.amount < 1;
+		},
 		inPlace: true,
 		inputs: {
 			source: {

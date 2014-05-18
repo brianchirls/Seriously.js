@@ -23,6 +23,9 @@
 				draw(shader, model, uniforms, frameBuffer);
 			}
 		},
+		requires: function () {
+			return !this.inputs.frozen;
+		},
 		inPlace: true,
 		inputs: {
 			source: {
@@ -31,7 +34,8 @@
 			},
 			frozen: {
 				type: 'boolean',
-				defaultValue: false
+				defaultValue: false,
+				updateSources: true
 			}
 		},
 		title: 'Freeze',

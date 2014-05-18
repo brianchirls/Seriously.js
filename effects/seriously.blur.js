@@ -84,7 +84,6 @@ http://v002.info/plugins/v002-blurs/
 
 				shaderSource.vertex = [
 					defineVaryings,
-					'#define PI ' + Math.PI,
 					'precision mediump float;',
 
 					'attribute vec4 position;',
