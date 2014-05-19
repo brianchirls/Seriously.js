@@ -4033,8 +4033,8 @@
 						}
 					}
 
-					if (lookup && value.type === 'checkbox') {
-						value = value.checked;
+					if (lookup && input.type === 'checkbox') {
+						value = input.checked;
 					}
 				} else {
 					if (lookup) {
