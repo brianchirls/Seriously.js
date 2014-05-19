@@ -43,6 +43,7 @@ Full documentation is in progress at the [wiki](https://github.com/brianchirls/S
 - Expressions
 - Fader
 - False Color
+- Fast Approximate Anti-Aliasing
 - Film Grain
 - Freeze Frame
 - Gaussian Blur

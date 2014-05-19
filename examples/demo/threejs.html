@@ -5,6 +5,7 @@
 	<style type="text/css">
 		body {
 			margin: 0;
+			font-family: 'Roboto Condensed', tahoma, sans-serif;
 		}
 
 		img, video {
@@ -21,11 +22,16 @@
 
 		#controls {
 			position: absolute;
-			top: 0;
-			left: 0;
+			right: 0;
+			bottom: 0;
 			background-color: rgba(100, 100, 100, 0.6);
 			padding: 4px;
-			display: none;
+			opacity: 0.5;
+			color: white;
+		}
+
+		#controls:hover {
+			opacity: 1;
 		}
 
 		.title {
@@ -34,34 +40,23 @@
 			padding: 8px;
 			color: white;
 			background-color: black;
-			font-family: helvetica, arial, sans-serif;
 		}
 
-		body .rs-base {
-			top: auto;
-			left: auto;
-			right: 0;
-			bottom: 0;
-			opacity: 0.5;
-		}
-
-		body .rs-base:hover {
-			opacity: 1;
+		#controls .rs-base {
+			position: static;;
 		}
 
 	</style>
 </head>
 <body>
 	<canvas id="canvas" width="960" height="540"></canvas>
-	<div id="controls">
-		<div>
-		</div>
-		<div><label for="amount">Opacity</label><input type="range" id="opacity" min="0" max="1" step="0.001" value="1"/></div>
-	</div>
 	<div class="title" style="left: 0; top: 0;">Film Grain</div>
 	<div class="title" style="left: 50%; top: 0;">Simplex Noise, Displacement</div>
 	<div class="title" style="left: 0; top: 50%;">Night Vision, TV Glitch</div>
 	<div class="title" style="left: 50%; top: 50%;">ASCII</div>
+	<div id="controls">
+		<label>Enable FXAA on 3D Scene <input type="checkbox" id="fxaa"/></label>
+	</div>
 
 	<script src="../../lib/rStats.js"></script>
 
@@ -71,9 +66,11 @@
 	<script src="../../sources/seriously.camera.js"></script>
 	<script src="../../sources/seriously.three.js"></script>
 
+	<script src="../../effects/seriously.fxaa.js"></script>
 	<script src="../../effects/seriously.checkerboard.js"></script>
 	<script src="../../effects/seriously.blend.js"></script>
 	<script src="../../effects/seriously.layers.js"></script>
+	<script src="../../effects/seriously.select.js"></script>
 	<script src="../../effects/seriously.filmgrain.js"></script>
 	<script src="../../effects/seriously.simplex.js"></script>
 	<script src="../../effects/seriously.displacement.js"></script>
@@ -89,11 +86,13 @@
 				resizables = [],
 				reformats = [],
 				timedEffects = [],
-				inputEffects = [],
 				transforms = [],
 				layers,
 				canvas,
 				checkerboard,
+				fxaa,
+				select,
+				blend,
 
 				stats,
 
@@ -164,10 +163,8 @@
 				source = seriously.source(rtTexture);
 
 				// set new source on all effects
-				for (i = 0; i < inputEffects.length; i++) {
-					node = inputEffects[i];
-					node.top = source;
-				}
+				fxaa.source = source;
+				select.source0 = source;
 
 				// re-position each of the four outputs
 				for (i = 0; i < transforms.length; i++) {
@@ -291,13 +288,12 @@
 			// set up composition
 			function initSeriouslyComps() {
 				var effect,
-					blend,
 					anotherEffect,
 					transform,
 					reformat;
 
 				stats = new rStats({
-				CSSPath: '../',
+					CSSPath: '../',
 					values: {
 						fps: { caption: 'Framerate (FPS)', below: 30 },
 						raf: { caption: 'Time since last rAF (ms)' }
@@ -307,6 +303,8 @@
 					]
 				});
 
+				document.getElementById('controls').appendChild(document.querySelector('.rs-base'));
+
 				seriously = new Seriously();
 
 				checkerboard = seriously.effect('checkerboard');
@@ -314,15 +312,19 @@
 				checkerboard.color2 = '#222';
 				resizables.push(checkerboard);
 
+				fxaa = seriously.effect('fxaa');
+				select = seriously.effect('select');
+				select.source1 = fxaa;
+
+				blend = seriously.effect('blend');
+				blend.bottom = checkerboard;
+				blend.top = select;
+
 				layers = seriously.effect('layers', {
 					count: 4
 				});
 
 				// film grain
-				blend = seriously.effect('blend');
-				blend.bottom = checkerboard;
-				inputEffects.push(blend);
-
 				effect = seriously.effect('filmgrain');
 				effect.amount = 0.08;
 				effect.source = blend;
@@ -340,10 +342,6 @@
 				layers.source0 = reformat;
 
 				// distort
-				blend = seriously.effect('blend');
-				blend.bottom = checkerboard;
-				inputEffects.push(blend);
-
 				anotherEffect = seriously.effect('simplex');
 				anotherEffect.noiseScale = [1.6, 1.6];
 				anotherEffect.source = blend;
@@ -368,10 +366,6 @@
 				layers.source1 = reformat;
 
 				// nightvision
-				blend = seriously.effect('blend');
-				blend.bottom = checkerboard;
-				inputEffects.push(blend);
-
 				anotherEffect = seriously.effect('nightvision');
 				anotherEffect.luminanceThreshold = 0.1;
 				anotherEffect.amplification = 1.5;
@@ -400,10 +394,6 @@
 				layers.source2 = reformat;
 
 				// ASCII
-				blend = seriously.effect('blend');
-				blend.bottom = checkerboard;
-				inputEffects.push(blend);
-
 				effect = seriously.effect('ascii');
 				effect.source = blend;
 
@@ -429,6 +419,14 @@
 			initThreeScene();
 			initSeriouslyComps();
 			resize();
+
+			document.getElementById('fxaa').addEventListener('change', function () {
+				if (this.checked) {
+					select.active = 1;
+				} else {
+					select.active = 0;
+				}
+			}, false);
 
 			seriously.go(function () {
 				var time = Date.now() / 1000,
