@@ -9,9 +9,12 @@
 		// Node/CommonJS
 		factory(require('seriously'));
 	} else {
+		/*
+		todo: build out-of-order loading for sources and transforms or remove this
 		if (!root.Seriously) {
 			root.Seriously = { plugin: function (name, opt) { this[name] = opt; } };
 		}
+		*/
 		factory(root.Seriously);
 	}
 }(this, function (Seriously, undefined) {
@@ -20,7 +23,6 @@
 	/*
 	Camera Shake
 	- amplitude (x/y)
-	- center (x/y)
 	- rotation (degrees)
 	- frequency
 	- octaves
@@ -34,6 +36,8 @@
 	*/
 
 	var mat4 = Seriously.util.mat4,
+
+		PI = Math.PI,
 
 		f2 = 0.5 * (Math.sqrt(3.0) - 1.0),
 		g2 = (3.0 - Math.sqrt(3.0)) / 6.0,
@@ -150,10 +154,57 @@
 			time = 0,
 			amplitudeX = 0,
 			amplitudeY = 0,
-			centerX = 0,
-			centerY = 0,
 			frequency = 1,
-			rotation = 0;
+			rotation = 0,
+			preScale = 0,
+			autoScale = true,
+			maxScale = 0;
+
+		function calcScale(x, y, angle) {
+			var width = me.width,
+				height = me.height,
+				scale = 1,
+				x0, y0,
+				x1, y1,
+				x2, y2,
+				sin,
+				cos;
+
+			// angle mod 180
+			angle = angle - PI * Math.floor(angle / PI);
+
+			if (angle) {
+				sin = Math.sin(angle);
+				cos = Math.sqrt(1 - sin * sin);
+
+				/*
+				Take two top corner points, rotate them and find absolute value.
+				This should find the bounding box of the rotated recangle,
+				assuming it's centered at 0, 0
+				*/
+
+				// rotate point top right corner
+				x0 = width / 2;
+				y0 = height / 2;
+				x1 = Math.abs(x0 * cos - y0 * sin);
+				y1 = Math.abs(x0 * sin + y0 * cos);
+
+				// rotate point top left corner
+				x0 = -x0;
+				x2 = Math.abs(x0 * cos - y0 * sin);
+				y2 = Math.abs(x0 * sin + y0 * cos);
+
+				// find maximum scale
+				scale = 2 * Math.max(x1 / width, x2 / width, y1 / height, y2 / height);
+			}
+
+			scale *= Math.max(
+				(2 * Math.abs(x) + width) / width,
+				(2 * Math.abs(y) + height) / height
+			);
+
+			return scale;
+		}
 
 		function recompute() {
 			var matrix = me.matrix,
@@ -163,9 +214,11 @@
 				amp,
 				adjust = 0,
 				i,
+				scale = 1,
 				translateX = 0,
 				translateY = 0,
 				rotationZ = 0,
+				angle = 0,
 				m00,
 				m01,
 				m02,
@@ -183,13 +236,9 @@
 			}
 
 			function rotateZ() {
-				var angle;
-
 				if (!rotationZ) {
 					return;
 				}
-
-				angle = rotationZ * Math.PI / 180;
 
 				s = Math.sin(angle);
 				c = Math.cos(angle);
@@ -240,31 +289,35 @@
 			rotationZ *= rotation / adjust;
 			translateX *= amplitudeX / adjust;
 			translateY *= amplitudeY / adjust;
+			angle = rotationZ * PI / 180;
 
 			//calculate transformation matrix
 			mat4.identity(matrix);
 
-			translate(translateX + centerX, translateY + centerY);
+			translate(translateX, translateY);
 
 			rotateZ();
 
-			/*
-			//scale
-			if (scaleX !== 1) {
-				matrix[0] *= scaleX;
-				matrix[1] *= scaleX;
-				matrix[2] *= scaleX;
-				matrix[3] *= scaleX;
-			}
-			if (scaleY !== 1) {
-				matrix[4] *= scaleY;
-				matrix[5] *= scaleY;
-				matrix[6] *= scaleY;
-				matrix[7] *= scaleY;
-			}
-			*/
+			if (autoScale) {
+				if (preScale === 1) {
+					scale = maxScale;
+				} else {
+					scale = calcScale(translateX, translateY, angle);
+					scale = preScale * maxScale + (1 - preScale) * scale;
+				}
 
-			translate(-centerX, -centerY);
+				//scale
+				if (scale !== 1) {
+					matrix[0] *= scale;
+					matrix[1] *= scale;
+					matrix[2] *= scale;
+					matrix[3] *= scale;
+					matrix[4] *= scale;
+					matrix[5] *= scale;
+					matrix[6] *= scale;
+					matrix[7] *= scale;
+				}
+			}
 
 			me.transformed = true;
 		}
@@ -272,6 +325,7 @@
 		initializeSimplex();
 
 		return {
+			resize: recompute,
 			inputs: {
 				time: {
 					get: function () {
@@ -333,38 +387,7 @@
 
 						rotation = r;
 
-						recompute();
-						return true;
-					},
-					type: 'number'
-				},
-				centerX: {
-					get: function () {
-						return centerX;
-					},
-					set: function (x) {
-						if (x === centerX) {
-							return false;
-						}
-
-						centerX = x;
-
-						recompute();
-						return true;
-					},
-					type: 'number'
-				},
-				centerY: {
-					get: function () {
-						return centerY;
-					},
-					set: function (y) {
-						if (y === centerY) {
-							return false;
-						}
-
-						centerY = y;
-
+						maxScale = calcScale(amplitudeX, amplitudeY, rotation * PI / 180);
 						recompute();
 						return true;
 					},
@@ -382,6 +405,7 @@
 
 						amplitudeX = x;
 
+						maxScale = calcScale(amplitudeX, amplitudeY, rotation * PI / 180);
 						recompute();
 						return true;
 					},
@@ -398,6 +422,41 @@
 						}
 
 						amplitudeY = y;
+
+						maxScale = calcScale(amplitudeX, amplitudeY, rotation * PI / 180);
+						recompute();
+						return true;
+					},
+					type: 'number'
+				},
+				autoScale: {
+					get: function () {
+						return autoScale;
+					},
+					set: function (a) {
+						a = !!a;
+						if (a === autoScale) {
+							return false;
+						}
+
+						autoScale = a;
+
+						recompute();
+						return true;
+					},
+					type: 'boolean'
+				},
+				preScale: {
+					get: function () {
+						return preScale;
+					},
+					set: function (ps) {
+						ps = Math.max(0, Math.min(1, ps));
+						if (ps === preScale) {
+							return false;
+						}
+
+						preScale = ps;
 
 						recompute();
 						return true;
