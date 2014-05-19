@@ -159,7 +159,13 @@
 
 			//check the source texture on every draw just in case the source nodes pulls
 			//shenanigans with its texture.
-			draw: update,
+			draw: function () {
+				var i = me.inputs.active,
+					source;
+
+				source = me.inputs['source' + i];
+				me.texture = source && source.texture;
+			},
 			inputs: inputs
 		};
 	},
