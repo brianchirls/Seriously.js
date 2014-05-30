@@ -90,8 +90,8 @@
 				moveMask.translateY = canvas.height / 2 - y;
 			}, false);
 
-			seriously.go(function () {
-				moveMask.rotation = (Date.now() % 18000) / 50;
+			seriously.go(function (now) {
+				moveMask.rotation = (now % 18000) / 50;
 			});
 		});
 	</script>

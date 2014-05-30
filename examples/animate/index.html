@@ -50,9 +50,8 @@
 			split.fuzzy = 0.25;
 
 			target.source = split;
-			seriously.go(function() {
-				var now = Date.now(),
-					minutes;
+			seriously.go(function(now) {
+				var minutes;
 
 				minutes = now / 60000;
 				split.angle = (minutes - Math.floor(minutes)) * PI2;

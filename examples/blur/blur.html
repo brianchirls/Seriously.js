@@ -94,15 +94,13 @@
 			target = seriously.target('#canvas');
 			target.source = blur;
 
-			seriously.go(function () {
+			seriously.go(function (now) {
 				// callback runs before render
-				var now;
 
 				rS('rAF').tick();
 				rS('FPS').frame();
 
 				if (oscillating) {
-					now = Date.now();
 					if (lastRender) {
 						if (amount <= 0.01 || amount >= 0.99) {
 							direction *= -1;

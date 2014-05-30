@@ -126,9 +126,8 @@
 			resize();
 
 			window.onresize = resize;
-			seriously.go(function () {
-				var now = Date.now(),
-					diff = (now - lastFrameTime) / 1000;
+			seriously.go(function (now) {
+				var diff = (now - lastFrameTime) / 1000;
 
 				vx = Math.min(Math.max(vx + (Math.random() - 0.5) * 100, -200), 200);
 				vy = Math.min(Math.max(vy + (Math.random() - 0.5) * 100, -200), 200);

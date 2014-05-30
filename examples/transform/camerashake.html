@@ -78,8 +78,8 @@
 			target.source = shake;
 
 			//render
-			seriously.go(function () {
-				shake.time = Date.now() / 1000;
+			seriously.go(function (now) {
+				shake.time = now / 1000;
 			});
 		}(window.Seriously));
 	</script>

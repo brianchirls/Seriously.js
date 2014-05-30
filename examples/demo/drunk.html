@@ -78,8 +78,8 @@
 			reformat.source = accumulator;
 			target.source = reformat;
 			resize();
-			seriously.go(function () {
-				shake.time = Date.now() / 200;
+			seriously.go(function (now) {
+				shake.time = now / 200;
 			});
 		});
 	</script>

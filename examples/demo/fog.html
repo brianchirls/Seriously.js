@@ -120,9 +120,9 @@
 
 		target.source = blend;
 
-		seriously.go(function () {
+		seriously.go(function (now) {
 			//animate fog
-			var time = (Date.now() / 1000 - start) % 1000;
+			var time = (now / 1000 - start) % 1000;
 			simplex.time = time / 10;
 
 			noiseOffset[0] = time / 10;

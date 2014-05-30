@@ -1248,7 +1248,7 @@
 		dirty target nodes or pre/post callbacks to run. any sources that are updated are set to dirty,
 		forcing all dependent nodes to render
 		*/
-		function renderDaemon() {
+		function renderDaemon(now) {
 			var i, node, media,
 				keepRunning = false;
 
@@ -1257,7 +1257,7 @@
 			if (preCallbacks.length) {
 				keepRunning = true;
 				for (i = 0; i < preCallbacks.length; i++) {
-					preCallbacks[i].call(seriously);
+					preCallbacks[i].call(seriously, now);
 				}
 			}
 
