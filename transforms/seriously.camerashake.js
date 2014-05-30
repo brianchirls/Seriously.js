@@ -158,7 +158,7 @@
 			rotation = 0,
 			preScale = 0,
 			autoScale = true,
-			maxScale = 0;
+			maxScale = 1;
 
 		function calcScale(x, y, angle) {
 			var width = me.width,
