@@ -17,15 +17,6 @@
 }(this, function (Seriously, undefined) {
 	'use strict';
 
-	/*
-	Shader code:
-	* Copyright vade - Anton Marini
-	* Creative Commons, Attribution - Non Commercial - Share Alike 3.0
-
-	http://v002.info/?page_id=34
-
-	*/
-
 	Seriously.plugin('exposure', {
 		commonShader: true,
 		shader: function (inputs, shaderSource) {
@@ -38,11 +29,9 @@
 
 				'uniform float exposure;',
 
-				'const float sqrtoftwo = 1.41421356237;',
-
 				'void main (void)  {',
 				'	vec4 pixel = texture2D(source, vTexCoord);',
-				'	gl_FragColor = log2(vec4(pow(exposure + sqrtoftwo, 2.0))) * pixel;',
+				'	gl_FragColor = vec4(pow(2.0, exposure) * pixel.rgb, pixel.a);',
 				'}'
 			].join('\n');
 			return shaderSource;
@@ -57,9 +46,9 @@
 			exposure: {
 				type: 'number',
 				uniform: 'exposure',
-				defaultValue: 0.6,
-				min: 0,
-				max: 1
+				defaultValue: 1,
+				min: -8,
+				max: 8
 			}
 		},
 		title: 'Exposure',
