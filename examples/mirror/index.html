@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Seriously.js Panorama Example</title>
+	<meta name="viewport" content="width=device-width, user-scalable=no">
+	<style type="text/css">
+		body {
+			margin: 0;
+		}
+
+		img {
+			display: none;
+		}
+
+		#canvas {
+			position: absolute;
+			top: 0;
+			left: 0;
+		}
+	</style>
+</head>
+<body>
+	<img src="../images/pencils.jpg" id="image"/>
+	<canvas id="canvas" width="960" height="540"></canvas>
+	<script src="../../lib/require.js"></script>
+	<script>
+		require.config({
+			baseUrl: '../../'
+		});
+
+		require([
+			'seriously',
+			'effects/seriously.mirror'
+		], function (Seriously) {
+			// declare our variables
+			var seriously, // the main object that holds the entire composition
+				target, // a wrapper object for our target canvas
+				mirror;
+
+
+
+			seriously = new Seriously();
+
+			mirror = seriously.effect('mirror');
+			mirror.source = '#image';
+			target = seriously.target('#canvas');
+			target.source = mirror;
+
+			seriously.go();
+		});
+	</script>
+</body>
+</html>
