@@ -23,7 +23,7 @@
 			shaderSource.fragment = [
 				'precision mediump float;',
 
-                'uniform vec2 resolution;',
+				'uniform vec2 resolution;',
 				'uniform sampler2D source;',
 
 				'void main(void) {',
