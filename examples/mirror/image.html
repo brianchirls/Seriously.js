@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-	<title>Seriously.js Panorama Example</title>
+	<title>Seriously.js Mirror Example</title>
 	<meta name="viewport" content="width=device-width, user-scalable=no">
 	<style type="text/css">
 		body {
@@ -21,7 +21,7 @@
 </head>
 <body>
 	<img src="../images/pencils.jpg" id="image"/>
-	<canvas id="canvas" width="960" height="540"></canvas>
+	<canvas id="canvas" width="411" height="425"></canvas>
 	<script src="../../lib/require.js"></script>
 	<script>
 		require.config({
@@ -38,10 +38,11 @@
 				mirror;
 
 			seriously = new Seriously();
-
+			target = seriously.target('#canvas');
+			
 			mirror = seriously.effect('mirror');
 			mirror.source = '#image';
-			target = seriously.target('#canvas');
+
 			target.source = mirror;
 
 			seriously.go();
