@@ -27,7 +27,7 @@
 				'uniform sampler2D source;',
 
 				'void main(void) {',
-                '	vec2 uv = gl_FragCoord.xy / resolution.xy;',
+				'	vec2 uv = gl_FragCoord.xy / resolution.xy;',
 				'	gl_FragColor = texture2D(source, vec2(abs(0.5 - uv.x), uv.y));',
 				'}'
 			].join('\n');
