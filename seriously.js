@@ -1170,7 +1170,7 @@
 				node.model = null;
 				node.frameBuffer = null;
 				node.texture = null;
-				if (node.shader) {
+				if (node.shader && node.shader.destroy) {
 					node.shader.destroy();
 				}
 				node.shaderDirty = true;
