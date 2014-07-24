@@ -3038,28 +3038,6 @@
 				return that.source === source;
 			}
 
-			function initializeVideo() {
-				if (that.isDestroyed) {
-					return;
-				}
-
-				if (source.videoWidth) {
-					if (that.width !== source.videoWidth || that.height !== source.videoHeight) {
-						that.width = source.videoWidth;
-						that.height = source.videoHeight;
-						that.resize();
-					}
-
-					if (deferTexture) {
-						that.setReady();
-					}
-				} else {
-					//Workaround for Firefox bug https://bugzilla.mozilla.org/show_bug.cgi?id=926753
-					deferTexture = true;
-					setTimeout(initializeVideo, 50);
-				}
-			}
-
 			Node.call(this);
 
 			if (hook && typeof hook !== 'string' || !source && source !== 0) {
@@ -3123,18 +3101,6 @@
 					matchedType = true;
 					this.hook = 'image';
 					this.compare = compareSource;
-				} else if (source.tagName === 'VIDEO') {
-					if (source.readyState) {
-						initializeVideo();
-					} else {
-						deferTexture = true;
-					}
-					source.addEventListener('loadedmetadata', initializeVideo, true);
-
-					this.render = this.renderVideo;
-					matchedType = true;
-					this.hook = 'video';
-					this.compare = compareSource;
 				}
 			} else if (!plugin && source instanceof WebGLTexture) {
 				if (gl && !gl.isTexture(source)) {
@@ -3168,7 +3134,9 @@
 
 				//todo: if WebGLTexture source is from a different context render it and copy it over
 				this.render = function () {};
-			} else if (!plugin) {
+			}
+
+			if (!matchedType && !plugin) {
 				for (key in seriousSources) {
 					if (seriousSources.hasOwnProperty(key) && seriousSources[key]) {
 						plugin = sourcePlugin(key, source, options, false);
@@ -5460,6 +5428,60 @@
 				'#endif\n'
 		}
 	};
+
+	Seriously.source('video', function (source, options, force) {
+		var me = this,
+			video,
+			key,
+			opts,
+			destroyed = false,
+			deferTexture = false;
+
+		function initializeVideo() {
+			if (destroyed) {
+				return;
+			}
+
+			if (source.videoWidth) {
+				if (me.width !== source.videoWidth || me.height !== source.videoHeight) {
+					me.width = source.videoWidth;
+					me.height = source.videoHeight;
+					me.resize();
+				}
+
+				if (deferTexture) {
+					me.setReady();
+				}
+			} else {
+				//Workaround for Firefox bug https://bugzilla.mozilla.org/show_bug.cgi?id=926753
+				deferTexture = true;
+				setTimeout(initializeVideo, 50);
+			}
+		}
+
+		if (source instanceof window.HTMLVideoElement) {
+			if (source.readyState) {
+				initializeVideo();
+			} else {
+				deferTexture = true;
+				source.addEventListener('loadedmetadata', initializeVideo, true);
+			}
+
+			return {
+				deferTexture: deferTexture,
+				source: video,
+				render: Object.getPrototypeOf(this).renderVideo,
+				compare: function (source) {
+					return me.source === source;
+				},
+				destroy: function () {
+					destroyed = true;
+				}
+			};
+		}
+	}, {
+		title: 'Video'
+	});
 
 	/*
 	Default transform - 2D
