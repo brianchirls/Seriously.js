@@ -14,7 +14,7 @@
 		}
 		factory(root.Seriously);
 	}
-}(this, function (Seriously, undefined) {
+}(this, function (Seriously) {
 	'use strict';
 
 	var intRegex = /\d+/;
@@ -25,16 +25,18 @@
 			i,
 			inputs;
 
+		function resize() {
+			me.resize();
+		}
+
 		function update() {
 			var i = me.inputs.active,
 				source;
 
 			source = me.inputs['source' + i];
 			me.texture = source && source.texture;
-		}
 
-		function resize() {
-			me.resize();
+			resize();
 		}
 
 		if (typeof options === 'number' && options >= 2) {
@@ -51,7 +53,8 @@
 				min: 0,
 				max: count - 1,
 				defaultValue: 0,
-				update: resize
+				update: update,
+				updateSources: true
 			},
 			sizeMode: {
 				type: 'enum',
@@ -72,7 +75,7 @@
 			//source
 			inputs['source' + i] = {
 				type: 'image',
-				update: resize
+				update: update
 			};
 		}
 
@@ -156,7 +159,13 @@
 
 			//check the source texture on every draw just in case the source nodes pulls
 			//shenanigans with its texture.
-			draw: update,
+			draw: function () {
+				var i = me.inputs.active,
+					source;
+
+				source = me.inputs['source' + i];
+				me.texture = source && source.texture;
+			},
 			inputs: inputs
 		};
 	},

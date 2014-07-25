@@ -485,6 +485,72 @@
 		Seriously.removePlugin('test');
 	});
 
+	test('Update Source', 3, function () {
+		var seriously,
+			ready,
+			unready,
+			combine;
+
+		Seriously.plugin('combine', {
+			requires: function (source) {
+				if (source === 'sometimes' && !this.inputs.useBoth) {
+					return false;
+				}
+
+				return true;
+			},
+			inputs: {
+				always: {
+					type: 'image'
+				},
+				sometimes: {
+					type: 'image'
+				},
+				useBoth: {
+					type: 'boolean',
+					updateSources: true,
+					defaultValue: true
+				}
+			}
+		});
+
+		Seriously.source('ready', function (source) {
+			return {
+			};
+		}, {
+			title: 'Always Ready'
+		});
+
+		Seriously.source('unready', function (source) {
+			return {
+				deferTexture: true
+			};
+		}, {
+			title: 'Never Ready'
+		});
+
+		seriously = new Seriously();
+		ready = seriously.source('ready');
+		unready = seriously.source('unready');
+		combine = seriously.effect('combine');
+
+		ok(!combine.isReady(), 'Effect is not ready when no sources are connected');
+
+		combine.always = ready;
+		combine.sometimes = unready;
+
+		ok(!combine.isReady(), 'Effect is not ready when source is not ready');
+
+		combine.useBoth = false;
+
+		ok(combine.isReady(), 'Effect is ready when unready source is not required');
+
+		seriously.destroy();
+		Seriously.removeSource('ready');
+		Seriously.removeSource('unready');
+		Seriously.removePlugin('combine');
+	});
+
 	module('Source');
 	/*
 	 * create source: all different types
@@ -750,6 +816,43 @@
 		Seriously.removePlugin('temp');
 		Seriously.removeSource('func');
 		Seriously.removeSource('obj');
+	});
+
+	asyncTest('Update Source node when src changes #63', 2, function () {
+		var seriously,
+			source,
+			img,
+
+			src1 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFklEQVQIW2P8z8DwnxFIMAJpIGBgAAA8/Qb9DqS16QAAAABJRU5ErkJggg== ',
+			src2 = document.getElementById('colorbars').src;
+
+		function imageLoaded() {
+			source.off('ready', imageLoaded);
+			source.on('resize', function () {
+				ok(img.src === src2, 'Source image updated');
+				equal(source.width, img.naturalWidth, 'Source dimensions updated');
+
+				seriously.destroy();
+				start();
+			});
+
+			// load second src
+			img.src = src2;
+		}
+
+		seriously = new Seriously();
+
+		// load first src
+		img = document.createElement('img');
+		img.src = src1;
+
+		source = seriously.source(img);
+
+		if (source.isReady()) {
+			imageLoaded();
+		} else {
+			source.on('ready', imageLoaded);
+		}
 	});
 
 	module('Inputs');
@@ -1154,6 +1257,81 @@
 
 		s.destroy();
 		Seriously.removePlugin('testVectorInput');
+	});
+
+	test('Defaults', 8, function (argument) {
+		var seriously,
+			effect,
+			source;
+
+		Seriously.plugin('testDefaults', {
+			inputs: {
+				number: {
+					type: 'number',
+					defaultValue: 42
+				},
+				badNumber: {
+					type: 'number',
+					defaultValue: 9
+				},
+				source: {
+					type: 'image'
+				}
+			}
+		});
+
+		// Passed as an option to the Seriously constructor
+		seriously = new Seriously({
+			defaults: {
+				testDefaults: {
+					number: 1337,
+					badNumber: 'not a number'
+				}
+			}
+		});
+
+		effect = seriously.effect('testDefaults');
+		equal(effect.number, 1337, 'Default set when passed as an option to the Seriously constructor');
+		equal(effect.badNumber, 9, 'Invalid default value ignored');
+		effect.destroy();
+
+		// reset all defaults
+		seriously.defaults(null);
+		effect = seriously.effect('testDefaults');
+		equal(effect.number, 42, 'All defaults reset successfully');
+		seriously.destroy();
+
+		// defaults method on the Seriously instance
+		seriously = new Seriously();
+		seriously.defaults({
+			testDefaults: {
+				number: 43
+			}
+		});
+
+		effect = seriously.effect('testDefaults');
+		equal(effect.number, 43, 'Default set with defaults method');
+		effect.number = 7;
+		effect.number = 'not a number';
+		equal(effect.number, 43, 'New default used when trying to set an invalid value');
+		effect.destroy();
+
+		source = seriously.source('#colorbars');
+		seriously.defaults('testDefaults', {
+			source: source
+		});
+
+		effect = seriously.effect('testDefaults');
+		equal(effect.source, source, 'Default image input set with defaults method');
+		equal(effect.number, 42, 'Default value reset by setting to a different hash');
+		effect.destroy();
+
+		seriously.defaults('testDefaults', null);
+		effect = seriously.effect('testDefaults');
+		ok(!effect.source, 'Defaults reset for single effect');
+
+		seriously.destroy();
+		Seriously.removePlugin('testDefaults');
 	});
 
 	module('Transform');

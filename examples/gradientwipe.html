@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Seriously.js Gradient Wipe Example</title>
+	<style type="text/css">
+		canvas {
+			display: block;
+			margin: auto;
+			border: black solid 1px;
+		}
+
+		#robot {
+			display: none;
+		}
+
+		input[type=range] {
+			width: 400px;
+		}
+
+		label {
+			display: block;
+		}
+
+		#controls {
+			width: 960px;
+			margin: auto;
+		}
+
+		img {
+			display: none;
+		}
+	</style>
+</head>
+<body>
+	<img id="robot" src="images/robot.jpg"/>
+	<img id="pencils" src="images/pencils.jpg"/>
+	<canvas id="canvas" width="960" height="540"></canvas>
+	<div id="controls">
+		<label>Transition <input id="transition" type="range" min="0" max="1" step="0.0001" value="0"/></label>
+		<label>Smoothness <input id="smoothness" type="range" min="0" max="1" step="0.0001" value="0.1"/></label>
+	</div>
+
+	<script src="../seriously.js"></script>
+	<script src="../effects/seriously.gradientwipe.js"></script>
+	<script src="../effects/seriously.simplex.js"></script>
+	<script src="../effects/seriously.blend.js"></script>
+	<script>
+		(function (Seriously) {
+			// declare our variables
+			var source = document.getElementById('source'),
+				seriously, // the main object that holds the entire composition
+				gradientwipe, // gradientwipe node
+				ctx, grd,
+				reformatRobot,
+				reformatPencils,
+				blend,
+				target; // a wrapper object for our target canvas
+
+			seriously = new Seriously();
+			gradientwipe = seriously.effect('gradientwipe');
+			blend = seriously.effect('blend');
+			target = seriously.target('#canvas');
+			reformatRobot = seriously.transform('reformat');
+			reformatPencils = seriously.transform('reformat');
+
+			reformatRobot.source = '#robot';
+			reformatRobot.width = 960;
+			reformatRobot.height = 540;
+			reformatRobot.mode = 'cover';
+
+			reformatPencils.source = '#pencils';
+			reformatPencils.width = 960;
+			reformatPencils.height = 540;
+			reformatPencils.mode = 'cover';
+
+			noise = seriously.effect('simplex');
+			noise.width = 960;
+			noise.height = 540;
+			noise.noiseScale = [5, 5];
+			noise.octaves = 3;
+
+			gradientwipe.source = reformatRobot;
+			gradientwipe.gradient = noise;
+			gradientwipe.transition = '#transition';
+			gradientwipe.smoothness = '#smoothness';
+
+			blend.bottom = reformatPencils;
+			blend.top = gradientwipe;
+
+			target.source = blend;
+
+			//render
+			seriously.go();
+		}(window.Seriously));
+	</script>
+</body>
+</html>

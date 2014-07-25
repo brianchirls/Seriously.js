@@ -20,7 +20,7 @@
 		// Browser globals
 		root.Seriously = factory(root);
 	}
-}(this, function (window, undefined) {
+}(this, function (window) {
 	'use strict';
 
 	var document = window.document,
@@ -541,6 +541,7 @@
 				}
 
 				input = effect.inputs[name];
+				input.name = name;
 
 				if (isNaN(input.min)) {
 					input.min = -Infinity;
@@ -960,6 +961,7 @@
 			aliases = {},
 			preCallbacks = [],
 			postCallbacks = [],
+			defaultInputs = {},
 			glCanvas,
 			gl,
 			primaryTarget,
@@ -1168,7 +1170,7 @@
 				node.model = null;
 				node.frameBuffer = null;
 				node.texture = null;
-				if (node.shader) {
+				if (node.shader && node.shader.destroy) {
 					node.shader.destroy();
 				}
 				node.shaderDirty = true;
@@ -1246,7 +1248,7 @@
 		dirty target nodes or pre/post callbacks to run. any sources that are updated are set to dirty,
 		forcing all dependent nodes to render
 		*/
-		function renderDaemon() {
+		function renderDaemon(now) {
 			var i, node, media,
 				keepRunning = false;
 
@@ -1255,7 +1257,7 @@
 			if (preCallbacks.length) {
 				keepRunning = true;
 				for (i = 0; i < preCallbacks.length; i++) {
-					preCallbacks[i].call(seriously);
+					preCallbacks[i].call(seriously, now);
 				}
 			}
 
@@ -2021,7 +2023,10 @@
 
 		EffectNode = function (hook, options) {
 			var key, name, input,
-				hasImage = false;
+				hasImage = false,
+				defaultValue,
+				defaults,
+				defaultSources = {};
 
 			Node.call(this, options);
 			this.gl = gl;
@@ -2054,15 +2059,23 @@
 				this.effect = extend({}, this.effectRef);
 			}
 
-			//todo: set up frame buffer(s), inputs, transforms, stencils, draw method. allow plugin to override
-
 			this.uniforms.transform = identity;
 			this.inputs = {};
+			defaults = defaultInputs[hook];
 			for (name in this.effect.inputs) {
 				if (this.effect.inputs.hasOwnProperty(name)) {
 					input = this.effect.inputs[name];
 
-					this.inputs[name] = input.defaultValue;
+					defaultValue = input.validate.call(this, input.defaultValue, input);
+					if (defaults && defaults[name] !== undefined) {
+						defaultValue = input.validate.call(this, defaults[name], input, input.defaultValue, defaultValue);
+						defaults[name] = defaultValue;
+						if (input.type === 'image') {
+							defaultSources[name] = defaultValue;
+						}
+					}
+
+					this.inputs[name] = defaultValue;
 					if (input.uniform) {
 						this.uniforms[input.uniform] = input.defaultValue;
 					}
@@ -2083,7 +2096,7 @@
 				}
 			}
 
-			this.ready = !hasImage;
+			this.updateReady();
 			this.inPlace = this.effect.inPlace;
 
 			this.pub = new Effect(this);
@@ -2093,6 +2106,12 @@
 			effects.push(this);
 
 			allEffectsByHook[hook].push(this);
+
+			for (name in defaultSources) {
+				if (defaultSources.hasOwnProperty(name)) {
+					this.setInput(name, defaultSources[name]);
+				}
+			}
 		};
 
 		extend(EffectNode, Node);
@@ -2139,60 +2158,44 @@
 			}
 		};
 
-		EffectNode.prototype.setReady = function () {
+		EffectNode.prototype.updateReady = function () {
 			var i,
 				input,
-				key;
+				key,
+				effect,
+				ready = true,
+				method;
 
-			if (!this.ready) {
-				for (key in this.effect.inputs) {
-					if (this.effect.inputs.hasOwnProperty(key)) {
-						input = this.effect.inputs[key];
-						if (input.type === 'image' &&
-								(!this.sources[key] || !this.sources[key].ready)) {
-							return;
-						}
+			effect = this.effect;
+			for (key in effect.inputs) {
+				if (effect.inputs.hasOwnProperty(key)) {
+					input = this.effect.inputs[key];
+					if (input.type === 'image' &&
+							(!this.sources[key] || !this.sources[key].ready) &&
+							(!effect.requires || effect.requires.call(this, key, this.inputs))
+							) {
+						ready = false;
+						break;
 					}
 				}
+			}
 
-				this.ready = true;
-				this.emit('ready');
+			if (this.ready !== ready) {
+				this.ready = ready;
+				this.emit(ready ? 'ready' : 'unready');
+				method = ready ? 'setReady' : 'setUnready'
+
 				if (this.targets) {
 					for (i = 0; i < this.targets.length; i++) {
-						this.targets[i].setReady();
+						this.targets[i][method]();
 					}
 				}
 			}
 		};
 
-		EffectNode.prototype.setUnready = function () {
-			var i,
-				input,
-				key;
+		EffectNode.prototype.setReady = EffectNode.prototype.updateReady;
 
-			if (this.ready) {
-				for (key in this.effect.inputs) {
-					if (this.effect.inputs.hasOwnProperty(key)) {
-						input = this.effect.inputs[key];
-						if (input.type === 'image' &&
-								(!this.sources[key] || !this.sources[key].ready)) {
-							this.ready = false;
-							break;
-						}
-					}
-				}
-
-				if (!this.ready) {
-					this.emit('unready');
-					if (this.targets) {
-						for (i = 0; i < this.targets.length; i++) {
-							this.targets[i].setUnready();
-						}
-					}
-				}
-			}
-		};
-
+		EffectNode.prototype.setUnready = EffectNode.prototype.updateReady;
 
 		EffectNode.prototype.addTarget = function (target) {
 			var i;
@@ -2270,7 +2273,7 @@
 		};
 
 		EffectNode.prototype.render = function () {
-			var i,
+			var key,
 				frameBuffer,
 				effect = this.effect,
 				that = this,
@@ -2293,15 +2296,15 @@
 			}
 
 			if (this.dirty && this.ready) {
-				for (i in this.sources) {
-					if (this.sources.hasOwnProperty(i) &&
-						(!effect.requires || effect.requires.call(this, i, this.inputs))) {
+				for (key in this.sources) {
+					if (this.sources.hasOwnProperty(key) &&
+						(!effect.requires || effect.requires.call(this, key, this.inputs))) {
 
 						//todo: set source texture in case it changes?
 						//sourcetexture = this.sources[i].render() || this.sources[i].texture
 
-						inPlace = typeof this.inPlace === 'function' ? this.inPlace(i) : this.inPlace;
-						this.sources[i].render(!inPlace);
+						inPlace = typeof this.inPlace === 'function' ? this.inPlace(key) : this.inPlace;
+						this.sources[key].render(!inPlace);
 					}
 				}
 
@@ -2327,7 +2330,8 @@
 			var input, uniform,
 				sourceKeys,
 				source,
-				me = this;
+				me = this,
+				defaultValue;
 
 			function disconnectSource() {
 				var previousSource = me.sources[name],
@@ -2382,7 +2386,12 @@
 						this.uniforms.transform = identity;
 					}
 				} else {
-					value = input.validate.call(this, value, input, this.inputs[name]);
+					if (defaultInputs[this.hook] && defaultInputs[this.hook][name] !== undefined) {
+						defaultValue = defaultInputs[this.hook][name];
+					} else {
+						defaultValue = input.defaultValue;
+					}
+					value = input.validate.call(this, value, input, defaultValue, this.inputs[name]);
 					uniform = value;
 				}
 
@@ -2398,11 +2407,9 @@
 
 				if (input.type === 'image') {
 					this.resize();
-					if (value && value.ready) {
-						this.setReady();
-					} else {
-						this.setUnready();
-					}
+					this.updateReady();
+				} else if (input.updateSources) {
+					this.updateReady();
 				}
 
 				if (input.shaderDirty) {
@@ -3031,24 +3038,6 @@
 				return that.source === source;
 			}
 
-			function initializeVideo() {
-				if (that.isDestroyed) {
-					return;
-				}
-
-				if (source.videoWidth) {
-					that.width = source.videoWidth;
-					that.height = source.videoHeight;
-					if (deferTexture) {
-						that.setReady();
-					}
-				} else {
-					//Workaround for Firefox bug https://bugzilla.mozilla.org/show_bug.cgi?id=926753
-					deferTexture = true;
-					setTimeout(initializeVideo, 50);
-				}
-			}
-
 			Node.call(this);
 
 			if (hook && typeof hook !== 'string' || !source && source !== 0) {
@@ -3093,31 +3082,24 @@
 
 					if (!source.complete || !source.naturalWidth) {
 						deferTexture = true;
+					}
 
-						source.addEventListener('load', function () {
-							if (!that.isDestroyed) {
+					source.addEventListener('load', function () {
+						if (!that.isDestroyed) {
+							if (that.width !== source.naturalWidth || that.height !== source.naturalHeight) {
 								that.width = source.naturalWidth;
 								that.height = source.naturalHeight;
-								that.setReady();
+								that.resize();
 							}
-						}, true);
-					}
+
+							that.setDirty();
+							that.setReady();
+						}
+					}, true);
 
 					this.render = this.renderImageCanvas;
 					matchedType = true;
 					this.hook = 'image';
-					this.compare = compareSource;
-				} else if (source.tagName === 'VIDEO') {
-					if (source.readyState) {
-						initializeVideo();
-					} else {
-						deferTexture = true;
-						source.addEventListener('loadedmetadata', initializeVideo, true);
-					}
-
-					this.render = this.renderVideo;
-					matchedType = true;
-					this.hook = 'video';
 					this.compare = compareSource;
 				}
 			} else if (!plugin && source instanceof WebGLTexture) {
@@ -3152,7 +3134,9 @@
 
 				//todo: if WebGLTexture source is from a different context render it and copy it over
 				this.render = function () {};
-			} else if (!plugin) {
+			}
+
+			if (!matchedType && !plugin) {
 				for (key in seriousSources) {
 					if (seriousSources.hasOwnProperty(key) && seriousSources[key]) {
 						plugin = sourcePlugin(key, source, options, false);
@@ -4017,8 +4001,8 @@
 						}
 					}
 
-					if (lookup && value.type === 'checkbox') {
-						value = value.checked;
+					if (lookup && input.type === 'checkbox') {
+						value = input.checked;
 					}
 				} else {
 					if (lookup) {
@@ -4686,6 +4670,37 @@
 			}
 		};
 
+		this.defaults = function (hook, options) {
+			var key;
+
+			if (!hook) {
+				if (hook === null) {
+					for (key in defaultInputs) {
+						if (defaultInputs.hasOwnProperty(key)) {
+							delete defaultInputs[key];
+						}
+					}
+				}
+				return;
+			}
+
+			if (typeof hook === 'object') {
+				for (key in hook) {
+					if (hook.hasOwnProperty(key)) {
+						this.defaults(key, hook[key]);
+					}
+				}
+
+				return;
+			}
+
+			if (options === null) {
+				delete defaultInputs[hook];
+			} else if (typeof options === 'object') {
+				defaultInputs[hook] = extend({}, options);
+			}
+		};
+
 		this.go = function (pre, post) {
 			var i;
 
@@ -4854,6 +4869,8 @@
 			//'	}',
 			'}'
 		].join('\n');
+
+		this.defaults(options.defaults);
 	}
 
 	Seriously.incompatible = function (hook) {
@@ -5094,7 +5111,7 @@
 
 	//todo: validators should not allocate new objects/arrays if input is valid
 	Seriously.inputValidators = {
-		color: function (value, input, oldValue) {
+		color: function (value, input, defaultValue, oldValue) {
 			var s, a, i, computed, bg;
 
 			a = oldValue || [];
@@ -5214,9 +5231,9 @@
 			a[0] = a[1] = a[2] = a[3] = 0;
 			return a;
 		},
-		number: function (value, input) {
+		number: function (value, input, defaultValue) {
 			if (isNaN(value)) {
-				return input.defaultValue || 0;
+				return defaultValue || 0;
 			}
 
 			value = parseFloat(value);
@@ -5235,7 +5252,7 @@
 
 			return value;
 		},
-		'enum': function (value, input) {
+		'enum': function (value, input, defaultValue) {
 			var options = input.options || [],
 				filtered;
 
@@ -5247,9 +5264,9 @@
 				return value;
 			}
 
-			return input.defaultValue || '';
+			return defaultValue || '';
 		},
-		vector: function (value, input, oldValue) {
+		vector: function (value, input, defaultValue, oldValue) {
 			var a, i, s, n = input.dimensions || 4;
 
 			a = oldValue || [];
@@ -5411,6 +5428,60 @@
 				'#endif\n'
 		}
 	};
+
+	Seriously.source('video', function (source, options, force) {
+		var me = this,
+			video,
+			key,
+			opts,
+			destroyed = false,
+			deferTexture = false;
+
+		function initializeVideo() {
+			if (destroyed) {
+				return;
+			}
+
+			if (source.videoWidth) {
+				if (me.width !== source.videoWidth || me.height !== source.videoHeight) {
+					me.width = source.videoWidth;
+					me.height = source.videoHeight;
+					me.resize();
+				}
+
+				if (deferTexture) {
+					me.setReady();
+				}
+			} else {
+				//Workaround for Firefox bug https://bugzilla.mozilla.org/show_bug.cgi?id=926753
+				deferTexture = true;
+				setTimeout(initializeVideo, 50);
+			}
+		}
+
+		if (source instanceof window.HTMLVideoElement) {
+			if (source.readyState) {
+				initializeVideo();
+			} else {
+				deferTexture = true;
+				source.addEventListener('loadedmetadata', initializeVideo, true);
+			}
+
+			return {
+				deferTexture: deferTexture,
+				source: video,
+				render: Object.getPrototypeOf(this).renderVideo,
+				compare: function (source) {
+					return me.source === source;
+				},
+				destroy: function () {
+					destroyed = true;
+				}
+			};
+		}
+	}, {
+		title: 'Video'
+	});
 
 	/*
 	Default transform - 2D

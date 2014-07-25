@@ -14,7 +14,7 @@
 		}
 		factory(root.Seriously);
 	}
-}(this, function (Seriously, undefined) {
+}(this, function (Seriously) {
 	'use strict';
 
 	//inspired by Evan Wallace (https://github.com/evanw/glfx.js)

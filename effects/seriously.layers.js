@@ -14,7 +14,7 @@
 		}
 		factory(root.Seriously);
 	}
-}(this, function (Seriously, undefined) {
+}(this, function (Seriously) {
 	'use strict';
 
 	var identity = new Float32Array([
@@ -75,6 +75,7 @@
 				defaultValue: 1,
 				min: 0,
 				max: 1,
+				updateSources: true
 			};
 		}
 

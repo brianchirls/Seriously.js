@@ -14,7 +14,7 @@
 		}
 		factory(root.Seriously);
 	}
-}(this, function (Seriously, undefined) {
+}(this, function (Seriously) {
 	'use strict';
 
 	Seriously.plugin('freeze', {
@@ -22,6 +22,9 @@
 			if (!this.inputs.frozen) {
 				draw(shader, model, uniforms, frameBuffer);
 			}
+		},
+		requires: function () {
+			return !this.inputs.frozen;
 		},
 		inPlace: true,
 		inputs: {
@@ -31,7 +34,8 @@
 			},
 			frozen: {
 				type: 'boolean',
-				defaultValue: false
+				defaultValue: false,
+				updateSources: true
 			}
 		},
 		title: 'Freeze',

@@ -498,6 +498,12 @@
 					draw(shader, model, uniforms, frameBuffer);
 				}
 			},
+			requires: function (sourceName) {
+				if (!this.inputs.opacity && sourceName === 'top') {
+					return false;
+				}
+				return true;
+			},
 			inputs: {
 				top: {
 					type: 'image',
@@ -527,6 +533,7 @@
 					defaultValue: 1,
 					min: 0,
 					max: 1,
+					updateSources: true,
 					update: function (opacity) {
 						if (topUniforms) {
 							topUniforms.opacity = opacity;

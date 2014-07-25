@@ -14,7 +14,7 @@
 		}
 		factory(root.Seriously);
 	}
-}(this, function (Seriously, undefined) {
+}(this, function (Seriously) {
 	'use strict';
 
 	var fillModes = {
@@ -86,6 +86,12 @@
 
 				return shaderSource;
 			},
+			requires: function (sourceName) {
+				if (!this.inputs.mapScale && sourceName === 'map') {
+					return false;
+				}
+				return true;
+			},
 			resize: function () {
 				var source = this.inputs.source,
 					map = this.inputs.map;
@@ -140,7 +146,8 @@
 				type: 'vector',
 				dimensions: 2,
 				uniform: 'mapScale',
-				defaultValue: [1, 1]
+				defaultValue: [1, 1],
+				updateSources: true
 			},
 			amount: {
 				type: 'number',

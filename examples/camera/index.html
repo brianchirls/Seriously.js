@@ -9,8 +9,6 @@
 	<video id="source" width="320" height="240"></video>
 	<canvas id="target" width="640" height="480"></canvas>
 
-
-	<script src="../../lib/html5slider.js"></script>
 	<script src="../../seriously.js"></script>
 	<script src="../../effects/seriously.edge.js"></script>
 	<script>
@@ -51,7 +49,7 @@
 						video.src = (URL && URL.createObjectURL(stream)) || stream;
 					}
 					video.play();
-				}, 
+				},
 				// error callback
 				function(error){
 					console.log('An error occurred: ' + (error.message || error.name));
