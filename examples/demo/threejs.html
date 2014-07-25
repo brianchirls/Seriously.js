@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Seriously.js Three.js Source Example</title>
+	<style type="text/css">
+		body {
+			margin: 0;
+			font-family: 'Roboto Condensed', tahoma, sans-serif;
+		}
+
+		img, video {
+			display: none;
+		}
+
+		#canvas {
+			position: absolute;
+			top: 0;
+			left: 0;
+			width: 100%;
+			height: 100%;
+		}
+
+		#controls {
+			position: absolute;
+			right: 0;
+			bottom: 0;
+			background-color: rgba(100, 100, 100, 0.6);
+			padding: 4px;
+			opacity: 0.5;
+			color: white;
+		}
+
+		#controls:hover {
+			opacity: 1;
+		}
+
+		.title {
+			opacity: 0.4;
+			position: absolute;
+			padding: 8px;
+			color: white;
+			background-color: black;
+		}
+
+		#controls .rs-base {
+			position: static;;
+		}
+
+	</style>
+</head>
+<body>
+	<canvas id="canvas" width="960" height="540"></canvas>
+	<div class="title" style="left: 0; top: 0;">Film Grain</div>
+	<div class="title" style="left: 50%; top: 0;">Simplex Noise, Displacement</div>
+	<div class="title" style="left: 0; top: 50%;">Night Vision, TV Glitch</div>
+	<div class="title" style="left: 50%; top: 50%;">ASCII</div>
+	<div id="controls">
+		<label>Enable FXAA on 3D Scene <input type="checkbox" id="fxaa"/></label>
+	</div>
+
+	<script src="../../lib/rStats.js"></script>
+
+	<script src="../../lib/three.js"></script>
+	<script src="../../seriously.js"></script>
+
+	<script src="../../sources/seriously.camera.js"></script>
+	<script src="../../sources/seriously.three.js"></script>
+
+	<script src="../../effects/seriously.fxaa.js"></script>
+	<script src="../../effects/seriously.checkerboard.js"></script>
+	<script src="../../effects/seriously.blend.js"></script>
+	<script src="../../effects/seriously.layers.js"></script>
+	<script src="../../effects/seriously.select.js"></script>
+	<script src="../../effects/seriously.filmgrain.js"></script>
+	<script src="../../effects/seriously.simplex.js"></script>
+	<script src="../../effects/seriously.displacement.js"></script>
+	<script src="../../effects/seriously.nightvision.js"></script>
+	<script src="../../effects/seriously.tvglitch.js"></script>
+	<script src="../../effects/seriously.ascii.js"></script>
+	<script>
+		(function () {
+			// declare our variables
+			var seriously, // the main object that holds the entire composition
+				source,
+				target, // a wrapper object for our target canvas
+				resizables = [],
+				reformats = [],
+				timedEffects = [],
+				transforms = [],
+				layers,
+				canvas,
+				checkerboard,
+				fxaa,
+				select,
+				blend,
+
+				stats,
+
+				// three.js scene
+				scene,
+				camera,
+				rtTexture,
+				renderer,
+
+				pixelRatio = window.devicePixelRatio || 1,
+				outputWidth,
+				outputHeight,
+				sceneWidth = outputWidth / 2,
+				sceneHeight = outputHeight / 2;
+
+			function resize() {
+				var aspect = window.innerWidth / window.innerHeight,
+					newWidth,
+					newHeight,
+					offsetY,
+					i,
+					node;
+
+				newWidth = window.innerWidth * devicePixelRatio;
+				newHeight = window.innerHeight * devicePixelRatio;
+
+				if (newWidth === outputWidth && newHeight === outputHeight) {
+					return;
+				}
+
+				outputWidth = newWidth;
+				outputHeight = newHeight;
+				sceneWidth = outputWidth / 2;
+				sceneHeight = outputHeight / 2;
+
+				// resize 3D scene
+				camera.aspect = aspect;
+				camera.updateProjectionMatrix();
+				renderer.setSize(outputWidth / devicePixelRatio, outputWidth / devicePixelRatio);
+
+				/*
+				Three.js likes to force our canvas to be a certain size,
+				but we know better.
+				*/
+				canvas.style.width = '';
+				canvas.style.height = '';
+
+				/*
+				Three.js doesn't have a way to resize a WebGLRenderTarget,
+				so we have to make a new one every time the size changes
+				*/
+				if (source) {
+					source.destroy();
+				}
+				rtTexture = new THREE.WebGLRenderTarget(
+					sceneWidth,
+					sceneHeight,
+					{
+						minFilter: THREE.LinearFilter,
+						magFilter: THREE.NearestFilter,
+						format: THREE.RGBAFormat
+					}
+				);
+
+				/*
+				Seriously.js will take a WebGLRenderTarget as a source!
+				*/
+				source = seriously.source(rtTexture);
+
+				// set new source on all effects
+				fxaa.source = source;
+				select.source0 = source;
+
+				// re-position each of the four outputs
+				for (i = 0; i < transforms.length; i++) {
+					node = transforms[i];
+					node.translateX = i % 2 ? sceneWidth : -sceneWidth;
+					node.translateY = i < 2 ? sceneHeight : -sceneHeight;
+				}
+
+				// resize
+				for (i = 0; i < reformats.length; i++) {
+					node = reformats[i];
+					node.width = outputWidth;
+					node.height = outputHeight;
+				}
+
+				for (i = 0; i < resizables.length; i++) {
+					node = resizables[i];
+					node.width = sceneWidth;
+					node.height = sceneHeight;
+				}
+
+				// resize final output
+				target.width = outputWidth;
+				target.height = outputHeight;
+			}
+
+			// set up 3D scene
+			function initThreeScene() {
+				var light,
+					map,
+					material,
+					object,
+					points,
+					i;
+
+				scene = new THREE.Scene();
+
+				camera = new THREE.PerspectiveCamera(35, window.innerWidth / window.innerHeight, 1, 2000);
+				camera.position.y = 500;
+
+				light = new THREE.DirectionalLight(0xffffff);
+				light.position.set(0, 1, 0);
+				scene.add(light);
+
+				map = THREE.ImageUtils.loadTexture('../images/colorbars.png');
+				map.wrapS = map.wrapT = THREE.RepeatWrapping;
+				map.anisotropy = 16;
+
+				material = new THREE.MeshLambertMaterial({
+					ambient: 0xbbbbbb,
+					map: map,
+					side: THREE.DoubleSide
+				});
+
+				object = new THREE.Mesh(new THREE.SphereGeometry(75, 20, 10), material);
+				object.position.set(-400, 0, 200);
+				scene.add(object);
+
+				object = new THREE.Mesh(new THREE.IcosahedronGeometry(75, 1), material);
+				object.position.set(-200, 0, 200);
+				scene.add(object);
+
+				object = new THREE.Mesh(new THREE.OctahedronGeometry(75, 2), material);
+				object.position.set(0, 0, 200);
+				scene.add(object);
+
+				object = new THREE.Mesh(new THREE.TetrahedronGeometry(75, 0), material);
+				object.position.set(200, 0, 200);
+				scene.add(object);
+
+				object = new THREE.Mesh(new THREE.PlaneGeometry(100, 100, 4, 4), material);
+				object.position.set(-400, 0, 0);
+				scene.add(object);
+
+				object = new THREE.Mesh(new THREE.BoxGeometry(100, 100, 100, 4, 4, 4), material);
+				object.position.set(-200, 0, 0);
+				scene.add(object);
+
+				object = new THREE.Mesh(new THREE.CircleGeometry(50, 20, 0, Math.PI * 2), material);
+				object.position.set(0, 0, 0);
+				scene.add(object);
+
+				object = new THREE.Mesh(new THREE.RingGeometry(10, 50, 20, 5, 0, Math.PI * 2), material);
+				object.position.set(200, 0, 0);
+				scene.add(object);
+
+				object = new THREE.Mesh(new THREE.CylinderGeometry(25, 75, 100, 40, 5), material);
+				object.position.set(400, 0, 0);
+				scene.add(object);
+
+				points = [];
+				for (i = 0; i < 50; i++) {
+					points.push(new THREE.Vector3(Math.sin(i * 0.2) * Math.sin(i * 0.1) * 15 + 50, 0, (i - 5) * 2));
+				}
+
+				object = new THREE.Mesh(new THREE.LatheGeometry(points, 20), material);
+				object.position.set(-400, 0, -200);
+				scene.add(object);
+
+				object = new THREE.Mesh(new THREE.TorusGeometry(50, 20, 20, 20), material);
+				object.position.set(-200, 0, -200);
+				scene.add(object);
+
+				object = new THREE.Mesh(new THREE.TorusKnotGeometry(50, 10, 50, 20), material);
+				object.position.set(0, 0, -200);
+				scene.add(object);
+
+				object = new THREE.AxisHelper(50);
+				object.position.set(200, 0, -200);
+				scene.add(object);
+
+				object = new THREE.ArrowHelper(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 0), 50);
+				object.position.set(400, 0, -200);
+				scene.add(object);
+
+				renderer = new THREE.WebGLRenderer({
+					canvas: canvas
+				});
+			}
+
+			// set up composition
+			function initSeriouslyComps() {
+				var effect,
+					anotherEffect,
+					transform,
+					reformat;
+
+				stats = new rStats({
+					CSSPath: '../',
+					values: {
+						fps: { caption: 'Framerate (FPS)', below: 30 },
+						raf: { caption: 'Time since last rAF (ms)' }
+					},
+					groups: [
+						{ caption: 'Framerate', values: [ 'fps', 'raf' ] }
+					]
+				});
+
+				document.getElementById('controls').appendChild(document.querySelector('.rs-base'));
+
+				seriously = new Seriously();
+
+				checkerboard = seriously.effect('checkerboard');
+				checkerboard.color1 = 'black';
+				checkerboard.color2 = '#222';
+				resizables.push(checkerboard);
+
+				fxaa = seriously.effect('fxaa');
+				select = seriously.effect('select');
+				select.source1 = fxaa;
+
+				blend = seriously.effect('blend');
+				blend.bottom = checkerboard;
+				blend.top = select;
+
+				layers = seriously.effect('layers', {
+					count: 4
+				});
+
+				// film grain
+				effect = seriously.effect('filmgrain');
+				effect.amount = 0.08;
+				effect.source = blend;
+				timedEffects.push(effect);
+
+				transform = seriously.transform('2d');
+				transform.source = effect;
+				transforms.push(transform);
+
+				reformat = seriously.transform('reformat');
+				reformat.mode = 'none';
+				reformat.source = transform;
+				reformats.push(reformat);
+
+				layers.source0 = reformat;
+
+				// distort
+				anotherEffect = seriously.effect('simplex');
+				anotherEffect.noiseScale = [1.6, 1.6];
+				anotherEffect.source = blend;
+				resizables.push(anotherEffect);
+				timedEffects.push(anotherEffect);
+
+				effect = seriously.effect('displacement');
+				effect.source = blend;
+				effect.map = anotherEffect;
+				effect.amount = 0.1;
+				effect.fillMode = 'clamp';
+
+				transform = seriously.transform('2d');
+				transform.source = effect;
+				transforms.push(transform);
+
+				reformat = seriously.transform('reformat');
+				reformat.mode = 'none';
+				reformat.source = transform;
+				reformats.push(reformat);
+
+				layers.source1 = reformat;
+
+				// nightvision
+				anotherEffect = seriously.effect('nightvision');
+				anotherEffect.luminanceThreshold = 0.1;
+				anotherEffect.amplification = 1.5;
+				anotherEffect.source = blend;
+
+				effect = seriously.effect('tvglitch');
+				effect.source = anotherEffect;
+				effect.distortion = 0.01;
+				effect.verticalSync = 0;
+				effect.scanlines = 0.1;
+				effect.lineSync = 0.03;
+				effect.frameSharpness = 10.67;
+				effect.frameLimit = 0.3644;
+				effect.bars = 0.05;
+				timedEffects.push(effect);
+
+				transform = seriously.transform('2d');
+				transform.source = effect;
+				transforms.push(transform);
+
+				reformat = seriously.transform('reformat');
+				reformat.mode = 'none';
+				reformat.source = transform;
+				reformats.push(reformat);
+
+				layers.source2 = reformat;
+
+				// ASCII
+				effect = seriously.effect('ascii');
+				effect.source = blend;
+
+				transform = seriously.transform('2d');
+				transform.source = effect;
+				transforms.push(transform);
+
+				reformat = seriously.transform('reformat');
+				reformat.mode = 'none';
+				reformat.source = transform;
+				reformats.push(reformat);
+
+				layers.source3 = reformat;
+
+				target = seriously.target(canvas);
+				target.source = layers;
+			}
+
+			window.onresize = resize;
+
+			canvas = document.getElementById('canvas');
+
+			initThreeScene();
+			initSeriouslyComps();
+			resize();
+
+			document.getElementById('fxaa').addEventListener('change', function () {
+				if (this.checked) {
+					select.active = 1;
+				} else {
+					select.active = 0;
+				}
+			}, false);
+
+			seriously.go(function (now) {
+				var time = now / 1000,
+					i, l,
+					object;
+
+				// update stats, beginning of frame
+				stats('rAF').tick();
+				stats('FPS').frame();
+
+				// camera orbits around the scene
+				camera.position.x = Math.cos(time / 10) * 800;
+				camera.position.z = Math.sin(time / 10) * 800;
+				camera.lookAt(scene.position);
+
+				// each object rotates itself
+				for (i = 0, l = scene.children.length; i < l; i++) {
+					object = scene.children[i];
+					object.rotation.x = time * 0.5;
+					object.rotation.y = time * 0.25;
+				}
+
+				// some effects (tv glitch, simplex noise) need their time updated
+				for (i = 0, l = timedEffects.length; i < l; i++) {
+					timedEffects[i].time = time % 1000000;
+				}
+
+				/*
+				Three.js doesn't know that it's sharing the WebGL context
+				with Seriously.js, so it thinks the last render target used
+				was its own render buffer. But Seriously.js changed it, so 
+				we need to make this call to force Three.js to update itself.
+				*/
+				renderer.setRenderTarget(null);
+
+				// render updated 3D scene to render target texture
+				renderer.render(scene, camera, rtTexture, true);
+
+				// tell source node that it's been updated
+				source.update();
+			}, function () {
+				// callback runs after render
+				// update stats, end of frame
+				stats().update();
+			});
+		}());
+	</script>
+</body>
+</html>

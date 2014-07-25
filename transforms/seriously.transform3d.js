@@ -17,7 +17,7 @@
 		*/
 		factory(root.Seriously);
 	}
-}(this, function (Seriously, undefined) {
+}(this, function (Seriously) {
 	'use strict';
 
 	var mat4 = Seriously.util.mat4;

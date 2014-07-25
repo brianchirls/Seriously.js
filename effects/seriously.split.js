@@ -14,7 +14,7 @@
 		}
 		factory(root.Seriously);
 	}
-}(this, function (Seriously, undefined) {
+}(this, function (Seriously) {
 	'use strict';
 
 	Seriously.plugin('split', function () {
@@ -255,7 +255,8 @@
 				uniform: 'split',
 				defaultValue: 0.5,
 				min: 0,
-				max: 1
+				max: 1,
+				updateSources: true
 			},
 			angle: {
 				type: 'number',

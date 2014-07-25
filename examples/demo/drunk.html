@@ -39,7 +39,6 @@
 			var seriously, // the main object that holds the entire composition
 				target, // a wrapper object for our target canvas
 				shake,
-				scale,
 				reformat,
 				accumulator,
 				x = 0,
@@ -60,29 +59,27 @@
 
 			seriously = new Seriously();
 			reformat = seriously.transform('reformat');
-			scale = seriously.transform('2d');
 			shake = seriously.transform('camerashake');
 			accumulator = seriously.effect('accumulator');
 			target = seriously.target('#canvas');
 
 			reformat.mode = 'cover';
-			scale.scale(1.2);
 
 			shake.rotation = 4;
 			shake.frequency = 0.22;
 			shake.amplitudeX = 16;
 			shake.amplitudeY = 8;
+			shake.preScale = 0;
 
 			accumulator.opacity = 0.05;
 
-			scale.source = seriously.source('camera');
-			shake.source = scale;
+			shake.source = seriously.source('camera');
 			accumulator.source = shake;
 			reformat.source = accumulator;
 			target.source = reformat;
 			resize();
-			seriously.go(function () {
-				shake.time = Date.now() / 200;
+			seriously.go(function (now) {
+				shake.time = now / 200;
 			});
 		});
 	</script>

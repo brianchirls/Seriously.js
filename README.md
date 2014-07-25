@@ -33,6 +33,7 @@ Full documentation is in progress at the [wiki](https://github.com/brianchirls/S
 - Color Complements
 - Color Generator
 - [Color Cube](http://www.youtube.com/watch?v=rfQ8rKGTVlg&t=24m30s)
+- Color Select
 - [Daltonize](http://www.daltonize.org/p/about.html)
 - Directional Blur
 - Displacement Map
@@ -43,6 +44,7 @@ Full documentation is in progress at the [wiki](https://github.com/brianchirls/S
 - Expressions
 - Fader
 - False Color
+- Fast Approximate Anti-Aliasing
 - Film Grain
 - Freeze Frame
 - Gaussian Blur
@@ -54,6 +56,7 @@ Full documentation is in progress at the [wiki](https://github.com/brianchirls/S
 - Layers
 - Linear Transfer
 - Luma Key
+- Mirror
 - Night Vision
 - Panorama
 - Polar Coordinates

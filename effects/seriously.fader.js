@@ -14,7 +14,7 @@
 		}
 		factory(root.Seriously);
 	}
-}(this, function (Seriously, undefined) {
+}(this, function (Seriously) {
 	'use strict';
 
 	Seriously.plugin('fader', {
@@ -35,6 +35,9 @@
 				'}'
 			].join('\n');
 			return shaderSource;
+		},
+		requires: function (sourceName, inputs) {
+			return inputs.amount < 1;
 		},
 		inPlace: true,
 		inputs: {

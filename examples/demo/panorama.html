@@ -84,8 +84,8 @@
 
 			resize();
 
-			seriously.go(function () {
-				panorama.yaw = (Date.now() / 200) % 360;
+			seriously.go(function (now) {
+				panorama.yaw = (now / 200) % 360;
 				//panorama.pitch = Math.sin(Date.now() / 2000) * 10;
 			});
 		});
