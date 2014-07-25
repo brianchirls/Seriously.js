@@ -23,7 +23,7 @@ http://v002.info/plugins/v002-blurs/
 		}
 		factory(root.Seriously);
 	}
-}(this, function (Seriously, undefined) {
+}(this, function (Seriously) {
 	'use strict';
 
 	var passes = [0.2, 0.3, 0.5, 0.8],
