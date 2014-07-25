@@ -16,7 +16,7 @@
 		// declare our variables
 		var seriously, // the main object that holds the entire composition
 			source, // wrapper object for source video
-			edge, // edge detection effect
+			mirror, // mirror detection effect
 			target; // a wrapper object for our target canvas
 
 		if (Seriously.incompatible('camera')) {
@@ -31,11 +31,11 @@
 		// time to get serious
 		source = seriously.source('camera');
 		target = seriously.target('#target');
-		edge = seriously.effect('mirror');
+		mirror = seriously.effect('mirror');
 
 		// connect all our nodes in the right order
-		edge.source = source;
-		target.source = edge;
+		mirror.source = source;
+		target.source = mirror;
 
 		seriously.go();
 	}());
