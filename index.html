@@ -47,11 +47,11 @@
 		<script type="text/javascript" src="effects/seriously.vignette.js"></script>
 		<script type="text/javascript" src="effects/seriously.split.js"></script>
 		<style>
-		
+
 		body {
 			background-color: #aaa;
 		}
-		
+
 		img, video {
 			display: none;
 		}
@@ -90,11 +90,9 @@
 			<tr><td><label for="translate-z">Translate Z</label></td><td><input type="range" id="translate-z" min="-40" max="90" step="1" value="0"/></td></tr>
 			<tr><td><label for="perspective">Perspective</label></td><td><input type="range" id="perspective" min="0" max="90" step="1" value="0"/></td></tr>
 		</table>
-	</body>
 	<script type="text/javascript">
 
 	(function () {
-	
 	var e, i,
 		input,
 		gUM,
@@ -147,9 +145,9 @@
 
 		if (!gUM) {
 			document.body.removeChild(document.getElementById('camera'));
-			return;
+			//return;
 		}
-		
+
 		window.addEventListener('DOMContentLoaded', function() {
 			var s = Seriously(),
 				blend = s.effect('blend'),
@@ -250,7 +248,7 @@
 					file = event.dataTransfer.files[0],
 					medium = file.type.split('/')[0];
 				console.log(file);
-				
+
 				reader.onload = function(event) {
 					function resize() {
 						target.height = element.videoHeight || element.naturalHeight || element.height;
@@ -279,7 +277,7 @@
 					} else {
 						return false;
 					}
-					
+
 					source.source = element;
 				};
 
@@ -304,7 +302,7 @@
 					}
 
 					webCamStream = stream;
-					
+
 					video.play();
 					if (video.videoWidth) {
 						resize();
@@ -316,7 +314,7 @@
 				});
 
 			});
-			
+
 			select.addEventListener('change', function() {
 				function arrayToHex(color) {
 					var i, val, s = '#';
@@ -330,7 +328,7 @@
 					}
 					return s;
 				}
-				
+
 				var form,
 					table,
 					row,
@@ -344,19 +342,19 @@
 					obj,
 					effectType,
 					name = this.value;
-				
+
 				if (name && !effectObjects[name]) {
 					effectObjects[name] = obj = {
 						effect: s.effect(name),
 						form: document.createElement('div')
 					};
-					
+
 					//create form
 					options.appendChild(obj.form);
 					effectType = effects[name];
-					
+
 					//todo: title, description, set up table
-					
+
 					inputs = obj.effect.inputs();
 					for (i in inputs) {
 						input = inputs[i];
@@ -368,12 +366,12 @@
 						} else {
 
 							//todo: way later - arrays of inputs
-					
+
 							if (!table) {
 								table = document.createElement('table');
 								obj.form.appendChild(table);
 							}
-							
+
 							row = document.createElement('tr');
 							table.appendChild(row);
 
@@ -396,7 +394,7 @@
 								element = document.createElement('input');
 								if (input.min !== -Infinity && input.min !== undefined &&
 									input.max !== Infinity && input.max !== undefined) {
-									
+
 									element.setAttribute('type', 'range');
 									element.setAttribute('min', input.min);
 									element.setAttribute('max', input.max);
@@ -452,13 +450,13 @@
 							}
 						}
 					}
-	
+
 				}
 
 				if (active) {
 					active.form.style.display = 'none';
 				}
-				
+
 				if (name) {
 					active = effectObjects[name];
 					active.form.style.display = 'block';
@@ -471,4 +469,5 @@
 		}, false);
 	})();
 	</script>
+	</body>
 </html>
