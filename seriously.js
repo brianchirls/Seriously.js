@@ -47,6 +47,7 @@
 	identity,
 	maxSeriouslyId = 0,
 	nop = function () {},
+	noVideoTextureSupport = undefined,
 
 	/*
 		Global reference variables
@@ -3300,7 +3301,10 @@
 		};
 
 		SourceNode.prototype.renderVideo = function () {
-			var video = this.source;
+			var video = this.source,
+				source,
+				canvas,
+				error;
 
 			if (!gl || !video || !video.videoHeight || !video.videoWidth || video.readyState < 2 || !this.ready) {
 				return;
@@ -3318,11 +3322,34 @@
 				this.lastRenderFrame !== video.mozPresentedFrames ||
 				this.lastRenderTime !== video.currentTime) {
 
+				if (noVideoTextureSupport) {
+					if (!this.ctx2d) {
+						this.ctx2d = document.createElement('canvas').getContext('2d');
+					}
+					source = this.ctx2d.canvas;
+					source.width = this.width;
+					source.height = this.height;
+					this.ctx2d.drawImage(video, 0, 0, this.width, this.height);
+				} else {
+					source = video;
+				}
+
 				gl.bindTexture(gl.TEXTURE_2D, this.texture);
 				gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, this.flip);
 				gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
 				try {
-					gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, video);
+					gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source);
+
+					//workaround for lack of video texture support in IE
+					if (noVideoTextureSupport === undefined) {
+						error = gl.getError();
+						if (error === 1281) {
+							noVideoTextureSupport = true;
+							this.renderVideo();
+							return;
+						}
+						noVideoTextureSupport = false;
+					}
 				} catch (securityError) {
 					if (securityError.code === window.DOMException.SECURITY_ERR) {
 						this.allowRefresh = false;
