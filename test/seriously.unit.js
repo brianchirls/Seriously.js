@@ -1583,6 +1583,115 @@
 		Seriously.removeTransform('test');
 	});
 
+	test('Transform Input Validation', function () {
+		var inputs,
+			seriously,
+			transform;
+
+		Seriously.transform('test', function (options) {
+			var values = {
+					color: [1, 1, 1, 1],
+					number: 8,
+					e: 'two',
+					vector: [0, 0, 0],
+					bool: true,
+					string: 'foo'
+				},
+				inputs = {
+					color: {
+						type: 'color'
+					},
+					number: {
+						type: 'number',
+						min: -4
+					},
+					e: {
+						type: 'enum',
+						options: [
+							['one', 'One'],
+							['two', 'Two']
+						]
+					},
+					vector: {
+						type: 'vector',
+						dimensions: 3
+					},
+					bool: {
+						type: 'boolean'
+					},
+					string: {
+						type: 'string'
+					}
+				},
+				key;
+
+			function getter(name) {
+				return function () {
+					return values[name];
+				};
+			}
+
+			function setter(name) {
+				return function (val) {
+					values[name] = val;
+				};
+			}
+
+			for (key in inputs) {
+				if (inputs.hasOwnProperty(key)) {
+					inputs[key].get = getter(key);
+					inputs[key].set = setter(key);
+				}
+			}
+
+			return {
+				inputs: inputs
+			};
+		});
+
+		seriously = new Seriously();
+		transform = seriously.transform('test');
+
+		/*
+		No need to be as aggressive as the effect input validation tests,
+		since a lot of it uses the same code
+		*/
+		transform.color = 'rgb(10, 20, 30)';
+		ok(compare(transform.color, [10 / 255, 20 / 255, 30 / 255, 1]), 'Set color by rgb');
+
+		transform.number = 'not a number';
+		equal(transform.number, 8, 'Reject invalid number, use default');
+
+		transform.number = '-20';
+		equal(transform.number, -4, 'Validate number as string');
+
+		transform.e = 'foo';
+		equal(transform.e, 'two', 'Reject invalid enum, use default');
+
+		transform.e = 'ONE';
+		equal(transform.e, 'one', 'Validate enum');
+
+		transform.vector = {
+			x: 1,
+			y: 2,
+			z: 3,
+			w: 4
+		};
+		ok(compare(transform.vector, [1, 2, 3]), 'Validate vector');
+
+		transform.bool = 0;
+		equal(transform.bool, false, 'Validate boolean');
+
+		transform.string = 12345;
+		equal(transform.string, '12345', 'Validate number string');
+
+		transform.string = undefined;
+		equal(transform.string, '', 'Validate empty string');
+
+		seriously.destroy();
+		Seriously.removeTransform('test');
+	});
+
 	test('Transform input names', function () {
 		var seriously,
 			effect,

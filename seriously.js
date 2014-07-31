@@ -411,6 +411,16 @@
 		return out;
 	}
 
+	function colorArrayToHex(color) {
+		var i, val, s = '#';
+		for (i = 0; i < 4; i++) {
+			val = Math.min(255, Math.round(color[i] * 255 || 0));
+			s += val.toString(16);
+		}
+		return s;
+	}
+
+
 	/*
 	faster than setTimeout(fn, 0);
 	http://dbaron.org/log/20100309-faster-timeouts
@@ -1755,15 +1765,6 @@
 		Effect = function (effectNode) {
 			var name, me = effectNode;
 
-			function arrayToHex(color) {
-				var i, val, s = '#';
-				for (i = 0; i < 4; i++) {
-					val = Math.min(255, Math.round(color[i] * 255 || 0));
-					s += val.toString(16);
-				}
-				return s;
-			}
-
 			function setInput(inputName, input) {
 				var lookup, value, effectInput, i;
 
@@ -1822,7 +1823,7 @@
 
 									//special case for color type
 									if (effectInput.type === 'color') {
-										newValue = arrayToHex(newValue);
+										newValue = colorArrayToHex(newValue);
 									}
 
 									//if input validator changes our value, update HTML Element
@@ -4002,20 +4003,12 @@
 									} else {
 										oldValue = element.value;
 									}
-
-									if (def.set.call(me, oldValue)) {
-										me.setTransformDirty();
-									}
-
-									newValue = def.get.call(me);
+									newValue = me.setInput(inputName, oldValue);
 
 									//special case for color type
-									/*
-									no colors on transform nodes just yet. maybe later
-									if (def.type === 'color') {
-										newValue = arrayToHex(newValue);
+									if (input.type === 'color') {
+										newValue = colorArrayToHex(newValue);
 									}
-									*/
 
 									//if input validator changes our value, update HTML Element
 									//todo: make this optional...somehow
@@ -4047,9 +4040,7 @@
 					value = input;
 				}
 
-				if (def.set.call(me, value)) {
-					me.setTransformDirty();
-				}
+				me.setInput(inputName, value);
 			}
 
 			function setProperty(name, def) {
@@ -4297,6 +4288,7 @@
 					}
 				}
 			}
+			validateInputSpecs(this.plugin);
 
 			nodes.push(this);
 			nodesById[this.id] = this;
@@ -4393,6 +4385,34 @@
 
 			if (this.targets && this.targets.length) {
 				this.resize();
+			}
+		};
+
+		TransformNode.prototype.setInput = function (name, value) {
+			var input,
+				defaultValue,
+				previous;
+
+			if (this.plugin.inputs.hasOwnProperty(name)) {
+				input = this.plugin.inputs[name];
+
+				/*
+				if (defaultInputs[this.hook] && defaultInputs[this.hook][name] !== undefined) {
+					defaultValue = defaultInputs[this.hook][name];
+				} else {
+					defaultValue = input.defaultValue;
+				}
+				defaultValue = input.defaultValue;
+				*/
+
+				previous = input.get.call(this);
+				value = input.validate.call(this, value, input, previous, previous);
+
+				if (input.set.call(this, value)) {
+					this.setTransformDirty();
+				}
+
+				return input.get.call(this);
 			}
 		};
 
@@ -4645,7 +4665,7 @@
 
 			if (hook) {
 				if (!seriousTransforms[hook]) {
-					throw new Error('Unknown transforms: ' + hook);
+					throw new Error('Unknown transform: ' + hook);
 				}
 			} else {
 				hook = options && options.defaultTransform || '2d';
@@ -5089,17 +5109,16 @@
 			transform.definition = definition;
 		}
 
-		/*
-		todo: validate method definitions
-		if (effect.inputs) {
-			validateInputSpecs(effect);
+		transform.reserved = reservedTransformProperties;
+
+		//todo: validate method definitions
+		if (transform.inputs) {
+			validateInputSpecs(transform);
 		}
-		*/
 
 		if (!transform.title) {
 			transform.title = hook;
 		}
-
 
 		seriousTransforms[hook] = transform;
 		allTransformsByHook[hook] = [];
