@@ -369,29 +369,40 @@
 		Seriously.removePlugin('removeme');
 	});
 
-	test('Effect alias', 2, function () {
+	test('Effect input names', function () {
 		var seriously,
-			effect;
+			effect,
+			names;
 
-		Seriously.plugin('removeme', {
-			inputs: {
-				input: {
-					type: 'number'
-				}
-			}
-		});
+		Seriously.plugin('removeme', {});
 		seriously = new Seriously();
 		effect = seriously.effect('removeme');
 
-		effect.alias('input', 'input');
-		seriously.input = 5;
-		equal(effect.input, 5, 'Effect alias sets value');
+		names = Object.keys(effect).filter(function (key) {
+			return key !== 'width' && key !== 'height';
+		});
+
+		expect(names.length);
 
 		effect.destroy();
-		ok(!seriously.hasOwnProperty('input'), 'Effect alias removed');
+		Seriously.removePlugin('removeme');
+
+		names.forEach(function (name) {
+			var inputs = {};
+			inputs[name] = {
+				type: 'number'
+			};
+			try {
+				Seriously.plugin('removeme', {
+					inputs: inputs
+				});
+				ok(false, 'Failed to block effect input with reserved name: ' + name);
+			} catch (e) {
+				equal(e.message, 'Reserved input name: ' + name);
+			}
+		});
 
 		seriously.destroy();
-		Seriously.removePlugin('removeme');
 	});
 
 	test('Graph Loop', 1, function () {
@@ -1572,25 +1583,38 @@
 		Seriously.removeTransform('test');
 	});
 
-	test('Transform alias', 5, function () {
+	test('Transform input names', function () {
 		var seriously,
-			transform;
+			effect,
+			names;
 
+		Seriously.plugin('removeme', {});
 		seriously = new Seriously();
-		transform = seriously.transform('2d');
+		effect = seriously.effect('removeme');
 
-		transform.alias('translateX', 'translateX');
-		seriously.translateX = 5;
-		equal(transform.translateX, 5, 'Transform alias works for property');
+		names = Object.keys(effect).filter(function (key) {
+			return key !== 'width' && key !== 'height';
+		});
 
-		transform.alias('scale', 'scale');
-		seriously.scale(3, 4);
-		equal(transform.scaleX, 3, 'Transform alias works for method');
-		equal(transform.scaleY, 4, 'Transform alias works for method, second parameter');
+		expect(names.length);
 
-		transform.destroy();
-		ok(!seriously.hasOwnProperty('translateX'), 'Transform property alias removed');
-		ok(!seriously.hasOwnProperty('scale'), 'Transform method alias removed');
+		effect.destroy();
+		Seriously.removePlugin('removeme');
+
+		names.forEach(function (name) {
+			var inputs = {};
+			inputs[name] = {
+				type: 'number'
+			};
+			try {
+				Seriously.plugin('removeme', {
+					inputs: inputs
+				});
+				ok(false, 'Failed to block effect input with reserved name: ' + name);
+			} catch (e) {
+				equal(e.message, 'Reserved input name: ' + name);
+			}
+		});
 
 		seriously.destroy();
 	});
@@ -1855,6 +1879,100 @@
 			}
 		});
 	});
+
+	module('Alias');
+	test('Effect alias', 2, function () {
+		var seriously,
+			effect,
+			names;
+
+		Seriously.plugin('removeme', {
+			inputs: {
+				foo: {
+					type: 'number'
+				}
+			}
+		});
+		seriously = new Seriously();
+		effect = seriously.effect('removeme');
+
+		effect.alias('foo', 'input');
+		seriously.input = 5;
+		equal(effect.foo, 5, 'Effect alias sets value');
+
+		effect.destroy();
+		ok(!seriously.hasOwnProperty('input'), 'Effect alias removed');
+
+		Seriously.removePlugin('removeme');
+		seriously.destroy();
+	});
+
+	test('Transform alias', 5, function () {
+		var seriously,
+			transform;
+
+		seriously = new Seriously();
+		transform = seriously.transform('2d');
+
+		transform.alias('translateX', 'translateX');
+		seriously.translateX = 5;
+		equal(transform.translateX, 5, 'Transform alias works for property');
+
+		transform.alias('scale', 'scale');
+		seriously.scale(3, 4);
+		equal(transform.scaleX, 3, 'Transform alias works for method');
+		equal(transform.scaleY, 4, 'Transform alias works for method, second parameter');
+
+		transform.destroy();
+		ok(!seriously.hasOwnProperty('translateX'), 'Transform property alias removed');
+		ok(!seriously.hasOwnProperty('scale'), 'Transform method alias removed');
+
+		seriously.destroy();
+	});
+
+	test('Reserved names', function () {
+		var seriously,
+			effect,
+			transform,
+			names;
+
+		Seriously.plugin('removeme', {
+			inputs: {
+				foo: {
+					type: 'number'
+				}
+			}
+		});
+		seriously = new Seriously();
+		effect = seriously.effect('removeme');
+		transform = seriously.transform('2d');
+
+		names = Object.keys(seriously);
+		expect(names.length * 2);
+
+		names.forEach(function (name) {
+			var successTest = '\'' + name + '\' is a reserved name and cannot be used as an alias.',
+				fail = 'Failed to block alias with reserved name: ' + name,
+				success = 'Blocked alias with reserved name: ' + name;
+			try {
+				effect.alias('foo', name);
+				ok(false, fail + ' on effect.');
+			} catch (e) {
+				equal(e.message, successTest, success + ' on effect.');
+			}
+
+			try {
+				transform.alias('scaleX', name);
+				ok(false, fail + ' on transform.');
+			} catch (e) {
+				equal(e.message, successTest, success + ' on transform.');
+			}
+		});
+
+		Seriously.removePlugin('removeme');
+		seriously.destroy();
+	});
+
 
 	module('Destroy');
 	test('Destroy things', 15, function() {
