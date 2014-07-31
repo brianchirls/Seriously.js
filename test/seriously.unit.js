@@ -220,7 +220,7 @@
 		try {
 			p = Seriously.plugin('badPlugin', {
 				inputs: {
-					initialize: {
+					id: {
 						type: 'number'
 					}
 				}
@@ -229,7 +229,7 @@
 			error1 = e;
 		}
 
-		equal(error1 && error1.message, 'Reserved effect input name: initialize', 'Defining plugin throws error');
+		equal(error1 && error1.message, 'Reserved input name: id', 'Defining plugin throws error');
 
 		try {
 			s = new Seriously();

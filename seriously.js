@@ -245,10 +245,54 @@
 				};
 	}()),
 
-	reservedNames = ['source', 'target', 'effect', 'effects', 'benchmark', 'incompatible',
-		'util', 'ShaderProgram', 'inputValidators', 'save', 'load',
-		'plugin', 'removePlugin', 'alias', 'removeAlias', 'stop', 'go',
-		'destroy', 'isDestroyed'];
+	reservedEffectProperties = [
+		'alias',
+		'destroy',
+		'effect',
+		'id',
+		'initialize',
+		'inputs',
+		'isDestroyed',
+		'isReady',
+		'matte',
+		'off',
+		'on',
+		'readPixels',
+		'render',
+		'title',
+		'update'
+	],
+
+	reservedTransformProperties = [
+		'alias',
+		'destroy',
+		'id',
+		'inputs',
+		'isDestroyed',
+		'isReady',
+		'off',
+		'on',
+		'source',
+		'title',
+		'update'
+	],
+
+	reservedNames = [
+		'aliases',
+		'defaults',
+		'destroy',
+		'effect',
+		'go',
+		'id',
+		'incompatible',
+		'isDestroyed',
+		'removeAlias',
+		'render',
+		'source',
+		'stop',
+		'target',
+		'transform'
+	];
 
 	function getElement(input, tags) {
 		var element,
@@ -524,23 +568,21 @@
 		return true;
 	}
 
-	function validateInputSpecs(effect) {
-		var reserved = ['render', 'initialize', 'original', 'plugin', 'alias',
-			'prototype', 'destroy', 'isDestroyed'],
-			input,
+	function validateInputSpecs(plugin) {
+		var input,
 			name;
 
 		function passThrough(value) {
 			return value;
 		}
 
-		for (name in effect.inputs) {
-			if (effect.inputs.hasOwnProperty(name)) {
-				if (reserved.indexOf(name) >= 0 || Object.prototype[name]) {
-					throw new Error('Reserved effect input name: ' + name);
+		for (name in plugin.inputs) {
+			if (plugin.inputs.hasOwnProperty(name)) {
+				if (plugin.reserved.indexOf(name) >= 0 || Object.prototype[name]) {
+					throw new Error('Reserved input name: ' + name);
 				}
 
-				input = effect.inputs[name];
+				input = plugin.inputs[name];
 				input.name = name;
 
 				if (isNaN(input.min)) {
@@ -601,8 +643,8 @@
 					input.validate = Seriously.inputValidators[input.type] || passThrough;
 				}
 
-				if (!effect.defaultImageInput && input.type === 'image') {
-					effect.defaultImageInput = name;
+				if (!plugin.defaultImageInput && input.type === 'image') {
+					plugin.defaultImageInput = name;
 				}
 			}
 		}
@@ -2041,23 +2083,15 @@
 			this.options = options;
 			this.transform = null;
 
+			this.effect = extend({}, this.effectRef);
 			if (this.effectRef.definition) {
-				this.effect = this.effectRef.definition.call(this, options);
 				/*
 				todo: copy over inputs object separately in case some are specified
 				in advance and some are specified in definition function
 				*/
-				for (key in this.effectRef) {
-					if (this.effectRef.hasOwnProperty(key) && !this.effect[key]) {
-						this.effect[key] = this.effectRef[key];
-					}
-				}
-				if (this.effect.inputs !== this.effectRef.inputs) {
-					validateInputSpecs(this.effect);
-				}
-			} else {
-				this.effect = extend({}, this.effectRef);
+				extend(this.effect, this.effectRef.definition.call(this, options));
 			}
+			validateInputSpecs(this.effect);
 
 			this.uniforms.transform = identity;
 			this.inputs = {};
@@ -2430,7 +2464,7 @@
 			var that = this;
 
 			if (reservedNames.indexOf(aliasName) >= 0) {
-				throw new Error(aliasName + ' is a reserved name and cannot be used as an alias.');
+				throw new Error('\'' + aliasName + '\' is a reserved name and cannot be used as an alias.');
 			}
 
 			if (this.effect.inputs.hasOwnProperty(inputName)) {
@@ -4040,8 +4074,6 @@
 				};
 			}
 
-			this.inputElements = {};
-
 			//priveleged accessor methods
 			Object.defineProperties(this, {
 				transform: {
@@ -4245,22 +4277,9 @@
 			this.isDestroyed = false;
 			this.transformed = false;
 
+			this.plugin = extend({}, this.transformRef);
 			if (this.transformRef.definition) {
-				this.plugin = this.transformRef.definition.call(this, options);
-				for (key in this.transformRef) {
-					if (this.transformRef.hasOwnProperty(key) && !this.plugin[key]) {
-						this.plugin[key] = this.transformRef[key];
-					}
-				}
-
-				/*
-				todo: validate method definitions, check against reserved names
-				if (this.plugin.inputs !== this.transformRef.inputs) {
-					validateInputSpecs(this.plugin);
-				}
-				*/
-			} else {
-				this.plugin = extend({}, this.transformRef);
+				extend(this.plugin, this.transformRef.definition.call(this, options));
 			}
 
 			for (key in this.plugin.inputs) {
@@ -4379,7 +4398,7 @@
 				def;
 
 			if (reservedNames.indexOf(aliasName) >= 0) {
-				throw new Error(aliasName + ' is a reserved name and cannot be used as an alias.');
+				throw new Error('\'' + aliasName + '\' is a reserved name and cannot be used as an alias.');
 			}
 
 			if (this.plugin.inputs.hasOwnProperty(inputName)) {
@@ -4934,6 +4953,8 @@
 		if (typeof definition === 'function') {
 			effect.definition = definition;
 		}
+
+		effect.reserved = reservedEffectProperties;
 
 		if (effect.inputs) {
 			validateInputSpecs(effect);
