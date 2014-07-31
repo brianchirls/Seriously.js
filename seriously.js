@@ -5282,6 +5282,10 @@
 				i,
 				opt;
 
+			if (typeof value === 'string') {
+				value = value.toLowerCase();
+			}
+
 			for (i = 0; i < options.length; i++) {
 				opt = options[i];
 				if ((isArrayLike(opt) && opt.length && opt[0] === value) || opt === value) {
