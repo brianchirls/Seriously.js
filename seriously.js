@@ -5254,14 +5254,14 @@
 		},
 		'enum': function (value, input, defaultValue) {
 			var options = input.options || [],
-				filtered;
+				i,
+				opt;
 
-			filtered = options.filter(function (opt) {
-				return (isArrayLike(opt) && opt.length && opt[0] === value) || opt === value;
-			});
-
-			if (filtered.length) {
-				return value;
+			for (i = 0; i < options.length; i++) {
+				opt = options[i];
+				if ((isArrayLike(opt) && opt.length && opt[0] === value) || opt === value) {
+					return value;
+				}
 			}
 
 			return defaultValue || '';
