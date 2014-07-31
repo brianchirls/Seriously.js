@@ -4150,9 +4150,13 @@
 
 				inputs = me.plugin.inputs;
 
+				/*
+				Only reports setter/getter inputs, not methods
+				*/
+
 				if (name) {
 					input = inputs[name];
-					if (!input) {
+					if (!input || input.method) {
 						return null;
 					}
 
@@ -4192,7 +4196,7 @@
 
 				result = {};
 				for (key in inputs) {
-					if (inputs.hasOwnProperty(key)) {
+					if (inputs.hasOwnProperty(key) && !inputs[key].method) {
 						result[key] = this.inputs(key);
 					}
 				}
