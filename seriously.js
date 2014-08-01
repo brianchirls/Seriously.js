@@ -3867,7 +3867,7 @@
 				x,
 				y;
 
-			if (this.dirty && this.source) {
+			if (this.dirty && this.ready && this.source) {
 				this.emit('render');
 				this.source.render();
 
