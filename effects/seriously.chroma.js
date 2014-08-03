@@ -48,8 +48,6 @@
 				'	float fmax = max(max(screen.r, screen.g), screen.b);    //Max. value of RGB',
 				'	float secondaryComponents;',
 
-				//'	luminance = (fmax + fmin) / 2.0; // Luminance',
-				//'	screenSat = fmax - fmin; // Saturation',
 				'	screenPrimary = step(fmax, screen.rgb);',
 				'	secondaryComponents = dot(1.0 - screenPrimary, screen.rgb);',
 				'	screenSat = fmax - mix(secondaryComponents - fmin, secondaryComponents / 2.0, balance);',
@@ -81,45 +79,33 @@
 				'varying float screenSat;',
 				'varying vec3 screenPrimary;',
 
-				'vec4 sourcePixel;',
-
 				'const mat3 yuv = mat3(',
 				'	54.213, 182.376, 18.411,',
 				'	-54.213, -182.376, 236.589,',
 				'	200.787, -182.376, -18.411',
 				');',
 
-				'float round(float n) {',
-				'	return floor(n) + step(0.5, fract(n));',
-				'}',
-
 				'void main(void) {',
-				'	float pixelSat, luminance, secondaryComponents;',
+				'	float pixelSat, secondaryComponents;',
 				'	vec3 pixelPrimary;',
 				'	vec4 pixel = vec4(0.0);',
-				'	sourcePixel = texture2D(source, vTexCoord);',
+				'	vec4 sourcePixel = texture2D(source, vTexCoord);',
 
 				'	float fmin = min(min(sourcePixel.r, sourcePixel.g), sourcePixel.b);    //Min. value of RGB',
 				'	float fmax = max(max(sourcePixel.r, sourcePixel.g), sourcePixel.b);    //Max. value of RGB',
-				//'	float delta = fmax - fmin;             //Delta RGB value',
+				//	luminance = fmax
 
-				//'	luminance = (fmax + fmin) / 2.0; // Luminance',
-				//'	luminance = dot(vec3(0.3, 0.59, 0.11), sourcePixel.rgb); // Luminance',
-				'	luminance = fmax; // Luminance',
 				'	pixelPrimary = step(fmax, sourcePixel.rgb);',
-				//'	pixelSat = delta; // Saturation',
+
 				'	secondaryComponents = dot(1.0 - pixelPrimary, sourcePixel.rgb);',
 				'	pixelSat = fmax - mix(secondaryComponents - fmin, secondaryComponents / 2.0, balance);', // Saturation
-				'	if (pixelSat < 0.1 || luminance < 0.1 || any(notEqual(pixelPrimary, screenPrimary))) {',
+				'	if (pixelSat < 0.1 || fmax < 0.1 || any(notEqual(pixelPrimary, screenPrimary))) {',
 				'		pixel = sourcePixel;',
-				//'		pixel = vec4(1.0);',
 
 				'	} else if (pixelSat < screenSat) {',
 				'		float alpha = 1.0 - pixelSat / screenSat;',
 				'		alpha = smoothstep(clipBlack, clipWhite, alpha);',
-				//'		float despill = alpha / screenWeight;',
 				'		pixel = vec4((sourcePixel.rgb - (1.0 - alpha) * screen.rgb * screenWeight) / alpha, alpha);',
-				//'		pixel = vec4(vec3(alpha), 1.0);',
 				'	}',
 
 				'	if (mask) {',
