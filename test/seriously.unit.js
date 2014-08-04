@@ -1451,7 +1451,6 @@
 		]), 'Translate 1 pixel to the right');
 
 		seriously.destroy();
-		return;
 	});
 
 	test('Transform definition function', 5, function () {
@@ -1833,6 +1832,8 @@
 			error = e;
 		}
 		ok(incompatible && error || !error && pixels && compare(pixels, comparison), 'Secondary WebGL target rendered accurately.');
+
+		seriously.destroy();
 	});
 
 	asyncTest('WebGL Context Lost', function () {
