@@ -3456,17 +3456,6 @@
 
 			//priveleged accessor methods
 			Object.defineProperties(this, {
-				inputs: {
-					enumerable: true,
-					configurable: true,
-					get: function () {
-						return {
-							source: {
-								type: 'image'
-							}
-						};
-					}
-				},
 				source: {
 					enumerable: true,
 					configurable: true,
@@ -3593,6 +3582,14 @@
 						}
 					}
 				}
+			};
+
+			this.inputs = function (name) {
+				return {
+					source: {
+						type: 'image'
+					}
+				};
 			};
 
 			this.isDestroyed = function () {

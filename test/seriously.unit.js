@@ -1744,7 +1744,7 @@
 		equal(target.width, 17, 'target.width');
 		equal(target.height, 19, 'target.height');
 		equal(target.original, canvas, 'target.original');
-		equal(target.inputs.source.type, 'image', 'target.inputs.source');
+		equal(target.inputs().source.type, 'image', 'target.inputs.source');
 
 		dupTarget = seriously.target(canvas);
 		equal(target, dupTarget, 'return existing target node if given the same canvas');
