@@ -2043,7 +2043,7 @@
 				me.destroy();
 
 				for (i in this) {
-					if (this.hasOwnProperty(i) && i !== 'isDestroyed') {
+					if (this.hasOwnProperty(i) && i !== 'isDestroyed' && i !== 'id') {
 						descriptor = Object.getOwnPropertyDescriptor(this, i);
 						if (descriptor.get || descriptor.set ||
 								typeof this[i] !== 'function') {
@@ -3021,7 +3021,7 @@
 				me.destroy();
 
 				for (i in this) {
-					if (this.hasOwnProperty(i) && i !== 'isDestroyed') {
+					if (this.hasOwnProperty(i) && i !== 'isDestroyed' && i !== 'id') {
 						descriptor = Object.getOwnPropertyDescriptor(this, i);
 						if (descriptor.get || descriptor.set ||
 								typeof this[i] !== 'function') {
@@ -3583,7 +3583,7 @@
 				me.destroy();
 
 				for (i in this) {
-					if (this.hasOwnProperty(i) && i !== 'isDestroyed') {
+					if (this.hasOwnProperty(i) && i !== 'isDestroyed' && i !== 'id') {
 						descriptor = Object.getOwnPropertyDescriptor(this, i);
 						if (descriptor.get || descriptor.set ||
 								typeof this[i] !== 'function') {
@@ -4214,7 +4214,7 @@
 				me.destroy();
 
 				for (i in this) {
-					if (this.hasOwnProperty(i) && i !== 'isDestroyed') {
+					if (this.hasOwnProperty(i) && i !== 'isDestroyed' && i !== 'id') {
 						//todo: probably can simplify this if the only setter/getter is id
 						descriptor = Object.getOwnPropertyDescriptor(this, i);
 						if (descriptor.get || descriptor.set ||
@@ -4790,7 +4790,7 @@
 			}
 
 			for (i in this) {
-				if (this.hasOwnProperty(i) && i !== 'isDestroyed') {
+				if (this.hasOwnProperty(i) && i !== 'isDestroyed' && i !== 'id') {
 					descriptor = Object.getOwnPropertyDescriptor(this, i);
 					if (descriptor.get || descriptor.set ||
 							typeof this[i] !== 'function') {

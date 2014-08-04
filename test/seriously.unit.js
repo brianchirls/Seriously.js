@@ -2084,8 +2084,9 @@
 
 
 	module('Destroy');
-	test('Destroy things', 15, function() {
-		var seriously, source, target, effect, transform, canvas;
+	test('Destroy things', 20, function() {
+		var seriously, source, target, effect, transform, canvas,
+			seriouslyId, sourceId, targetId, effectId, transformId;
 
 		Seriously.plugin('test', {});
 
@@ -2096,6 +2097,12 @@
 		effect = seriously.effect('test');
 		transform = seriously.transform('2d');
 		target = seriously.target(canvas);
+
+		seriouslyId = seriously.id;
+		sourceId = source.id;
+		effectId = effect.id;
+		transformId = transform.id;
+		targetId = target.id;
 
 		ok(!seriously.isDestroyed(), 'New Seriously instance is not destroyed');
 		ok(!source.isDestroyed(), 'New source is not destroyed');
@@ -2113,6 +2120,11 @@
 		ok(transform.isDestroyed(), 'Destroyed transform is destroyed');
 		ok(target.isDestroyed(), 'Destroyed target is destroyed');
 
+		equal(source.id, sourceId, 'id property retained on destroyed source');
+		equal(effect.id, effectId, 'id property retained on destroyed effect');
+		equal(transform.id, transformId, 'id property retained on destroyed transform');
+		equal(target.id, targetId, 'id property retained on destroyed target');
+
 		source = seriously.source('#colorbars');
 		effect = seriously.effect('test');
 		transform = seriously.transform('2d');
@@ -2120,6 +2132,7 @@
 
 		seriously.destroy();
 		ok(seriously.isDestroyed(), 'Destroyed Seriously instance is destroyed');
+		equal(seriously.id, seriouslyId, 'id property retained on destroyed Seriously instance');
 
 		ok(source.isDestroyed(), 'Destroy Seriously instance destroys source');
 		ok(effect.isDestroyed(), 'Destroy Seriously instance destroys effect');
