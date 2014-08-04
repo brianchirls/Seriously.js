@@ -286,6 +286,11 @@
 		'id',
 		'incompatible',
 		'isDestroyed',
+		'isEffect',,
+		'isNode',
+		'isSource',
+		'isTarget',
+		'isTransform',
 		'removeAlias',
 		'render',
 		'source',
@@ -4854,6 +4859,37 @@
 			}
 
 			return false;
+		};
+
+		/*
+		Informational utility methods
+		*/
+
+		this.isNode = function (candidate) {
+			var node;
+			if (candidate) {
+				node = nodesById[candidate.id];
+				if (node && !node.isDestroyed) {
+					return true;
+				}
+			}
+			return false;
+		};
+
+		this.isSource = function (candidate) {
+			return this.isNode(candidate) && candidate instanceof Source;
+		};
+
+		this.isEffect = function (candidate) {
+			return this.isNode(candidate) && candidate instanceof Effect;
+		};
+
+		this.isTransform = function (candidate) {
+			return this.isNode(candidate) && candidate instanceof Transform;
+		};
+
+		this.isTarget = function (candidate) {
+			return this.isNode(candidate) && candidate instanceof Target;
 		};
 
 		Object.defineProperties(this, {

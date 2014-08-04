@@ -158,6 +158,28 @@
 		Seriously.removeSource('incompatiblesource');
 	});
 
+	test('Node Info', 3, function () {
+		var inputs,
+			seriously,
+			s2,
+			source;
+
+
+		seriously = new Seriously();
+		source = seriously.source('#colorbars');
+
+		s2 = new Seriously();
+
+		ok(seriously.isNode(source), 'isNode detects source from same Seriously instance');
+		ok(!s2.isNode(source), 'isNode rejects source from different Seriously instance');
+
+		source.destroy();
+		ok(!seriously.isNode(source), 'isNode rejects destroyed source');
+
+		seriously.destroy();
+		s2.destroy();
+	});
+
 	module('Plugin');
 	/*
 	 * define plugin
@@ -432,7 +454,7 @@
 		Seriously.removePlugin('removeme');
 	});
 
-	test('Effect Info', 17, function () {
+	test('Effect Info', 23, function () {
 		var inputs,
 			seriously,
 			effect;
@@ -491,6 +513,15 @@
 
 		inputs.e.options[1][0] = 'three';
 		equal(effect.inputs('e').options[1][0], 'two', 'Enum options fully copied, cannot be tampered with');
+
+		ok(seriously.isEffect(effect), 'isEffect detects effect');
+		ok(!seriously.isEffect(null), 'isEffect rejects null');
+		ok(!seriously.isEffect(seriously.source('#colorbars')), 'isEffect rejects source');
+		ok(!seriously.isEffect(seriously.transform('2d')), 'isEffect rejects transform');
+		ok(!seriously.isEffect(seriously.target(document.createElement('canvas'))), 'isEffect rejects target');
+
+		effect.destroy();
+		ok(!seriously.isEffect(effect), 'isEffect rejects destroyed effect');
 
 		seriously.destroy();
 		Seriously.removePlugin('test');
@@ -864,6 +895,35 @@
 		} else {
 			source.on('ready', imageLoaded);
 		}
+	});
+
+	test('Source Info', 10, function () {
+		var inputs,
+			seriously,
+			source;
+
+		Seriously.plugin('removeme', {});
+
+		seriously = new Seriously();
+		source = seriously.source('#colorbars');
+
+		ok(source.id >= 0, 'Source id reported');
+
+		equal(source.width, 672, 'Source width reported');
+		equal(source.height, 504, 'Source height reported');
+		equal(source.original, document.getElementById('colorbars'), 'Source original reported');
+
+		ok(seriously.isSource(source), 'isSource detects source');
+		ok(!seriously.isSource(null), 'isSource rejects null');
+		ok(!seriously.isSource(seriously.effect('removeme')), 'isSource rejects effect');
+		ok(!seriously.isSource(seriously.transform('2d')), 'isSource rejects transform');
+		ok(!seriously.isSource(seriously.target(document.createElement('canvas'))), 'isSource rejects target');
+
+		source.destroy();
+		ok(!seriously.isSource(source), 'isSource rejects destroyed source');
+
+		seriously.destroy();
+		Seriously.removePlugin('removeme');
 	});
 
 	module('Inputs');
@@ -1518,10 +1578,12 @@
 		Seriously.removePlugin('removeme');
 	});
 
-	test('Transform Info', 17, function () {
+	test('Transform Info', 23, function () {
 		var inputs,
 			seriously,
 			transform;
+
+		Seriously.plugin('removeme', {});
 
 		Seriously.transform('test', {
 			inputs: {
@@ -1578,8 +1640,18 @@
 		inputs.e.options[1][0] = 'three';
 		equal(transform.inputs('e').options[1][0], 'two', 'Enum options fully copied, cannot be tampered with');
 
+		ok(seriously.isTransform(transform), 'isTransform detects transform');
+		ok(!seriously.isTransform(null), 'isTransform rejects null');
+		ok(!seriously.isTransform(seriously.source('#colorbars')), 'isTransform rejects source');
+		ok(!seriously.isTransform(seriously.effect('removeme')), 'isTransform rejects effect');
+		ok(!seriously.isTransform(seriously.target(document.createElement('canvas'))), 'isTransform rejects target');
+
+		transform.destroy();
+		ok(!seriously.isTransform(transform), 'isTransform rejects destroyed transform');
+
 		seriously.destroy();
 		Seriously.removeTransform('test');
+		Seriously.removePlugin('removeme');
 	});
 
 	test('Transform Input Validation', function () {
@@ -1988,6 +2060,36 @@
 				resume();
 			}
 		});
+	});
+
+	test('Target Info', 9, function () {
+		var inputs,
+			seriously,
+			target;
+
+		Seriously.plugin('removeme', {});
+
+		seriously = new Seriously();
+		target = seriously.target(document.createElement('canvas'));
+
+		ok(target.id >= 0, 'Target id reported');
+
+		//Check inputs
+		inputs = target.inputs();
+		ok(inputs.source && inputs.source.type === 'image', 'Source input is present');
+		equal(Object.keys(inputs).length, 1, 'No extra properties');
+
+		ok(seriously.isTarget(target), 'isTarget detects target');
+		ok(!seriously.isTarget(null), 'isTarget rejects null');
+		ok(!seriously.isTarget(seriously.source('#colorbars')), 'isTarget rejects source');
+		ok(!seriously.isTarget(seriously.effect('removeme')), 'isTarget rejects effect');
+		ok(!seriously.isTarget(seriously.transform('2d')), 'isTarget rejects transform');
+
+		target.destroy();
+		ok(!seriously.isTarget(target), 'isTarget rejects destroyed transform');
+
+		seriously.destroy();
+		Seriously.removePlugin('removeme');
 	});
 
 	module('Alias');
