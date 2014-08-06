@@ -3710,6 +3710,7 @@
 					};
 					this.shader = new ShaderProgram(this.gl, baseVertexShader, baseFragmentShader);
 					this.model = buildRectangleModel.call(this, this.gl);
+					this.pixels = null;
 
 					this.texture = this.gl.createTexture();
 					this.gl.bindTexture(gl.TEXTURE_2D, this.texture);
@@ -3863,32 +3864,32 @@
 		};
 
 		TargetNode.prototype.renderSecondaryWebGL = function () {
-			var width,
-				height,
+			var sourceWidth,
+				sourceHeight,
 				matrix,
 				x,
 				y;
 
 			if (this.dirty && this.ready && this.source) {
 				this.emit('render');
-				this.source.render();
+				this.source.render(true);
 
-				width = this.source.width;
-				height = this.source.height;
+				sourceWidth = this.source.width;
+				sourceHeight = this.source.height;
 
-				if (!this.pixels || this.pixels.length !== width * height * 4) {
-					this.pixels = new Uint8Array(width * height * 4);
+				if (!this.pixels || this.pixels.length !== sourceWidth * sourceHeight * 4) {
+					this.pixels = new Uint8Array(sourceWidth * sourceHeight * 4);
 				}
 
-				this.source.readPixels(0, 0, this.source.width, this.source.height, this.pixels);
+				this.source.readPixels(0, 0, sourceWidth, sourceHeight, this.pixels);
 
-				this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, width, height, 0, this.gl.RGBA, this.gl.UNSIGNED_BYTE, this.pixels);
+				this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, sourceWidth, sourceHeight, 0, this.gl.RGBA, this.gl.UNSIGNED_BYTE, this.pixels);
 
-				if (this.source.width === width && this.source.height === height) {
-					this.uniforms.transform = this.source.cumulativeMatrix || identity;
+				if (sourceWidth === this.width && sourceHeight === this.height) {
+					this.uniforms.transform = identity;
 				} else if (this.transformDirty) {
 					matrix = this.transform;
-					mat4.copy(matrix, this.source.cumulativeMatrix || identity);
+					mat4.copy(matrix, identity);
 					x = this.source.width / this.width;
 					y = this.source.height / this.height;
 					matrix[0] *= x;
