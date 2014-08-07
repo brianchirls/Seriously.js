@@ -26,9 +26,10 @@
 				'uniform vec2 resolution;',
 				'uniform sampler2D source;',
 
+				'varying vec2 vTexCoord;',
+
 				'void main(void) {',
-				'	vec2 uv = gl_FragCoord.xy / resolution.xy;',
-				'	gl_FragColor = texture2D(source, vec2(0.5 - abs(0.5 - uv.x), uv.y));',
+				'	gl_FragColor = texture2D(source, vec2(0.5 - abs(0.5 - vTexCoord.x), vTexCoord.y));',
 				'}'
 			].join('\n');
 			return shaderSource;
