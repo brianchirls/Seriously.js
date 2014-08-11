@@ -493,6 +493,14 @@
 	function getTestContext() {
 		var canvas;
 
+		if (testContext && testContext.getError() === testContext.CONTEXT_LOST_WEBGL) {
+			/*
+			Test context was lost already, and the webglcontextlost event maybe hasn't fired yet
+			so try making a new context
+			*/
+			testContext = undefined;
+		}
+
 		if (testContext || !window.WebGLRenderingContext || incompatibility) {
 			return testContext;
 		}
@@ -545,9 +553,12 @@
 		}
 
 		ctx = getTestContext();
-
 		if (ctx) {
 			texture = ctx.createTexture();
+			if (!texture) {
+				Seriously.logger.error('Test WebGL context has been lost');
+			}
+
 			ctx.bindTexture(ctx.TEXTURE_2D, texture);
 
 			try {
