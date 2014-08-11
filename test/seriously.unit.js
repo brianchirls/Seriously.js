@@ -2528,7 +2528,6 @@
 			if (!tests) {
 				start();
 			}
-
 		}
 
 		function checkImageFail(img) {
@@ -2579,9 +2578,11 @@
 		fail = document.createElement('img');
 		fail.src = 'http://www.mozilla.org/images/template/screen/logo_footer.png';
 		fail.addEventListener('load', function() {
+			console.log('successfully loaded cross-origin test image');
 			checkImageFail(this);
 		}, false);
 		fail.addEventListener('error', function() {
+			console.log('failed to load cross-origin test image');
 			checkImageFail(this);
 		}, false);
 	});
@@ -2590,7 +2591,7 @@
 	use require for loading plugins
 	*/
 	module('Effect Plugins');
-	asyncTest('invert', 3, function () {
+	asyncTest('Invert', 3, function () {
 		require([
 			'seriously',
 			'effects/seriously.invert',
@@ -2634,6 +2635,110 @@
 
 			seriously.destroy();
 			Seriously.removePlugin('invert');
+
+			start();
+		});
+	});
+
+	asyncTest('Chroma Key', function () {
+		require([
+			'seriously',
+			'effects/seriously.chroma',
+			'sources/seriously.array'
+		], function (Seriously) {
+			var seriously,
+				effect,
+				target,
+				canvas,
+				source,
+				pixels,
+				error,
+				incompatible,
+
+				colors = [
+					[31, 57, 28], // low saturation, any balance
+					[28, 57, 33], // low saturation only when balance = 0
+					[0, 23, 0], // low maximum channel
+					[51, 230, 77], // high saturation
+					[51, 179, 77] // mid saturation (partial alpha)
+				],
+				sourcePixels = [];
+
+			colors.forEach(function (color, index) {
+				var i;
+
+				// green
+				i = index * 4;
+				sourcePixels[i + 0] = color[0];// / 255;
+				sourcePixels[i + 1] = color[1];// / 255;
+				sourcePixels[i + 2] = color[2];// / 255;
+				sourcePixels[i + 3] = 255; // alpha
+
+				// blue
+				i = index * 4 + colors.length * 4;
+				sourcePixels[i + 0] = color[0];// / 255;
+				sourcePixels[i + 1] = color[2];// / 255;
+				sourcePixels[i + 2] = color[1];// / 255;
+				sourcePixels[i + 3] = 255; // alpha
+			});
+
+			incompatible = Seriously.incompatible('chroma');
+
+			expect(incompatible ? 3 : 23);
+
+			seriously = new Seriously();
+			source = seriously.source(sourcePixels, {
+				width: colors.length,
+				height: 2
+			});
+
+			canvas = document.createElement('canvas');
+			canvas.width = 5;
+			canvas.height = 2;
+			target = seriously.target(canvas);
+
+			effect = seriously.effect('chroma');
+			ok(effect, 'Chroma effect successfully created');
+
+			effect.source = source;
+			target.source = effect;
+			effect.balance = 0;
+			effect.clipBlack = 0.1;
+			effect.clipWhite = 0.88;
+
+			// test with both green and blue screen colors
+			['rgb(51, 204, 77)', 'rgb(51, 77, 204)'].forEach(function (screen, row) {
+				var matchOffset = row * colors.length * 4,
+					noMatchOffset = (1 - row) * colors.length * 4,
+					color = row ? 'Blue' : 'Green';
+
+				effect.screen = screen;
+				target.render();
+
+				try {
+					pixels = target.readPixels(0, 0, colors.length, 2, pixels);
+				} catch (e) {
+					error = e;
+				}
+				ok(incompatible ? error : !error, 'readPixels throws error iff incompatible');
+				if (!incompatible) {
+					equal(pixels[matchOffset + 3], 247, color + ' - Low saturation partially keyed out');
+					equal(pixels[matchOffset + 7], 255, color + ' - Very low saturation remains opaque');
+					equal(pixels[matchOffset + 11], 255, color + ' - Low saturation and max channel remains opaque');
+					equal(pixels[matchOffset + 15], 0, color + ' - High saturation fully keyed out');
+					equal(pixels[matchOffset + 19], 11, color + ' - Mid saturation partially keyed out');
+
+					equal(pixels[noMatchOffset + 3], 255, color + ' - Low saturation, different color remains opaque');
+					equal(pixels[noMatchOffset + 7], 255, color + ' - Very low saturation, different color remains opaque');
+					equal(pixels[noMatchOffset + 11], 255, color + ' - Low saturation and max channel, different color remains opaque');
+					equal(pixels[noMatchOffset + 15], 255, color + ' - High saturation, different color remains opaque');
+					equal(pixels[noMatchOffset + 19], 255, color + ' - Mid saturation, different color remains opaque');
+				}
+			});
+
+
+			seriously.destroy();
+			Seriously.removePlugin('chroma');
 
 			start();
 		});
