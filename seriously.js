@@ -417,10 +417,19 @@
 	}
 
 	function colorArrayToHex(color) {
-		var i, val, s = '#';
-		for (i = 0; i < 4; i++) {
+		var i,
+			val,
+			hex,
+			s = '#',
+			len = color[3] < 1 ? 4 : 3;
+
+		for (i = 0; i < len; i++) {
 			val = Math.min(255, Math.round(color[i] * 255 || 0));
-			s += val.toString(16);
+			hex = val.toString(16);
+			if (val < 16) {
+				hex = '0' + hex;
+			}
+			s += hex;
 		}
 		return s;
 	}
@@ -1839,7 +1848,7 @@
 
 									//special case for color type
 									if (effectInput.type === 'color') {
-										newValue = colorArrayToHex(newValue);
+										newValue = colorArrayToHex(newValue).substr(0, 7);
 									}
 
 									//if input validator changes our value, update HTML Element
