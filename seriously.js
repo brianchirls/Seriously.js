@@ -2082,7 +2082,6 @@
 
 		EffectNode = function (hook, options) {
 			var key, name, input,
-				hasImage = false,
 				defaultValue,
 				defaults,
 				defaultSources = {};
@@ -2129,9 +2128,6 @@
 					this.inputs[name] = defaultValue;
 					if (input.uniform) {
 						this.uniforms[input.uniform] = input.defaultValue;
-					}
-					if (input.type === 'image') {
-						hasImage = true;
 					}
 				}
 			}
