@@ -2301,9 +2301,9 @@
 			if (!effect.ready && !target.ready && !seriously.isDestroyed()) {
 				//clean up
 				seriously.destroy();
-				Seriously.removePlugin('testReady');
-				Seriously.removeSource('deferred');
-				Seriously.removeSource('immediate');
+				Seriously.removePlugin('ready-testReady');
+				Seriously.removeSource('ready-deferred');
+				Seriously.removeSource('ready-immediate');
 				start();
 			}
 		}
@@ -2317,7 +2317,7 @@
 			}
 		}
 
-		Seriously.source('deferred', function (source) {
+		Seriously.source('ready-deferred', function (source) {
 			var me = this;
 			if (!proceeded) {
 				setTimeout(function () {
@@ -2334,7 +2334,7 @@
 			title: 'delete me'
 		});
 
-		Seriously.source('immediate', function () {
+		Seriously.source('ready-immediate', function () {
 			return {
 				render: function () {}
 			};
@@ -2342,7 +2342,7 @@
 			title: 'delete me'
 		});
 
-		Seriously.plugin('testReady', {
+		Seriously.plugin('ready-testReady', {
 			inputs: {
 				source: {
 					type: 'image'
@@ -2356,10 +2356,10 @@
 
 		seriously = new Seriously();
 
-		immediate = seriously.source('immediate');
-		deferred = seriously.source('deferred', 0);
+		immediate = seriously.source('ready-immediate');
+		deferred = seriously.source('ready-deferred', 0);
 
-		effect = seriously.effect('testReady');
+		effect = seriously.effect('ready-testReady');
 		effect.source = immediate;
 		effect.compare = deferred;
 
@@ -2412,7 +2412,10 @@
 		function proceed() {
 			if (deferredResized && effectResized && transformResized && targetResized) {
 				seriously.destroy();
-				Seriously.removeSource('size');
+				Seriously.removeSource('resize-size');
+				Seriously.removeSource('resize-immediate');
+				Seriously.removeSource('resize-deferred');
+				Seriously.removePlugin('resize-test');
 				start();
 			}
 		}
@@ -2421,7 +2424,7 @@
 			ok(false, 'Removed event listener should not run');
 		}
 
-		Seriously.source('immediate', function (source) {
+		Seriously.source('resize-immediate', function (source) {
 			this.width = source.width;
 			this.height = source.height;
 			return {
@@ -2431,7 +2434,7 @@
 			title: 'delete me'
 		});
 
-		Seriously.source('deferred', function (source) {
+		Seriously.source('resize-deferred', function (source) {
 			var that = this;
 			this.width = 1;
 			this.height = 1;
@@ -2448,7 +2451,7 @@
 			title: 'delete me'
 		});
 
-		Seriously.plugin('test', {
+		Seriously.plugin('resize-test', {
 			title: 'Test Effect',
 			inputs: {
 				source: {
@@ -2458,12 +2461,12 @@
 		});
 
 		seriously = new Seriously();
-		source = seriously.source('size', {
+		source = seriously.source('resize-size', {
 			width: 17,
 			height: 19
 		});
 
-		effect = seriously.effect('test');
+		effect = seriously.effect('resize-test');
 		effect.on('resize', function () {
 			effectResized = true;
 			ok(true, 'Effect resize event runs when connected to a source');
@@ -2487,7 +2490,7 @@
 		});
 		target.width = 60;
 
-		deferred = seriously.source('deferred', {
+		deferred = seriously.source('resize-deferred', {
 			width: 17,
 			height: 19
 		});
