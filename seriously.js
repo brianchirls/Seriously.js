@@ -434,6 +434,10 @@
 		return s;
 	}
 
+	function isArrayLike(obj) {
+		return Array.isArray(obj) ||
+			(obj && obj.BYTES_PER_ELEMENT && 'length' in obj);
+	}
 
 	/*
 	faster than setTimeout(fn, 0);
@@ -462,11 +466,6 @@
 		}
 
 		window.postMessage('seriously-timeout-message', window.location);
-	}
-
-	function isArrayLike(obj) {
-		return Array.isArray(obj) ||
-			(obj && obj.BYTES_PER_ELEMENT && 'length' in obj);
 	}
 
 	window.addEventListener('message', function (event) {
@@ -605,7 +604,34 @@
 
 	function validateInputSpecs(plugin) {
 		var input,
+			options,
 			name;
+
+		function normalizeEnumOption(option, i) {
+			var key,
+				name;
+
+			if (isArrayLike(option)) {
+				key = option[0];
+				name = option[1] || key;
+			} else {
+				key = option;
+			}
+
+			if (typeof key === 'string') {
+				key = key.toLowerCase();
+			} else if (typeof key === 'number') {
+				key = String(key);
+			} else if (!key) {
+				key = '';
+			}
+
+			options[key] = name;
+
+			if (!i && (input.defaultValue === undefined || input.defaultValue === null)) {
+				input.defaultValue = key;
+			}
+		}
 
 		function passThrough(value) {
 			return value;
@@ -640,17 +666,24 @@
 					input.step = 0;
 				}
 
+				if (input.type === 'enum') {
+					/*
+					Normalize options to make validation easy
+					- all items will have both a key and a name
+					- all keys will be lowercase strings
+					*/
+					if (input.options && isArrayLike(input.options) && input.options.length) {
+						options = {};
+						input.options.forEach(normalizeEnumOption);
+						input.options = options;
+					}
+				}
+
 				if (input.defaultValue === undefined || input.defaultValue === null) {
 					if (input.type === 'number') {
 						input.defaultValue = Math.min(Math.max(0, input.min), input.max);
 					} else if (input.type === 'color') {
 						input.defaultValue = [0, 0, 0, 0];
-					} else if (input.type === 'enum') {
-						if (input.options && input.options.length) {
-							input.defaultValue = input.options[0];
-						} else {
-							input.defaultValue = '';
-						}
 					} else if (input.type === 'boolean') {
 						input.defaultValue = false;
 					} else {
@@ -1799,20 +1832,9 @@
 
 				if (typeof input === 'string' && isNaN(input)) {
 					if (effectInput.type === 'enum') {
-						if (effectInput.options && effectInput.options.filter) {
-							i = String(input).toLowerCase();
-							value = effectInput.options.filter(function (e) {
-								return (typeof e === 'string' && e.toLowerCase() === i) ||
-									(e.length && typeof e[0] === 'string' && e[0].toLowerCase() === i);
-							});
-
-							value = value.length;
-						}
-
-						if (!value) {
+						if (!effectInput.options.hasOwnProperty(input)) {
 							input = getElement(input, ['select']);
 						}
-
 					} else if (effectInput.type === 'number' || effectInput.type === 'boolean') {
 						input = getElement(input, ['input', 'select']);
 					} else if (effectInput.type === 'image') {
@@ -1997,7 +2019,6 @@
 				var result,
 					input,
 					inputs,
-					enumOption,
 					i,
 					key;
 
@@ -2020,18 +2041,8 @@
 						result.max = input.max;
 						result.step = input.step;
 					} else if (input.type === 'enum') {
-						//make a deep copy
-						result.options = [];
-						if (options) {
-							for (i = 0; i < input.options.length; i++) {
-								enumOption = input.options[i];
-								if (Array.isArray(enumOption)) {
-									result.options.push(enumOption.slice(0));
-								} else {
-									result.options.push(enumOption);
-								}
-							}
-						}
+						//make a copy
+						result.options = extend({}, input.options);
 					} else if (input.type === 'vector') {
 						result.dimensions = input.dimensions;
 					}
@@ -3976,22 +3987,9 @@
 				//todo: there is some duplicate code with Effect here. Consolidate.
 				if (typeof input === 'string' && isNaN(input)) {
 					if (def.type === 'enum') {
-						if (def.options && def.options.filter) {
-							inputKey = String(input).toLowerCase();
-
-							//todo: possible memory leak on this function?
-							value = def.options.filter(function (e) {
-								return (typeof e === 'string' && e.toLowerCase() === inputKey) ||
-									(e.length && typeof e[0] === 'string' && e[0].toLowerCase() === inputKey);
-							});
-
-							value = value.length;
-						}
-
-						if (!value) {
+						if (!def.options.hasOwnProperty(input)) {
 							input = getElement(input, ['select']);
 						}
-
 					} else if (def.type === 'number' || def.type === 'boolean') {
 						input = getElement(input, ['input', 'select']);
 					} else if (def.type === 'image') {
@@ -4154,7 +4152,6 @@
 				var result,
 					input,
 					inputs,
-					enumOption,
 					i,
 					key;
 
@@ -4181,18 +4178,8 @@
 						result.max = input.max;
 						result.step = input.step;
 					} else if (input.type === 'enum') {
-						//make a deep copy
-						result.options = [];
-						if (options) {
-							for (i = 0; i < input.options.length; i++) {
-								enumOption = input.options[i];
-								if (Array.isArray(enumOption)) {
-									result.options.push(enumOption.slice(0));
-								} else {
-									result.options.push(enumOption);
-								}
-							}
-						}
+						//make a copy
+						result.options = extend({}, input.options);
 					} else if (input.type === 'vector') {
 						result.dimensions = input.dimensions;
 					}
@@ -5353,13 +5340,14 @@
 
 			if (typeof value === 'string') {
 				value = value.toLowerCase();
+			} else if (typeof value === 'number') {
+				value = value.toString();
+			} else if (!value) {
+				value = '';
 			}
 
-			for (i = 0; i < options.length; i++) {
-				opt = options[i];
-				if ((isArrayLike(opt) && opt.length && opt[0] === value) || opt === value) {
-					return value;
-				}
+			if (options.hasOwnProperty(value)) {
+				return value;
 			}
 
 			return defaultValue || '';

@@ -509,10 +509,10 @@
 		equal(inputs.vector.dimensions, 3, 'Vector dimensions reported');
 
 		equal(inputs.e.type, 'enum', 'Enum type reported');
-		ok(Array.isArray(inputs.e.options), 'Enum options reported');
+		ok(inputs.e.options && inputs.e.options.one === 'One', 'Enum options reported');
 
-		inputs.e.options[1][0] = 'three';
-		equal(effect.inputs('e').options[1][0], 'two', 'Enum options fully copied, cannot be tampered with');
+		inputs.e.options.two = 'three';
+		equal(effect.inputs('e').options.two, 'Two', 'Enum options fully copied, cannot be tampered with');
 
 		ok(seriously.isEffect(effect), 'isEffect detects effect');
 		ok(!seriously.isEffect(null), 'isEffect rejects null');
@@ -1233,7 +1233,7 @@
 		Seriously.removePlugin('testColorInput');
 	});
 
-	test('Enum', 4, function() {
+	test('Enum', 7, function() {
 		var s, e, val;
 
 		Seriously.plugin('testEnumInput', {
@@ -1244,7 +1244,9 @@
 					options: [
 						['foo', 'Foo'],
 						['bar', 'Bar'],
-						'baz'
+						'baz',
+						1,
+						"2"
 					]
 				}
 			}
@@ -1266,6 +1268,15 @@
 		e.input = 'biddle';
 		val = e.input;
 		equal(val, 'foo', 'Set unknown value reverts to default');
+
+		e.input = 1;
+		equal(e.input, '1', 'Numerical option');
+
+		e.input = 2;
+		equal(e.input, '2', 'Numerical option defined as string');
+
+		e.input = '1';
+		equal(e.input, '1', 'Numerical option set as string');
 
 		s.destroy();
 		Seriously.removePlugin('testEnumInput');
@@ -1635,10 +1646,10 @@
 		equal(inputs.vector.dimensions, 3, 'Vector dimensions reported');
 
 		equal(inputs.e.type, 'enum', 'Enum type reported');
-		ok(Array.isArray(inputs.e.options), 'Enum options reported');
+		ok(inputs.e.options && inputs.e.options.one === 'One', 'Enum options reported');
 
-		inputs.e.options[1][0] = 'three';
-		equal(transform.inputs('e').options[1][0], 'two', 'Enum options fully copied, cannot be tampered with');
+		inputs.e.options.two = 'three';
+		equal(transform.inputs('e').options.two, 'Two', 'Enum options fully copied, cannot be tampered with');
 
 		ok(seriously.isTransform(transform), 'isTransform detects transform');
 		ok(!seriously.isTransform(null), 'isTransform rejects null');
