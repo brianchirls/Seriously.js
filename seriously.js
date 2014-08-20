@@ -3343,7 +3343,7 @@
 					//workaround for lack of video texture support in IE
 					if (noVideoTextureSupport === undefined) {
 						error = gl.getError();
-						if (error === 1281) {
+						if (error === gl.INVALID_VALUE) {
 							noVideoTextureSupport = true;
 							this.renderVideo();
 							return;
