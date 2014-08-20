@@ -454,7 +454,7 @@
 		Seriously.removePlugin('removeme');
 	});
 
-	test('Effect Info', 23, function () {
+	test('Effect Info', 24, function () {
 		var inputs,
 			seriously,
 			effect;
@@ -510,6 +510,7 @@
 
 		equal(inputs.e.type, 'enum', 'Enum type reported');
 		ok(inputs.e.options && inputs.e.options.one === 'One', 'Enum options reported');
+		ok(inputs.e.options && inputs.e.defaultValue === 'one', 'Enum default reported');
 
 		inputs.e.options.two = 'three';
 		equal(effect.inputs('e').options.two, 'Two', 'Enum options fully copied, cannot be tampered with');
@@ -1341,7 +1342,7 @@
 		Seriously.removePlugin('testVectorInput');
 	});
 
-	test('Defaults', 8, function (argument) {
+	test('Effect Defaults', 8, function (argument) {
 		var seriously,
 			effect,
 			source;
@@ -1808,6 +1809,89 @@
 		});
 
 		seriously.destroy();
+	});
+
+	test('Transform Defaults', 7, function (argument) {
+		var seriously,
+			transform,
+			source;
+
+		Seriously.transform('testDefaults', function (){
+			var number = 0,
+				badNumber = 0;
+			return {
+				inputs: {
+					number: {
+						get: function () {
+							return number;
+						},
+						set: function (num) {
+							number = num;
+						},
+						type: 'number',
+						defaultValue: 42
+					},
+					badNumber: {
+						get: function () {
+							return badNumber;
+						},
+						set: function (num) {
+							badNumber = num;
+						},
+						type: 'number',
+						defaultValue: 9
+					}
+				}
+			};
+		});
+
+		// Passed as an option to the Seriously constructor
+		seriously = new Seriously({
+			defaults: {
+				testDefaults: {
+					number: 1337,
+					badNumber: 'not a number'
+				}
+			}
+		});
+
+		transform = seriously.transform('testDefaults');
+		equal(transform.number, 1337, 'Default set when passed as an option to the Seriously constructor');
+		equal(transform.badNumber, 9, 'Invalid default value ignored');
+		transform.destroy();
+
+		// reset all defaults
+		seriously.defaults(null);
+		transform = seriously.transform('testDefaults');
+		equal(transform.number, 42, 'All defaults reset successfully');
+		seriously.destroy();
+
+		// defaults method on the Seriously instance
+		seriously = new Seriously();
+		seriously.defaults({
+			testDefaults: {
+				number: 43
+			}
+		});
+
+		transform = seriously.transform('testDefaults');
+		equal(transform.number, 43, 'Default set with defaults method');
+		transform.number = 7;
+		transform.number = 'not a number';
+		equal(transform.number, 43, 'New default used when trying to set an invalid value');
+		transform.destroy();
+
+		seriously.defaults('testDefaults', {});
+		transform = seriously.transform('testDefaults');
+		equal(transform.number, 42, 'Default value reset by setting to a different hash');
+		transform.destroy();
+
+		seriously.defaults('testDefaults', null);
+		transform = seriously.transform('testDefaults');
+		equal(transform.number, 42, 'Defaults reset for single transform');
+
+		seriously.destroy();
+		Seriously.removeTransform('testDefaults');
 	});
 
 	module('Target');

@@ -628,8 +628,8 @@
 
 			options[key] = name;
 
-			if (!i && (input.defaultValue === undefined || input.defaultValue === null)) {
-				input.defaultValue = key;
+			if (!i) {
+				input.firstValue = key;
 			}
 		}
 
@@ -676,18 +676,6 @@
 						options = {};
 						input.options.forEach(normalizeEnumOption);
 						input.options = options;
-					}
-				}
-
-				if (input.defaultValue === undefined || input.defaultValue === null) {
-					if (input.type === 'number') {
-						input.defaultValue = Math.min(Math.max(0, input.min), input.max);
-					} else if (input.type === 'color') {
-						input.defaultValue = [0, 0, 0, 0];
-					} else if (input.type === 'boolean') {
-						input.defaultValue = false;
-					} else {
-						input.defaultValue = '';
 					}
 				}
 
@@ -2135,6 +2123,20 @@
 			for (name in this.effect.inputs) {
 				if (this.effect.inputs.hasOwnProperty(name)) {
 					input = this.effect.inputs[name];
+
+					if (input.defaultValue === undefined || input.defaultValue === null) {
+						if (input.type === 'number') {
+							input.defaultValue = Math.min(Math.max(0, input.min), input.max);
+						} else if (input.type === 'color') {
+							input.defaultValue = [0, 0, 0, 0];
+						} else if (input.type === 'boolean') {
+							input.defaultValue = false;
+						} else if (input.type === 'string') {
+							input.defaultValue = '';
+						} else if (input.type === 'enum') {
+							input.defaultValue = input.firstValue;
+						}
+					}
 
 					defaultValue = input.validate.call(this, input.defaultValue, input);
 					if (defaults && defaults[name] !== undefined) {
@@ -4123,7 +4125,7 @@
 					enumerable: true,
 					configurable: true,
 					get: function () {
-						return me.source.pub;
+						return me.source && me.source.pub;
 					},
 					set: function (source) {
 						me.setSource(source);
@@ -4244,7 +4246,10 @@
 
 		TransformNode = function (hook, options) {
 			var key,
-				input;
+				input,
+				initialValue,
+				defaultValue,
+				defaults;
 
 			this.matrix = new Float32Array(16);
 			this.cumulativeMatrix = new Float32Array(16);
@@ -4283,6 +4288,7 @@
 				extend(this.plugin, this.transformRef.definition.call(this, options));
 			}
 
+			// set up inputs and methods
 			for (key in this.plugin.inputs) {
 				if (this.plugin.inputs.hasOwnProperty(key)) {
 					input = this.plugin.inputs[key];
@@ -4295,6 +4301,29 @@
 				}
 			}
 			validateInputSpecs(this.plugin);
+
+			// set default value for all inputs (no defaults for methods)
+			defaults = defaultInputs[hook];
+			for (key in this.plugin.inputs) {
+				if (this.plugin.inputs.hasOwnProperty(key)) {
+					input = this.plugin.inputs[key];
+
+					if (typeof input.set === 'function' && typeof input.get === 'function' &&
+							typeof input.method !== 'function') {
+
+						initialValue = input.get.call(this);
+						defaultValue = input.defaultValue === undefined ? initialValue : input.defaultValue;
+						defaultValue = input.validate.call(this, defaultValue, input, initialValue);
+						if (defaults && defaults[key] !== undefined) {
+							defaultValue = input.validate.call(this, defaults[key], input, input.defaultValue, defaultValue);
+							defaults[key] = defaultValue;
+						}
+						if (defaultValue !== initialValue) {
+							input.set.call(this, defaultValue);
+						}
+					}
+				}
+			}
 
 			nodes.push(this);
 			nodesById[this.id] = this;
@@ -4402,17 +4431,17 @@
 			if (this.plugin.inputs.hasOwnProperty(name)) {
 				input = this.plugin.inputs[name];
 
-				/*
 				if (defaultInputs[this.hook] && defaultInputs[this.hook][name] !== undefined) {
 					defaultValue = defaultInputs[this.hook][name];
 				} else {
 					defaultValue = input.defaultValue;
 				}
-				defaultValue = input.defaultValue;
-				*/
 
 				previous = input.get.call(this);
-				value = input.validate.call(this, value, input, previous, previous);
+				if (defaultValue === undefined) {
+					defaultValue = previous;
+				}
+				value = input.validate.call(this, value, input, defaultValue, previous);
 
 				if (input.set.call(this, value)) {
 					this.setTransformDirty();
