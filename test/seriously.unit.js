@@ -1139,6 +1139,10 @@
 				yellowgreen: [154 / 255, 205 / 255, 50 / 255, 1]
 			};
 
+		function normalizeChannel(val) {
+			return val * 255;
+		}
+
 		Seriously.plugin('testColorInput', {
 			inputs: {
 				color: {
@@ -1196,7 +1200,7 @@
 				val = e.color;
 				ok(compare(val, colorNames[name]), 'Set color by name (' + name + ')');
 				if (!compare(val, colorNames[name])) {
-					console.log(name + ': ' + JSON.stringify(colorNames[name].map(function (val) { return val * 255; })) + ',');
+					console.log(name + ': ' + JSON.stringify(colorNames[name].map(normalizeChannel)) + ',');
 				}
 			}
 		}
