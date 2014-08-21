@@ -2187,6 +2187,50 @@
 		Seriously.removePlugin('removeme');
 	});
 
+	test('Shared target warning', function () {
+		var seriously1,
+			seriously2,
+			target1,
+			target2,
+			canvas;
+
+		function firstTarget(message) {
+			ok(false, 'First target should not fire a warning: ' + message);
+		}
+
+		function secondTarget(message, target, instances) {
+			equal(message, 'Target already in use by another instance', 'Warning fired when using a shared target canvas');
+			equal(target, canvas, 'Warning passes shared canvas');
+			equal(instances[0], seriously1, 'Warning passes Seriously instances using shared canvas');
+		}
+
+		function thirdTarget(message) {
+			ok(false, 'Reused target after other target nodes destroyed should not fire a warning: ' + message);
+		}
+
+		expect(window.WeakMap ? 3 : 0);
+
+		Seriously.logger.warn = firstTarget;
+
+		canvas = document.createElement('canvas');
+		seriously1 = new Seriously();
+		seriously2 = new Seriously();
+
+		target1 = seriously1.target(canvas);
+
+		Seriously.logger.warn = secondTarget;
+		target2 = seriously2.target(canvas);
+
+		Seriously.logger.warn = thirdTarget;
+		target1.destroy();
+		target2.destroy();
+		target1 = seriously1.target(canvas);
+
+		seriously1.destroy();
+		seriously2.destroy();
+		Seriously.logger.warn = nop;
+	});
+
 	module('Alias');
 	test('Effect alias', 2, function () {
 		var seriously,

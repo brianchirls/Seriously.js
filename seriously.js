@@ -27,7 +27,7 @@
 		console = window.console,
 
 	/*
-		Global environment variables
+		Global-ish look-up variables
 	*/
 
 	testContext,
@@ -44,6 +44,7 @@
 		image: [],
 		video: []
 	},
+	allTargets = window.WeakMap && new WeakMap(),
 	identity,
 	maxSeriouslyId = 0,
 	nop = function () {},
@@ -2252,7 +2253,7 @@
 			if (this.ready !== ready) {
 				this.ready = ready;
 				this.emit(ready ? 'ready' : 'unready');
-				method = ready ? 'setReady' : 'setUnready'
+				method = ready ? 'setReady' : 'setUnready';
 
 				if (this.targets) {
 					for (i = 0; i < this.targets.length; i++) {
@@ -3647,6 +3648,7 @@
 				i, element, elements, context,
 				debugContext = opts.debugContext,
 				frameBuffer,
+				targetList,
 				triedWebGl = false;
 
 			Node.call(this, opts);
@@ -3756,6 +3758,23 @@
 
 			if (!matchedType) {
 				throw new Error('Unknown target type');
+			}
+
+			if (allTargets) {
+				targetList = allTargets.get(target);
+				if (targetList) {
+					Seriously.logger.warn(
+						'Target already in use by another instance',
+						target,
+						Object.keys(targetList).map(function (key) {
+							return targetList[key];
+						})
+					);
+				} else {
+					targetList = {};
+					allTargets.set(target, targetList);
+				}
+				targetList[seriously.id] = seriously;
 			}
 
 			this.target = target;
@@ -3947,12 +3966,22 @@
 		};
 
 		TargetNode.prototype.destroy = function () {
-			var i;
+			var i,
+				targetList;
 
 			//source
 			if (this.source && this.source.removeTarget) {
 				this.source.removeTarget(this);
 			}
+
+			if (allTargets) {
+				targetList = allTargets.get(this.target);
+				delete targetList[seriously.id];
+				if (!Object.keys(targetList).length) {
+					allTargets.delete(this.target);
+				}
+			}
+
 			delete this.source;
 			delete this.target;
 			delete this.pub;
