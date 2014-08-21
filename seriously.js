@@ -47,7 +47,7 @@
 	identity,
 	maxSeriouslyId = 0,
 	nop = function () {},
-	noVideoTextureSupport = undefined,
+	noVideoTextureSupport,
 
 	/*
 		Global reference variables
