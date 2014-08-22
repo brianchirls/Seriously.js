@@ -1399,7 +1399,9 @@
 			var numTextures = 0,
 				name, value, shaderUniform,
 				width, height,
-				nodeGl = (node && node.gl) || gl;
+				nodeGl = (node && node.gl) || gl,
+				srcRGB, srcAlpha,
+				dstRGB, dstAlpha;
 
 			if (!nodeGl) {
 				return;
@@ -1440,23 +1442,24 @@
 				gl.disable(gl.DEPTH_TEST);
 			}
 
-			//default for blend is enable
-			if (!options || options.blend === undefined || options.blend) {
+			//default for blend is enabled
+			if (!options) {
 				gl.enable(gl.BLEND);
-				/*
 				gl.blendFunc(
-					options && options.srcRGB || gl.ONE,
-					options && options.dstRGB || gl.ONE_MINUS_SRC_ALPHA
+					gl.ONE,
+					gl.ZERO
 				);
-				*/
+				gl.blendEquation(gl.FUNC_ADD);
+			} else if (options.blend === undefined || options.blend) {
+				gl.enable(gl.BLEND);
 
-				gl.blendFuncSeparate(
-					options && options.srcRGB || gl.ONE,
-					options && options.dstRGB || gl.ZERO,
-					options && (options.srcAlpha || options.srcRGB) || gl.ONE,
-					options && (options.dstAlpha || options.dstRGB) || gl.ZERO
-				);
-				gl.blendEquation(options && options.blendEquation || gl.FUNC_ADD);
+				srcRGB = options.srcRGB === undefined ? gl.ONE : options.srcRGB;
+				dstRGB = options.dstRGB || gl.ZERO;
+				srcAlpha = options.srcAlpha === undefined ? srcRGB : options.srcAlpha;
+				dstAlpha = options.dstAlpha === undefined ? dstRGB : options.dstAlpha;
+
+				gl.blendFuncSeparate(srcRGB, dstRGB, srcAlpha, dstAlpha);
+				gl.blendEquation(options.blendEquation || gl.FUNC_ADD);
 			} else {
 				gl.disable(gl.BLEND);
 			}
