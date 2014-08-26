@@ -60,6 +60,7 @@ Full documentation is in progress at the [wiki](https://github.com/brianchirls/S
 - Mirror
 - Night Vision
 - Panorama
+- Pixelate
 - Polar Coordinates
 - Ripple
 - Scanlines
