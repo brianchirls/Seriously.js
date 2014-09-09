@@ -3488,6 +3488,7 @@
 						if (!isNaN(value) && value >0 && me.width !== value) {
 							me.width = me.desiredWidth = value;
 							me.target.width = value;
+							me.uniforms.resolution[0] = value;
 
 							me.setTransformDirty();
 							me.emit('resize');
@@ -3514,6 +3515,7 @@
 						if (!isNaN(value) && value >0 && me.height !== value) {
 							me.height = me.desiredHeight = value;
 							me.target.height = value;
+							me.uniforms.resolution[1] = value;
 
 							me.setTransformDirty();
 							me.emit('resize');
