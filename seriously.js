@@ -48,6 +48,7 @@
 	identity,
 	maxSeriouslyId = 0,
 	nop = function () {},
+	noVideoTextureSupport,
 
 	/*
 		Global reference variables
@@ -3373,7 +3374,10 @@
 		};
 
 		SourceNode.prototype.renderVideo = function () {
-			var video = this.source;
+			var video = this.source,
+				source,
+				canvas,
+				error;
 
 			if (!gl || !video || !video.videoHeight || !video.videoWidth || video.readyState < 2 || !this.ready) {
 				return;
@@ -3391,11 +3395,34 @@
 				this.lastRenderFrame !== video.mozPresentedFrames ||
 				this.lastRenderTime !== video.currentTime) {
 
+				if (noVideoTextureSupport) {
+					if (!this.ctx2d) {
+						this.ctx2d = document.createElement('canvas').getContext('2d');
+					}
+					source = this.ctx2d.canvas;
+					source.width = this.width;
+					source.height = this.height;
+					this.ctx2d.drawImage(video, 0, 0, this.width, this.height);
+				} else {
+					source = video;
+				}
+
 				gl.bindTexture(gl.TEXTURE_2D, this.texture);
 				gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, this.flip);
 				gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
 				try {
-					gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, video);
+					gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source);
+
+					//workaround for lack of video texture support in IE
+					if (noVideoTextureSupport === undefined) {
+						error = gl.getError();
+						if (error === gl.INVALID_VALUE) {
+							noVideoTextureSupport = true;
+							this.renderVideo();
+							return;
+						}
+						noVideoTextureSupport = false;
+					}
 				} catch (securityError) {
 					if (securityError.code === window.DOMException.SECURITY_ERR) {
 						this.allowRefresh = false;
@@ -3523,6 +3550,7 @@
 						if (!isNaN(value) && value >0 && me.width !== value) {
 							me.width = me.desiredWidth = value;
 							me.target.width = value;
+							me.uniforms.resolution[0] = value;
 
 							me.setTransformDirty();
 							me.emit('resize');
@@ -3549,6 +3577,7 @@
 						if (!isNaN(value) && value >0 && me.height !== value) {
 							me.height = me.desiredHeight = value;
 							me.target.height = value;
+							me.uniforms.resolution[1] = value;
 
 							me.setTransformDirty();
 							me.emit('resize');

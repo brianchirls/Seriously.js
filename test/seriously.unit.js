@@ -3,15 +3,17 @@
 (function () {
 	'use strict';
 
-	function compare(a, b) {
+	function compare(a, b, epsilon) {
 		var i;
 
 		if (a.length !== b.length) {
 			return false;
 		}
 
+		epsilon = epsilon || 0;
+
 		for (i = 0; i < a.length; i++) {
-			if (a[i] !== b[i]) {
+			if (Math.abs(a[i] - b[i]) > epsilon) {
 				return false;
 			}
 		}
@@ -925,6 +927,112 @@
 
 		seriously.destroy();
 		Seriously.removePlugin('removeme');
+	});
+
+	asyncTest('Video Source', 5, function () {
+		var seriously,
+			source,
+			dupSource,
+			target,
+			reformat,
+			video,
+
+			//for iOS
+			div,
+
+			// 2 x 2 pixels
+			data = [
+				127, 0, 40, 255,
+				34, 1, 39, 255,
+				126, 1, 123, 255,
+				34, 1, 121, 255
+			];
+
+		function finish() {
+			if (div && div.parentNode) {
+				div.parentNode.removeChild(div);
+			}
+			seriously.destroy();
+			start();
+		}
+
+		seriously = new Seriously();
+		target = seriously.target(document.createElement('canvas'));
+		target.width = 2;
+		target.height = 2;
+		video = document.createElement('video');
+		video.setAttribute('preload', 'auto');
+
+		video.addEventListener('canplaythrough', function () {
+			var pixels;
+			if (!video.videoWidth) {
+				console.log('Browser failed to properly report video dimensions');
+			}
+			ok(source.width === video.videoWidth && source.height === video.videoHeight,
+				'Source node correctly calculates size from video');
+
+			try {
+				pixels = target.readPixels(0, 0, 2, 2);
+
+				/*
+				Allow for slight variations in how different codecs interpret video pixel colors.
+				*/
+				ok(compare(pixels, data, 8), 'Video source rendered.');
+			} catch (e) {
+				ok(seriously.incompatible(), 'Cannot read pixels without WebGL support');
+			}
+			finish();
+		});
+
+		if (video.canPlayType('video/mp4')) {
+			video.src = 'media/tiny.mp4';
+		} else {
+			video.src = 'media/tiny.webm';
+		}
+		video.loop = true;
+		video.load();
+
+		/*
+		iOS will not load any part of a video until there is a touch or click event,
+		So we give a chance to touch to proceed. If no touch after 10 seconds, just skip the test and move on.
+		*/
+		setTimeout(function () {
+			if (!video.readyState) {
+				div = document.createElement('div');
+				div.innerHTML = 'Touch here to enable video test';
+				div.setAttribute('style', 'position: fixed; top: 0; right: 0; padding: 20px;' +
+					'color: darkred; background-color: lightgray; font-size: 20px; cursor: pointer;');
+				document.body.appendChild(div);
+				div.onclick = function () {
+					if (video && !video.readyState) {
+						video.load();
+					}
+				};
+
+				setTimeout(function () {
+					if (!video.readyState) {
+						console.log('Skipped video source render test');
+						expect(3);
+						finish();
+					}
+				}, 10000);
+			}
+		}, 100);
+
+		source = seriously.source(video);
+		equal(source.original, video, 'Video source created by passing video element');
+		source.destroy();
+
+		source = seriously.source('video', video);
+		equal(source.original, video, 'Video source created with explicit source plugin hook');
+
+		dupSource = seriously.source(video);
+		equal(dupSource, source, 'Trying to create a second source with the same video returns the original');
+
+		reformat = seriously.transform('reformat');
+		reformat.width = reformat.height = target.height;
+		reformat.source = source;
+		target.source = reformat;
 	});
 
 	module('Inputs');
