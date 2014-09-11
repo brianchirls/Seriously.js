@@ -31,7 +31,9 @@
 			key,
 			opts,
 			destroyed = false,
-			stream;
+			stream,
+
+			lastRenderTime = 0;
 
 		function cleanUp() {
 			if (video) {
@@ -113,7 +115,24 @@
 			return {
 				deferTexture: true,
 				source: video,
-				render: Object.getPrototypeOf(this).renderVideo,
+				render: function (gl) {
+					lastRenderTime = video.currentTime;
+
+					gl.bindTexture(gl.TEXTURE_2D, this.texture);
+					gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, this.flip);
+					gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+					try {
+						gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, video);
+						return true;
+					} catch (error) {
+						Seriously.logger.error('Error rendering camera video source', error);
+					}
+
+					return false;
+				},
+				checkDirty: function () {
+					return video.currentTime !== lastRenderTime;
+				},
 				destroy: function () {
 					destroyed = true;
 					cleanUp();

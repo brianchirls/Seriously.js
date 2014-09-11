@@ -1367,9 +1367,8 @@
 					node = sources[i];
 
 					media = node.source;
-					if (node.lastRenderTime === undefined ||
-							node.dirty ||
-							media.currentTime !== undefined && node.lastRenderTime !== media.currentTime) {
+					if (node.dirty ||
+							node.checkDirty && node.checkDirty()) {
 						node.dirty = false;
 						node.setDirty();
 					}
@@ -3134,6 +3133,7 @@
 					deferTexture = plugin.deferTexture;
 					this.plugin = plugin;
 					this.compare = plugin.compare;
+					this.checkDirty = plugin.checkDirty;
 					if (plugin.source) {
 						source = plugin.source;
 					}
@@ -3220,6 +3220,7 @@
 							deferTexture = plugin.deferTexture;
 							this.plugin = plugin;
 							this.compare = plugin.compare;
+							this.checkDirty = plugin.checkDirty;
 							if (plugin.source) {
 								source = plugin.source;
 							}
@@ -3366,76 +3367,9 @@
 			}
 
 			if (this.plugin && this.plugin.render &&
+					(this.dirty || this.checkDirty && this.checkDirty()) &&
 					this.plugin.render.call(this, gl, draw, rectangleModel, baseShader)) {
 
-				this.dirty = false;
-				this.emit('render');
-			}
-		};
-
-		SourceNode.prototype.renderVideo = function () {
-			var video = this.source,
-				source,
-				canvas,
-				error;
-
-			if (!gl || !video || !video.videoHeight || !video.videoWidth || video.readyState < 2 || !this.ready) {
-				return;
-			}
-
-			if (!this.initialized) {
-				this.initialize();
-			}
-
-			if (!this.allowRefresh) {
-				return;
-			}
-
-			if (this.dirty ||
-				this.lastRenderFrame !== video.mozPresentedFrames ||
-				this.lastRenderTime !== video.currentTime) {
-
-				if (noVideoTextureSupport) {
-					if (!this.ctx2d) {
-						this.ctx2d = document.createElement('canvas').getContext('2d');
-					}
-					source = this.ctx2d.canvas;
-					source.width = this.width;
-					source.height = this.height;
-					this.ctx2d.drawImage(video, 0, 0, this.width, this.height);
-				} else {
-					source = video;
-				}
-
-				gl.bindTexture(gl.TEXTURE_2D, this.texture);
-				gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, this.flip);
-				gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
-				try {
-					gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source);
-
-					//workaround for lack of video texture support in IE
-					if (noVideoTextureSupport === undefined) {
-						error = gl.getError();
-						if (error === gl.INVALID_VALUE) {
-							noVideoTextureSupport = true;
-							this.renderVideo();
-							return;
-						}
-						noVideoTextureSupport = false;
-					}
-				} catch (securityError) {
-					if (securityError.code === window.DOMException.SECURITY_ERR) {
-						this.allowRefresh = false;
-						Seriously.logger.error('Unable to access cross-domain image');
-					}
-				}
-
-				// Render a few extra times because the canvas takes a while to catch up
-				if (Date.now() - 100 > this.lastRenderTimeStamp) {
-					this.lastRenderTime = video.currentTime;
-				}
-				this.lastRenderFrame = video.mozPresentedFrames;
-				this.lastRenderTimeStamp = Date.now();
 				this.dirty = false;
 				this.emit('render');
 			}
@@ -3462,6 +3396,10 @@
 				gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
 				try {
 					gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, media);
+
+					this.dirty = false;
+					this.emit('render');
+					return true;
 				} catch (securityError) {
 					if (securityError.code === window.DOMException.SECURITY_ERR) {
 						this.allowRefresh = false;
@@ -3469,9 +3407,7 @@
 					}
 				}
 
-				this.lastRenderTime = Date.now() / 1000;
-				this.dirty = false;
-				this.emit('render');
+				return false;
 			}
 		};
 
@@ -5579,7 +5515,6 @@
 		error: consoleMethod('error')
 	};
 
-	//expose Seriously to the global object
 	Seriously.util = {
 		mat4: mat4,
 		checkSource: checkSource,
@@ -5605,23 +5540,32 @@
 		}
 	};
 
-	Seriously.source('video', function (source, options, force) {
+	Seriously.source('video', function (video, options, force) {
 		var me = this,
 			video,
 			key,
 			opts,
+
+			canvas,
+			ctx2d,
+
 			destroyed = false,
-			deferTexture = false;
+			deferTexture = false,
+
+			isSeeking = false,
+			lastRenderTime = 0;
 
 		function initializeVideo() {
+			video.removeEventListener('loadedmetadata', initializeVideo, true);
+
 			if (destroyed) {
 				return;
 			}
 
-			if (source.videoWidth) {
-				if (me.width !== source.videoWidth || me.height !== source.videoHeight) {
-					me.width = source.videoWidth;
-					me.height = source.videoHeight;
+			if (video.videoWidth) {
+				if (me.width !== video.videoWidth || me.height !== video.videoHeight) {
+					me.width = video.videoWidth;
+					me.height = video.videoHeight;
 					me.resize();
 				}
 
@@ -5635,23 +5579,90 @@
 			}
 		}
 
-		if (source instanceof window.HTMLVideoElement) {
-			if (source.readyState) {
+		function seeking() {
+			// IE doesn't report .seeking properly so make our own
+			isSeeking = true;
+		}
+
+		function seeked() {
+			isSeeking = false;
+			me.setDirty();
+		}
+
+		if (video instanceof window.HTMLVideoElement) {
+			if (video.readyState) {
 				initializeVideo();
 			} else {
 				deferTexture = true;
-				source.addEventListener('loadedmetadata', initializeVideo, true);
+				video.addEventListener('loadedmetadata', initializeVideo, true);
 			}
+
+			video.addEventListener('seeking', seeking, false);
+			video.addEventListener('seeked', seeked, false);
 
 			return {
 				deferTexture: deferTexture,
 				source: video,
-				render: Object.getPrototypeOf(this).renderVideo,
+				render: function renderVideo(gl) {
+					var source,
+						error;
+
+					lastRenderTime = video.currentTime;
+
+					if (!video.videoHeight || !video.videoWidth) {
+						return false;
+					}
+
+					if (noVideoTextureSupport) {
+						if (!ctx2d) {
+							ctx2d = document.createElement('canvas').getContext('2d');
+							canvas = ctx2d.canvas;
+							canvas.width = me.width;
+							canvas.height = me.height;
+						}
+						source = canvas;
+						ctx2d.drawImage(video, 0, 0, me.width, me.height);
+					} else {
+						source = video;
+					}
+
+					gl.bindTexture(gl.TEXTURE_2D, me.texture);
+					gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, me.flip);
+					gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+					try {
+						gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source);
+
+						//workaround for lack of video texture support in IE
+						if (noVideoTextureSupport === undefined) {
+							error = gl.getError();
+							if (error === gl.INVALID_VALUE) {
+								noVideoTextureSupport = true;
+								return renderVideo(gl);
+							}
+							noVideoTextureSupport = false;
+						}
+						return true;
+					} catch (securityError) {
+						if (securityError.code === window.DOMException.SECURITY_ERR) {
+							me.allowRefresh = false;
+							Seriously.logger.error('Unable to access cross-domain image');
+						} else {
+							Seriously.logger.error('Error rendering video source', securityError);
+						}
+					}
+					return false;
+				},
+				checkDirty: function () {
+					return !isSeeking && video.currentTime !== lastRenderTime;
+				},
 				compare: function (source) {
 					return me.source === source;
 				},
 				destroy: function () {
 					destroyed = true;
+					video.removeEventListener('seeking', seeking, false);
+					video.removeEventListener('seeked', seeked, false);
+					video.removeEventListener('loadedmetadata', initializeVideo, true);
 				}
 			};
 		}
@@ -6543,5 +6554,4 @@
 		'#endif\n';
 
 	return Seriously;
-
 }));
