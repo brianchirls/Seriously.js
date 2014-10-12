@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Seriously.js Three.js Target Example</title>
+	<style type="text/css">
+		body {
+			margin: 0;
+			font-family: 'Roboto Condensed', tahoma, sans-serif;
+		}
+
+		img, video {
+			display: none;
+		}
+
+		#canvas {
+			position: absolute;
+			top: 0;
+			left: 0;
+			width: 100%;
+			height: 100%;
+		}
+
+		#controls {
+			position: absolute;
+			right: 0;
+			bottom: 0;
+			background-color: rgba(100, 100, 100, 0.6);
+			padding: 4px;
+			opacity: 0.5;
+			color: white;
+		}
+
+		#controls:hover {
+			opacity: 1;
+		}
+
+		.title {
+			opacity: 0.4;
+			position: absolute;
+			padding: 8px;
+			color: white;
+			background-color: black;
+		}
+
+		#controls .rs-base {
+			position: static;;
+		}
+
+	</style>
+</head>
+<body>
+	<img src="../images/colorbars.png" id="img"/>
+	<canvas id="canvas" width="960" height="540"></canvas>
+
+	<script src="../../lib/three.js"></script>
+	<script src="../../seriously.js"></script>
+
+	<script src="../../sources/seriously.camera.js"></script>
+	<script src="../../sources/seriously.three.js"></script>
+
+	<script src="../../effects/seriously.simplex.js"></script>
+	<script src="../../effects/seriously.tvglitch.js"></script>
+
+	<script type="text/javascript" src="../../targets/seriously.three.js"></script>
+	<script>
+		(function () {
+			// declare our variables
+			var seriously, // the main object that holds the entire composition
+				source,
+				target, // a wrapper object for our target canvas
+				timedEffects = [],
+				canvas,
+				simplex,
+				glitch,
+				noiseTarget,
+				glitchTarget,
+
+				// three.js scene
+				scene,
+				camera,
+				renderer,
+				noiseTexture,
+				glitchTexture,
+
+				pixelRatio = window.devicePixelRatio || 1,
+				outputWidth,
+				outputHeight,
+				sceneWidth = outputWidth / 2,
+				sceneHeight = outputHeight / 2;
+
+			function resize() {
+				var aspect = window.innerWidth / window.innerHeight,
+					newWidth,
+					newHeight,
+					offsetY,
+					i,
+					node;
+
+				newWidth = window.innerWidth * devicePixelRatio;
+				newHeight = window.innerHeight * devicePixelRatio;
+
+				if (newWidth === outputWidth && newHeight === outputHeight) {
+					return;
+				}
+
+				outputWidth = newWidth;
+				outputHeight = newHeight;
+				sceneWidth = outputWidth / 2;
+				sceneHeight = outputHeight / 2;
+
+				// resize 3D scene
+				camera.aspect = aspect;
+				camera.updateProjectionMatrix();
+				renderer.setSize(outputWidth / devicePixelRatio, outputHeight / devicePixelRatio);
+			}
+
+			// set up 3D scene
+			function initThreeScene() {
+				var light,
+					ambient,
+					map,
+					object,
+					material,
+					points,
+					i;
+
+				scene = new THREE.Scene();
+
+				camera = new THREE.PerspectiveCamera(35, window.innerWidth / window.innerHeight, 1, 2000);
+				camera.position.y = 500;
+
+				light = new THREE.DirectionalLight(0xffffff);
+				light.position.set(0, 1, 0);
+				scene.add(light);
+
+				ambient = new THREE.AmbientLight(0x808080); // soft white light
+				scene.add(ambient);
+
+				noiseTexture = new THREE.WebGLRenderTarget(
+					512,
+					512,
+					{
+						minFilter: THREE.LinearFilter,
+						magFilter: THREE.NearestFilter,
+						format: THREE.RGBAFormat
+					}
+				);
+				noiseTexture.wrapS = noiseTexture.wrapT = THREE.RepeatWrapping;
+				noiseTexture.anisotropy = 16;
+
+				glitchTexture = new THREE.WebGLRenderTarget(
+					512,
+					512,
+					{
+						minFilter: THREE.LinearFilter,
+						magFilter: THREE.NearestFilter,
+						format: THREE.RGBAFormat
+					}
+				);
+				glitchTexture.wrapS = noiseTexture.wrapT = THREE.RepeatWrapping;
+				glitchTexture.anisotropy = 16;
+
+				material = new THREE.MeshLambertMaterial({
+					ambient: 0xffffff,
+					map: noiseTexture,
+					side: THREE.DoubleSide
+				});
+
+				object = new THREE.Mesh(
+					new THREE.BoxGeometry(200, 200, 200, 4, 4, 4),
+					new THREE.MeshLambertMaterial({
+						ambient: 0xffffff,
+						map: noiseTexture,
+						side: THREE.DoubleSide
+					})
+				);
+				object.position.set(200, 0, 0);
+				scene.add(object);
+
+				var screen = new THREE.Mesh(
+					new THREE.PlaneGeometry(300, 300),
+					new THREE.MeshLambertMaterial({
+						ambient: 0xffffff,
+						map: glitchTexture,
+						side: THREE.DoubleSide
+					})
+				);
+				screen.position.set(-200, 0, 0);
+				scene.add(screen);
+
+				renderer = new THREE.WebGLRenderer({
+					canvas: canvas
+				});
+
+				/*
+				Set the target to each texture once to force Three.js to set up the webgl texture
+				*/
+				renderer.setRenderTarget(noiseTexture);
+				renderer.setRenderTarget(glitchTexture);
+			}
+
+			// set up composition
+			function initSeriouslyComps() {
+				seriously = new Seriously();
+
+				simplex = seriously.effect('simplex');
+				simplex.width = 512;
+				simplex.height = 512;
+				simplex.white = 'blue';
+				simplex.noiseScale = 2;
+				timedEffects.push(simplex);
+
+				noiseTarget = seriously.target(noiseTexture, {
+					canvas: canvas
+				});
+				noiseTarget.source = simplex;
+
+				var reformat = seriously.transform('reformat');
+				reformat.width = 512;
+				reformat.height = 512;
+				reformat.mode = 'distort';
+				reformat.source = '#img';
+
+				glitch = seriously.effect('tvglitch');
+				glitch.verticalSync = 0;
+				glitch.source = reformat;
+				timedEffects.push(glitch)
+
+				glitchTarget = seriously.target(glitchTexture, {
+					canvas: canvas
+				});
+				glitchTarget.source = glitch;
+			}
+
+			window.onresize = resize;
+
+			canvas = document.getElementById('canvas');
+
+			initThreeScene();
+			initSeriouslyComps();
+			resize();
+
+			seriously.go(function (now) {
+				var time = now / 1000,
+					i, l,
+					object;
+
+				// camera orbits around the scene
+				camera.position.x = Math.cos(time / 5) * 800;
+				camera.position.z = Math.sin(time / 5) * 800;
+				camera.lookAt(scene.position);
+
+				// some effects (tv glitch, simplex noise) need their time updated
+				for (i = 0, l = timedEffects.length; i < l; i++) {
+					timedEffects[i].time = time % 1000000;
+				}
+			}, function () {
+				/*
+				Three.js doesn't know that it's sharing the WebGL context
+				with Seriously.js, so it thinks the last render target used
+				was its own render buffer. But Seriously.js changed it, so 
+				we need to make this call to force Three.js to update itself.
+				Setting render target to anything other than null should do it.
+				*/
+				renderer.setRenderTarget(noiseTexture);
+
+				// render updated 3D scene to render target texture
+				renderer.render(scene, camera);
+			});
+		}());
+	</script>
+</body>
+</html>

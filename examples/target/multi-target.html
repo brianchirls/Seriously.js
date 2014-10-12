@@ -28,10 +28,10 @@
 			],
 			split1,
 			split2,
-			target; // a wrapper object for our target canvas
+			mainTarget; // a wrapper object for our target canvas
 
 		//create main WebGL canvas first!
-		target = seriously.target('#main');
+		mainTarget = seriously.target('#main');
 
 		effects[2].saturation = -1;
 
@@ -67,7 +67,7 @@
 		split2.split = 2 / 3;
 		split2.angle = Math.PI / 16;
 
-		target.source = split2;
+		mainTarget.source = split2;
 
 		seriously.go();
 	}());

@@ -81,6 +81,6 @@
 			};
 		}
 	}, {
-		title: 'Three.js WebGLRenderTarget'
+		title: 'Three.js WebGLRenderTarget Source'
 	});
 }));
