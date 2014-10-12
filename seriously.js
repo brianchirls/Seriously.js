@@ -36,6 +36,7 @@
 	seriousEffects = {},
 	seriousTransforms = {},
 	seriousSources = {},
+	seriousTargets = {},
 	timeouts = [],
 	allEffectsByHook = {},
 	allTransformsByHook = {},
@@ -44,6 +45,7 @@
 		image: [],
 		video: []
 	},
+	allTargetsByHook = {},
 	allTargets = window.WeakMap && new WeakMap(),
 	identity,
 	maxSeriouslyId = 0,
@@ -1169,6 +1171,7 @@
 
 				if (!node.model) {
 					node.model = rectangleModel;
+					node.shader = baseShader;
 				}
 
 				//todo: initialize frame buffer if not main canvas
@@ -1604,8 +1607,8 @@
 			var i;
 
 			if (!this.ready) {
-				this.emit('ready');
 				this.ready = true;
+				this.emit('ready');
 				if (this.targets) {
 					for (i = 0; i < this.targets.length; i++) {
 						this.targets[i].setReady();
@@ -1618,8 +1621,8 @@
 			var i;
 
 			if (this.ready) {
-				this.emit('unready');
 				this.ready = false;
+				this.emit('unready');
 				if (this.targets) {
 					for (i = 0; i < this.targets.length; i++) {
 						this.targets[i].setUnready();
@@ -3484,22 +3487,9 @@
 					},
 					set: function (value) {
 						if (!isNaN(value) && value >0 && me.width !== value) {
-							me.width = me.desiredWidth = value;
-							me.target.width = value;
-							me.uniforms.resolution[0] = value;
-
+							me.width = value;
+							me.resize();
 							me.setTransformDirty();
-							me.emit('resize');
-							/*
-							if (this.source && this.source.resize) {
-								this.source.resize(value);
-
-								//todo: for secondary webgl nodes, we need a new array
-								//if (this.pixels && this.pixels.length !== (this.width * this.height * 4)) {
-								//	delete this.pixels;
-								//}
-							}
-							*/
 						}
 					}
 				},
@@ -3511,23 +3501,9 @@
 					},
 					set: function (value) {
 						if (!isNaN(value) && value >0 && me.height !== value) {
-							me.height = me.desiredHeight = value;
-							me.target.height = value;
-							me.uniforms.resolution[1] = value;
-
+							me.height = value;
+							me.resize();
 							me.setTransformDirty();
-							me.emit('resize');
-
-							/*
-							if (this.source && this.source.resize) {
-								this.source.resize(undefined, value);
-
-								//for secondary webgl nodes, we need a new array
-								//if (this.pixels && this.pixels.length !== (this.width * this.height * 4)) {
-								//	delete this.pixels;
-								//}
-							}
-							*/
 						}
 					}
 				},
@@ -3607,38 +3583,76 @@
 		/*
 			possible targets: canvas (2d or 3d), gl render buffer (must be same canvas)
 		*/
-		TargetNode = function (target, options) {
-			var opts = options || {},
-				flip = opts.flip === undefined ? true : opts.flip,
-				width = parseInt(opts.width, 10),
-				height = parseInt(opts.height, 10),
+		TargetNode = function (hook, target, options) {
+			var opts,
+				flip,
+				width,
+				height,
+				that = this,
 				matchedType = false,
 				i, element, elements, context,
-				debugContext = opts.debugContext,
+				debugContext,
 				frameBuffer,
 				targetList,
-				triedWebGl = false;
+				triedWebGl = false,
+				key;
 
-			Node.call(this, opts);
+			function targetPlugin(hook, target, options, force) {
+				var plugin = seriousTargets[hook];
+				if (plugin.definition) {
+					plugin = plugin.definition.call(that, target, options, force);
+					if (!plugin) {
+						return null;
+					}
+					plugin = extend(extend({}, seriousTargets[hook]), plugin);
+					that.hook = key;
+					matchedType = true;
+					that.plugin = plugin;
+					that.compare = plugin.compare;
+					if (plugin.target) {
+						target = plugin.target;
+					}
+					if (plugin.gl && !that.gl) {
+						that.gl = plugin.gl;
+						if (!gl) {
+							attachContext(plugin.gl);
+						}
+					}
+					if (that.gl === gl) {
+						that.model = rectangleModel;
+						that.shader = baseShader;
+					}
+				}
+				return plugin;
+			}
+
+			function compareTarget(target) {
+				return that.target === target;
+			}
+
+			Node.call(this);
+
+			if (hook && typeof hook !== 'string' || !target && target !== 0) {
+				if (!options || typeof options !== 'object') {
+					options = target;
+				}
+				target = hook;
+			}
+
+			opts = options || {};
+			flip = opts.flip === undefined ? true : opts.flip
+			width = parseInt(opts.width, 10);
+			height = parseInt(opts.height, 10);
+			debugContext = opts.debugContext;
+
+			// forced target type?
+			if (typeof hook === 'string' && seriousTargets[hook]) {
+				targetPlugin(hook, target, opts, true);
+			}
 
 			this.renderToTexture = opts.renderToTexture;
 
-			if (typeof target === 'string') {
-				elements = document.querySelectorAll(target);
-
-				for (i = 0; i < elements.length; i++) {
-					element = elements[i];
-					if (element.tagName === 'CANVAS') {
-						break;
-					}
-				}
-
-				if (i >= elements.length) {
-					throw new Error('not a valid HTML element (must be image, video or canvas)');
-				}
-
-				target = element;
-			} else if (target instanceof WebGLFramebuffer) {
+			if (target instanceof WebGLFramebuffer) {
 				frameBuffer = target;
 
 				if (opts instanceof HTMLCanvasElement) {
@@ -3688,6 +3702,10 @@
 						attachContext(context);
 					}
 					this.render = this.renderWebGL;
+
+					/*
+					Don't remember what this is for. Maybe we should remove it
+					*/
 					if (opts.renderToTexture) {
 						if (gl) {
 							this.frameBuffer = new FrameBuffer(gl, width, height, false);
@@ -3725,6 +3743,16 @@
 			}
 
 			if (!matchedType) {
+				for (key in seriousTargets) {
+					if (seriousTargets.hasOwnProperty(key) && seriousTargets[key]) {
+						if (targetPlugin(key, target, opts, false)) {
+							break;
+						}
+					}
+				}
+			}
+
+			if (!matchedType) {
 				throw new Error('Unknown target type');
 			}
 
@@ -3749,8 +3777,12 @@
 			this.transform = null;
 			this.transformDirty = true;
 			this.flip = flip;
-			this.width = width;
-			this.height = height;
+			if (width) {
+				this.width = width;
+			}
+			if (height) {
+				this.height = height;
+			}
 
 			this.uniforms.resolution[0] = this.width;
 			this.uniforms.resolution[1] = this.height;
@@ -3787,10 +3819,13 @@
 				this.source = newSource;
 				newSource.addTarget(this);
 
-				if (newSource && newSource.ready) {
-					this.setReady();
-				} else {
-					this.setUnready();
+				if (newSource) {
+					this.resize();
+					if (newSource.ready) {
+						this.setReady();
+					} else {
+						this.setUnready();
+					}
 				}
 
 				this.setDirty();
@@ -3807,14 +3842,17 @@
 
 		TargetNode.prototype.resize = function () {
 			//if target is a canvas, reset size to canvas size
-			if (this.target instanceof HTMLCanvasElement &&
-					(this.width !== this.target.width || this.height !== this.target.height)) {
-				this.width = this.target.width;
-				this.height = this.target.height;
-				this.uniforms.resolution[0] = this.width;
-				this.uniforms.resolution[1] = this.height;
-				this.emit('resize');
-				this.setTransformDirty();
+			if (this.target instanceof HTMLCanvasElement) {
+				if (this.width !== this.target.width || this.height !== this.target.height) {
+					this.target.width = this.width;
+					this.target.height = this.height;
+					this.uniforms.resolution[0] = this.width;
+					this.uniforms.resolution[1] = this.height;
+					this.emit('resize');
+					this.setTransformDirty();
+				}
+			} else if (this.plugin && this.plugin.resize) {
+				this.plugin.resize.call(this);
 			}
 
 			if (this.source &&
@@ -3837,6 +3875,12 @@
 
 		TargetNode.prototype.stop = function () {
 			this.auto = false;
+		};
+
+		TargetNode.prototype.render = function () {
+			if (gl && this.plugin && this.plugin.render) {
+				this.plugin.render.call(this, draw, baseShader, rectangleModel);
+			}
 		};
 
 		TargetNode.prototype.renderWebGL = function () {
@@ -3948,6 +3992,10 @@
 				if (!Object.keys(targetList).length) {
 					allTargets.delete(this.target);
 				}
+			}
+
+			if (this.plugin && this.plugin.destroy) {
+				this.plugin.destroy.call(this);
 			}
 
 			delete this.source;
@@ -4710,26 +4758,38 @@
 			return transformNode.pub;
 		};
 
-		this.target = function (target, options) {
+		this.target = function (hook, target, options) {
 			var targetNode,
-				renderToTexture,
-				targetRenderToTexture,
+				element,
+				hook,
 				i;
 
-			/*
-			Returns existing target if duplicate texture or canvas is passed
-			*/
-			renderToTexture = !!(options && options.renderToTexture);
+			if (hook && typeof hook === 'string' && !seriousTargets[hook]) {
+				element = document.querySelector(hook);
+			}
+
+			if (typeof hook !== 'string' || !target && target !== 0 || element) {
+				if (!options || typeof options !== 'object') {
+					options = target;
+				}
+				target = element || hook;
+				hook = null;
+			}
+
+			if (typeof target === 'string' && isNaN(target)) {
+				target = document.querySelector(target);
+			}
+
 			for (i = 0; i < targets.length; i++) {
-				if (targets[i] === target || targets[i].target === target) {
-					targetRenderToTexture = !!targets[i].renderToTexture;
-					if (renderToTexture === targetRenderToTexture) {
-						return targets[i].pub;
-					}
+				targetNode = targets[i];
+				if ((!hook || hook === targetNode.hook) &&
+						(targetNode.target === target || targetNode.compare && targetNode.compare(target, options))) {
+
+					return targetNode.pub;
 				}
 			}
 
-			targetNode = new TargetNode(target, options);
+			targetNode = new TargetNode(hook, target, options);
 
 			return targetNode.pub;
 		};
@@ -5212,6 +5272,66 @@
 		}
 
 		delete seriousTransforms[hook];
+
+		return this;
+	};
+
+	Seriously.target = function (hook, definition, meta) {
+		var target;
+
+		if (seriousTargets[hook]) {
+			Seriously.logger.warn('Target [' + hook + '] already loaded');
+			return;
+		}
+
+		if (meta === undefined && typeof definition === 'object') {
+			meta = definition;
+		}
+
+		if (!meta && !definition) {
+			return;
+		}
+
+		target = extend({}, meta);
+
+		if (typeof definition === 'function') {
+			target.definition = definition;
+		}
+
+		if (!target.title) {
+			target.title = hook;
+		}
+
+
+		seriousTargets[hook] = target;
+		allTargetsByHook[hook] = [];
+
+		return target;
+	};
+
+	Seriously.removeTarget = function (hook) {
+		var all, target, plugin;
+
+		if (!hook) {
+			return this;
+		}
+
+		plugin = seriousTargets[hook];
+
+		if (!plugin) {
+			return this;
+		}
+
+		all = allTargetsByHook[hook];
+		if (all) {
+			while (all.length) {
+				target = all.shift();
+				target.destroy();
+			}
+			delete allTargetsByHook[hook];
+		}
+
+		delete seriousTargets[hook];
 
 		return this;
 	};
