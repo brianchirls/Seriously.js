@@ -20,32 +20,6 @@
 			height: 100%;
 		}
 
-		#controls {
-			position: absolute;
-			right: 0;
-			bottom: 0;
-			background-color: rgba(100, 100, 100, 0.6);
-			padding: 4px;
-			opacity: 0.5;
-			color: white;
-		}
-
-		#controls:hover {
-			opacity: 1;
-		}
-
-		.title {
-			opacity: 0.4;
-			position: absolute;
-			padding: 8px;
-			color: white;
-			background-color: black;
-		}
-
-		#controls .rs-base {
-			position: static;;
-		}
-
 	</style>
 </head>
 <body>
@@ -177,7 +151,7 @@
 				object.position.set(200, 0, 0);
 				scene.add(object);
 
-				var screen = new THREE.Mesh(
+				object = new THREE.Mesh(
 					new THREE.PlaneGeometry(300, 300),
 					new THREE.MeshLambertMaterial({
 						ambient: 0xffffff,
@@ -185,8 +159,8 @@
 						side: THREE.DoubleSide
 					})
 				);
-				screen.position.set(-200, 0, 0);
-				scene.add(screen);
+				object.position.set(-200, 0, 0);
+				scene.add(object);
 
 				renderer = new THREE.WebGLRenderer({
 					canvas: canvas
@@ -201,6 +175,8 @@
 
 			// set up composition
 			function initSeriouslyComps() {
+				var reformat;
+
 				seriously = new Seriously();
 
 				simplex = seriously.effect('simplex');
@@ -215,7 +191,7 @@
 				});
 				noiseTarget.source = simplex;
 
-				var reformat = seriously.transform('reformat');
+				reformat = seriously.transform('reformat');
 				reformat.width = 512;
 				reformat.height = 512;
 				reformat.mode = 'distort';
