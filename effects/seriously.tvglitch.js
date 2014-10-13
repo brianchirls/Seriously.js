@@ -103,7 +103,6 @@
 				shaderSource.fragment = [
 					'precision mediump float;',
 
-					//'#define HardLight(top, bottom) (top < 0.5 ? (2.0 * top * bottom) : (1.0 - 2.0 * (1.0 - top) * (1.0 - bottom)))',
 					'#define HardLight(top, bottom)  (1.0 - 2.0 * (1.0 - top) * (1.0 - bottom))',
 
 					'varying vec2 vTexCoord;',
@@ -137,8 +136,6 @@
 					'	distortAmount -= lineSync * (2.0 * particleOffset.a - 0.5);',
 
 					'	texCoord.x -= distortAmount;',
-					//'	texCoord.x = max(0.0, texCoord.x);',
-					//'	texCoord.x = min(1.0, texCoord.x);',
 					'	texCoord.x = mod(texCoord.x, 1.0);',
 
 						//vertical sync
@@ -153,12 +150,6 @@
 						//horizontal bars
 					'	float barsAmount = particleOffset.r;',
 					'	if (barsAmount > 0.0) {',
-					/*
-					'		pixel = vec4(HardLight(pixel.r * bars, barsAmount),' +
-								'HardLight(pixel.g * bars, barsAmount),' +
-								'HardLight(pixel.b * bars, barsAmount),' +
-								'pixel.a);',
-					*/
 					'		pixel = vec4(pixel.r + bars * barsAmount,' +
 								'pixel.g + bars * barsAmount,' +
 								'pixel.b + bars * barsAmount,' +
@@ -172,11 +163,7 @@
 					'	float f = (1.0 - gl_FragCoord.x * gl_FragCoord.x) * (1.0 - gl_FragCoord.y * gl_FragCoord.y);',
 					'	float frame = clamp( frameSharpness * (pow(f, frameShape) - frameLimit), 0.0, 1.0);',
 
-					//'	gl_FragColor.r = vec4(1.0);',
-
-					'	gl_FragColor = mix(frameColor, pixel, frame);', //vec4(vec3(particleOffset), 1.0);
-					//'	gl_FragColor = vec4(particleOffset);',
-					//'	gl_FragColor.a = 1.0;',
+					'	gl_FragColor = mix(frameColor, pixel, frame);',
 					'}'
 				].join('\n');
 

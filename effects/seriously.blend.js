@@ -83,6 +83,7 @@
 	nativeBlendModes = {
 		normal: ['FUNC_ADD', 'SRC_ALPHA', 'ONE_MINUS_SRC_ALPHA', 'SRC_ALPHA', 'DST_ALPHA']/*,
 		add: ['FUNC_ADD', 'SRC_ALPHA', 'ONE_MINUS_SRC_ALPHA', 'SRC_ALPHA', 'DST_ALPHA']*/
+		//todo: multiply, screen
 	},
 	identity = new Float32Array([
 		1, 0, 0, 0,

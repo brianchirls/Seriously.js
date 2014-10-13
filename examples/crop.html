@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Seriously.js Camera Shake Example</title>
+	<style type="text/css">
+		canvas {
+			display: block;
+			margin: auto;
+			border: black solid 1px;
+		}
+
+		#robot {
+			display: none;
+		}
+
+		input[type=range] {
+			width: 400px;
+		}
+
+		label {
+			display: block;
+		}
+
+		#controls {
+			width: 640px;
+			margin: auto;
+		}
+	</style>
+</head>
+<body>
+	<img id="robot" src="images/robot.jpg"/>
+	<canvas id="canvas" width="640" height="619"></canvas>
+	<div id="controls">
+		<label><input id="top" type="range" min="0" max="200" step="1" value="0"/> Top</label>
+		<label><input id="left" type="range" min="0" max="200" step="1" value="0"/> Left</label>
+		<label><input id="bottom" type="range" min="0" max="300" step="1" value="0"/> Bottom</label>
+		<label><input id="right" type="range" min="0" max="300" step="1" value="0"/> Right</label>
+	</div>
+
+	<script src="../seriously.js"></script>
+	<script src="../effects/seriously.crop.js"></script>
+	<script>
+		(function (Seriously) {
+			// declare our variables
+			var source = document.getElementById('source'),
+				seriously, // the main object that holds the entire composition
+				crop,
+				reformat,
+				target; // a wrapper object for our target canvas
+
+			seriously = new Seriously();
+			crop = seriously.effect('crop');
+			target = seriously.target('#canvas');
+			reformat = seriously.transform('reformat');
+
+			// connect all our nodes in the right order
+			reformat.source = '#robot';
+			reformat.mode = 'cover';
+			reformat.width = 640;
+			reformat.height = 619;
+
+			crop.source = reformat;
+			crop.top = '#top';
+			crop.left = '#left';
+			crop.bottom = '#bottom';
+			crop.right = '#right';
+
+			crop.on('resize', function () {
+				//target.width = crop.width;
+				//target.height = crop.height;
+			});
+
+			target.source = crop;
+
+			//render
+			seriously.go();
+		}(window.Seriously));
+	</script>
+</body>
+</html>

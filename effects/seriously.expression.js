@@ -260,13 +260,6 @@
 			}
 		}
 
-		function resize() {
-			if (me.inputs.source) {
-				me.width = me.inputs.width = me.inputs.source.width;
-				me.height = me.inputs.height = me.inputs.source.height;
-			}
-		}
-
 		return {
 			shader: function (inputs, shaderSource) {
 				var expressions = {},
@@ -484,7 +477,6 @@
 				source: {
 					type: 'image',
 					uniform: 'source',
-					update: resize,
 					shaderDirty: true
 				},
 				a: {
@@ -533,20 +525,6 @@
 				alpha: {
 					type: 'string',
 					shaderDirty: true
-				},
-				width: {
-					type: 'number',
-					min: 0,
-					step: 1,
-					update: resize,
-					defaultValue: 0
-				},
-				height: {
-					type: 'number',
-					min: 0,
-					step: 1,
-					update: resize,
-					defaultValue: 0
 				}
 			}
 		};

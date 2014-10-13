@@ -46,13 +46,7 @@ http://v002.info/plugins/v002-blurs/
 				inputScale: 1,
 				resolution: [this.width, this.height],
 				transform: identity,
-				direction: null,
-				projection: new Float32Array([
-					1, 0, 0, 0,
-					0, 1, 0, 0,
-					0, 0, 1, 0,
-					0, 0, 0, 1
-				])
+				direction: null
 			};
 
 		return {
@@ -90,16 +84,16 @@ http://v002.info/plugins/v002-blurs/
 					'attribute vec2 texCoord;',
 
 					'uniform vec2 resolution;',
-					'uniform mat4 projection;',
 					'uniform mat4 transform;',
-
-					'varying vec2 vTexCoord;',
 
 					'uniform vec2 direction;',
 					'uniform float amount;',
 					'uniform float inputScale;',
 
 					'const vec2 zero = vec2(0.0, 0.0);',
+
+					'varying vec2 vTexCoord;',
+
 					'#ifdef USE_VARYINGS',
 					'vec2 one;',
 					'vec2 amount1;',
@@ -131,7 +125,7 @@ http://v002.info/plugins/v002-blurs/
 					'	if (inputScale < 1.0) {',
 					'		one -= 1.0 / resolution;',
 					'	}',
-					//'	one *= inputScale;',
+
 					'	vTexCoord = max(zero, min(one, texCoord.st * inputScale));',
 					'	amount1 = direction * (inputScale * amount * 5.0 / resolution);',
 
@@ -162,9 +156,6 @@ http://v002.info/plugins/v002-blurs/
 					'varying vec2 vTexCoord;',
 
 					'uniform sampler2D source;',
-					'uniform float angle;',
-					'uniform float amount;',
-					'uniform float inputScale;',
 
 					'#ifdef USE_VARYINGS',
 					'varying vec2 vTexCoord1;',
@@ -235,14 +226,13 @@ http://v002.info/plugins/v002-blurs/
 
 					//vertical pass
 					uniforms.direction = vertical;
-					uniforms.source = fbVertical.texture;
+					uniforms.source = fbHorizontal.texture;
 					parent(shader, model, uniforms, frameBuffer);
 					return;
 				}
 
 				loopUniforms.amount = amount;
 				loopUniforms.source = this.inputs.source.texture;
-				loopUniforms.projection[0] = this.height / this.width;
 
 				for (i = 0; i < passes.length; i++) {
 					pass = Math.min(1, passes[i] / amount);
