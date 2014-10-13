@@ -2185,6 +2185,7 @@
 				return;
 			}
 			canvas = WebGLDebugUtils.makeLostContextSimulatingCanvas(canvas);
+			canvas.setRestoreTimeout(-1);
 			ext = canvas;
 		}
 
