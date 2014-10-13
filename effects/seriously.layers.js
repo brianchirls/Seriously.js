@@ -120,13 +120,10 @@
 					n = Math.min(parseInt(a[0], 10), n);
 				}
 
-				for (i = 0; i <= n; i++) {
-					source = this.inputs['source' + i];
-					if (source) {
-						width = source.width;
-						height = source.height;
-						break;
-					}
+				source = this.inputs['source' + n];
+				if (source) {
+					width = source.width;
+					height = source.height;
 				}
 			}
 
@@ -143,10 +140,10 @@
 
 				this.emit('resize');
 				this.setDirty();
-			}
 
-			for (i = 0; i < this.targets.length; i++) {
-				this.targets[i].resize();
+				for (i = 0; i < this.targets.length; i++) {
+					this.targets[i].resize();
+				}
 			}
 		};
 

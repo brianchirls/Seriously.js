@@ -34,6 +34,7 @@ Full documentation is in progress at the [wiki](https://github.com/brianchirls/S
 - Color Generator
 - [Color Cube](http://www.youtube.com/watch?v=rfQ8rKGTVlg&t=24m30s)
 - Color Select
+- Crop
 - [Daltonize](http://www.daltonize.org/p/about.html)
 - Directional Blur
 - Displacement Map
@@ -59,6 +60,7 @@ Full documentation is in progress at the [wiki](https://github.com/brianchirls/S
 - Mirror
 - Night Vision
 - Panorama
+- Pixelate
 - Polar Coordinates
 - Ripple
 - Scanlines

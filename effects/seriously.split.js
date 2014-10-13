@@ -166,6 +166,8 @@
 					'}',
 
 					'void main(void) {',
+					'	vec4 pixel1 = textureLookup(sourceA, vTexCoordA);',
+					'	vec4 pixel2 = textureLookup(sourceB, vTexCoordB);',
 					'	float mn = (split - fuzzy * (1.0 - split));',
 					'	float mx = (split + fuzzy * split);;',
 					'	vec2 coords = vTexCoord - vec2(0.5);',
@@ -174,16 +176,6 @@
 					'	coords /= scale;',
 					'	coords += vec2(0.5);',
 					'	float x = coords.x;;',
-					'	if (x <= mn) {',
-					'		gl_FragColor = textureLookup(sourceB, vTexCoordB);',
-					'		return;',
-					'	}',
-					'	if (x >= mx) {',
-					'		gl_FragColor = textureLookup(sourceA, vTexCoordA);',
-					'		return;',
-					'	}',
-					'	vec4 pixel1 = textureLookup(sourceA, vTexCoordA);',
-					'	vec4 pixel2 = textureLookup(sourceB, vTexCoordB);',
 					'	gl_FragColor = mix(pixel2, pixel1, smoothstep(mn, mx, x));',
 					'}'
 				].join('\n');

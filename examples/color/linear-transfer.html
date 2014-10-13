@@ -69,12 +69,18 @@
 
 			['slope', 'intercept'].forEach(function (prop) {
 				['red', 'green', 'blue', 'alpha'].forEach(function (channel, channelIndex) {
-					var id = prop;
-					id = channel + id[0].toUpperCase() + prop.substr(1);
-					document.getElementById(id).addEventListener('input', function () {
-						props[prop][channelIndex] = parseFloat(this.value);
+					var id = prop,
+						input;
+
+					function update() {
+						props[prop][channelIndex] = parseFloat(input.value);
 						effect[prop] = props[prop];
-					}, false);
+					}
+
+					id = channel + id[0].toUpperCase() + prop.substr(1);
+					input = document.getElementById(id);
+					input.addEventListener('input', update, false);
+					input.addEventListener('change', update, false);
 				});
 			});
 		});

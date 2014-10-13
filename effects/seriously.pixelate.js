@@ -17,19 +17,21 @@
 }(this, function (Seriously) {
 	'use strict';
 
-	Seriously.plugin('mirror', {
+	Seriously.plugin('pixelate', {
 		commonShader: true,
 		shader: function (inputs, shaderSource) {
 			shaderSource.fragment = [
 				'precision mediump float;',
 
-				'uniform vec2 resolution;',
-				'uniform sampler2D source;',
-
 				'varying vec2 vTexCoord;',
 
+				'uniform sampler2D source;',
+				'uniform vec2 resolution;',
+				'uniform vec2 pixelSize;',
+
 				'void main(void) {',
-				'	gl_FragColor = texture2D(source, vec2(0.5 - abs(0.5 - vTexCoord.x), vTexCoord.y));',
+				'	vec2 delta = pixelSize / resolution;',
+				'	gl_FragColor = texture2D(source, delta * floor(vTexCoord / delta));',
 				'}'
 			].join('\n');
 			return shaderSource;
@@ -38,10 +40,17 @@
 		inputs: {
 			source: {
 				type: 'image',
-				uniform: 'source'
+				uniform: 'source',
+				shaderDirty: false
+			},
+			pixelSize: {
+				type: 'vector',
+				dimensions: 2,
+				defaultValue: [8, 8],
+				min: 0,
+				uniform: 'pixelSize'
 			}
 		},
-		title: 'Mirror',
-		description: 'Shader Mirror Effect'
+		title: 'Pixelate'
 	});
 }));

@@ -27,7 +27,7 @@
 		console = window.console,
 
 	/*
-		Global environment variables
+		Global-ish look-up variables
 	*/
 
 	testContext,
@@ -36,6 +36,7 @@
 	seriousEffects = {},
 	seriousTransforms = {},
 	seriousSources = {},
+	seriousTargets = {},
 	timeouts = [],
 	allEffectsByHook = {},
 	allTransformsByHook = {},
@@ -44,9 +45,12 @@
 		image: [],
 		video: []
 	},
+	allTargetsByHook = {},
+	allTargets = window.WeakMap && new WeakMap(),
 	identity,
 	maxSeriouslyId = 0,
 	nop = function () {},
+	noVideoTextureSupport,
 
 	/*
 		Global reference variables
@@ -245,10 +249,59 @@
 				};
 	}()),
 
-	reservedNames = ['source', 'target', 'effect', 'effects', 'benchmark', 'incompatible',
-		'util', 'ShaderProgram', 'inputValidators', 'save', 'load',
-		'plugin', 'removePlugin', 'alias', 'removeAlias', 'stop', 'go',
-		'destroy', 'isDestroyed'];
+	reservedEffectProperties = [
+		'alias',
+		'destroy',
+		'effect',
+		'id',
+		'initialize',
+		'inputs',
+		'isDestroyed',
+		'isReady',
+		'matte',
+		'off',
+		'on',
+		'readPixels',
+		'render',
+		'title',
+		'update'
+	],
+
+	reservedTransformProperties = [
+		'alias',
+		'destroy',
+		'id',
+		'inputs',
+		'isDestroyed',
+		'isReady',
+		'off',
+		'on',
+		'source',
+		'title',
+		'update'
+	],
+
+	reservedNames = [
+		'aliases',
+		'defaults',
+		'destroy',
+		'effect',
+		'go',
+		'id',
+		'incompatible',
+		'isDestroyed',
+		'isEffect',,
+		'isNode',
+		'isSource',
+		'isTarget',
+		'isTransform',
+		'removeAlias',
+		'render',
+		'source',
+		'stop',
+		'target',
+		'transform'
+	];
 
 	function getElement(input, tags) {
 		var element,
@@ -367,6 +420,29 @@
 		return out;
 	}
 
+	function colorArrayToHex(color) {
+		var i,
+			val,
+			hex,
+			s = '#',
+			len = color[3] < 1 ? 4 : 3;
+
+		for (i = 0; i < len; i++) {
+			val = Math.min(255, Math.round(color[i] * 255 || 0));
+			hex = val.toString(16);
+			if (val < 16) {
+				hex = '0' + hex;
+			}
+			s += hex;
+		}
+		return s;
+	}
+
+	function isArrayLike(obj) {
+		return Array.isArray(obj) ||
+			(obj && obj.BYTES_PER_ELEMENT && 'length' in obj);
+	}
+
 	/*
 	faster than setTimeout(fn, 0);
 	http://dbaron.org/log/20100309-faster-timeouts
@@ -394,11 +470,6 @@
 		}
 
 		window.postMessage('seriously-timeout-message', window.location);
-	}
-
-	function isArrayLike(obj) {
-		return Array.isArray(obj) ||
-			(obj && obj.BYTES_PER_ELEMENT && 'length' in obj);
 	}
 
 	window.addEventListener('message', function (event) {
@@ -433,6 +504,14 @@
 
 	function getTestContext() {
 		var canvas;
+
+		if (testContext && testContext.getError() === testContext.CONTEXT_LOST_WEBGL) {
+			/*
+			Test context was lost already, and the webglcontextlost event maybe hasn't fired yet
+			so try making a new context
+			*/
+			testContext = undefined;
+		}
 
 		if (testContext || !window.WebGLRenderingContext || incompatibility) {
 			return testContext;
@@ -486,9 +565,12 @@
 		}
 
 		ctx = getTestContext();
-
 		if (ctx) {
 			texture = ctx.createTexture();
+			if (!texture) {
+				Seriously.logger.error('Test WebGL context has been lost');
+			}
+
 			ctx.bindTexture(ctx.TEXTURE_2D, texture);
 
 			try {
@@ -524,23 +606,48 @@
 		return true;
 	}
 
-	function validateInputSpecs(effect) {
-		var reserved = ['render', 'initialize', 'original', 'plugin', 'alias',
-			'prototype', 'destroy', 'isDestroyed'],
-			input,
+	function validateInputSpecs(plugin) {
+		var input,
+			options,
 			name;
+
+		function normalizeEnumOption(option, i) {
+			var key,
+				name;
+
+			if (isArrayLike(option)) {
+				key = option[0];
+				name = option[1] || key;
+			} else {
+				key = option;
+			}
+
+			if (typeof key === 'string') {
+				key = key.toLowerCase();
+			} else if (typeof key === 'number') {
+				key = String(key);
+			} else if (!key) {
+				key = '';
+			}
+
+			options[key] = name;
+
+			if (!i) {
+				input.firstValue = key;
+			}
+		}
 
 		function passThrough(value) {
 			return value;
 		}
 
-		for (name in effect.inputs) {
-			if (effect.inputs.hasOwnProperty(name)) {
-				if (reserved.indexOf(name) >= 0 || Object.prototype[name]) {
-					throw new Error('Reserved effect input name: ' + name);
+		for (name in plugin.inputs) {
+			if (plugin.inputs.hasOwnProperty(name)) {
+				if (plugin.reserved.indexOf(name) >= 0 || Object.prototype[name]) {
+					throw new Error('Reserved input name: ' + name);
 				}
 
-				input = effect.inputs[name];
+				input = plugin.inputs[name];
 				input.name = name;
 
 				if (isNaN(input.min)) {
@@ -563,21 +670,16 @@
 					input.step = 0;
 				}
 
-				if (input.defaultValue === undefined || input.defaultValue === null) {
-					if (input.type === 'number') {
-						input.defaultValue = Math.min(Math.max(0, input.min), input.max);
-					} else if (input.type === 'color') {
-						input.defaultValue = [0, 0, 0, 0];
-					} else if (input.type === 'enum') {
-						if (input.options && input.options.length) {
-							input.defaultValue = input.options[0];
-						} else {
-							input.defaultValue = '';
-						}
-					} else if (input.type === 'boolean') {
-						input.defaultValue = false;
-					} else {
-						input.defaultValue = '';
+				if (input.type === 'enum') {
+					/*
+					Normalize options to make validation easy
+					- all items will have both a key and a name
+					- all keys will be lowercase strings
+					*/
+					if (input.options && isArrayLike(input.options) && input.options.length) {
+						options = {};
+						input.options.forEach(normalizeEnumOption);
+						input.options = options;
 					}
 				}
 
@@ -601,8 +703,8 @@
 					input.validate = Seriously.inputValidators[input.type] || passThrough;
 				}
 
-				if (!effect.defaultImageInput && input.type === 'image') {
-					effect.defaultImageInput = name;
+				if (!plugin.defaultImageInput && input.type === 'image') {
+					plugin.defaultImageInput = name;
 				}
 			}
 		}
@@ -1069,6 +1171,7 @@
 
 				if (!node.model) {
 					node.model = rectangleModel;
+					node.shader = baseShader;
 				}
 
 				//todo: initialize frame buffer if not main canvas
@@ -1267,9 +1370,8 @@
 					node = sources[i];
 
 					media = node.source;
-					if (node.lastRenderTime === undefined ||
-							node.dirty ||
-							media.currentTime !== undefined && node.lastRenderTime !== media.currentTime) {
+					if (node.dirty ||
+							node.checkDirty && node.checkDirty()) {
 						node.dirty = false;
 						node.setDirty();
 					}
@@ -1300,7 +1402,9 @@
 			var numTextures = 0,
 				name, value, shaderUniform,
 				width, height,
-				nodeGl = (node && node.gl) || gl;
+				nodeGl = (node && node.gl) || gl,
+				srcRGB, srcAlpha,
+				dstRGB, dstAlpha;
 
 			if (!nodeGl) {
 				return;
@@ -1341,23 +1445,24 @@
 				gl.disable(gl.DEPTH_TEST);
 			}
 
-			//default for blend is enable
-			if (!options || options.blend === undefined || options.blend) {
+			//default for blend is enabled
+			if (!options) {
 				gl.enable(gl.BLEND);
-				/*
 				gl.blendFunc(
-					options && options.srcRGB || gl.ONE,
-					options && options.dstRGB || gl.ONE_MINUS_SRC_ALPHA
+					gl.ONE,
+					gl.ZERO
 				);
-				*/
+				gl.blendEquation(gl.FUNC_ADD);
+			} else if (options.blend === undefined || options.blend) {
+				gl.enable(gl.BLEND);
 
-				gl.blendFuncSeparate(
-					options && options.srcRGB || gl.ONE,
-					options && options.dstRGB || gl.ZERO,
-					options && (options.srcAlpha || options.srcRGB) || gl.ONE,
-					options && (options.dstAlpha || options.dstRGB) || gl.ZERO
-				);
-				gl.blendEquation(options && options.blendEquation || gl.FUNC_ADD);
+				srcRGB = options.srcRGB === undefined ? gl.ONE : options.srcRGB;
+				dstRGB = options.dstRGB || gl.ZERO;
+				srcAlpha = options.srcAlpha === undefined ? srcRGB : options.srcAlpha;
+				dstAlpha = options.dstAlpha === undefined ? dstRGB : options.dstAlpha;
+
+				gl.blendFuncSeparate(srcRGB, dstRGB, srcAlpha, dstAlpha);
+				gl.blendEquation(options.blendEquation || gl.FUNC_ADD);
 			} else {
 				gl.disable(gl.BLEND);
 			}
@@ -1502,8 +1607,8 @@
 			var i;
 
 			if (!this.ready) {
-				this.emit('ready');
 				this.ready = true;
+				this.emit('ready');
 				if (this.targets) {
 					for (i = 0; i < this.targets.length; i++) {
 						this.targets[i].setReady();
@@ -1516,8 +1621,8 @@
 			var i;
 
 			if (this.ready) {
-				this.emit('unready');
 				this.ready = false;
+				this.emit('unready');
 				if (this.targets) {
 					for (i = 0; i < this.targets.length; i++) {
 						this.targets[i].setUnready();
@@ -1713,15 +1818,6 @@
 		Effect = function (effectNode) {
 			var name, me = effectNode;
 
-			function arrayToHex(color) {
-				var i, val, s = '#';
-				for (i = 0; i < 4; i++) {
-					val = Math.min(255, Math.round(color[i] * 255 || 0));
-					s += val.toString(16);
-				}
-				return s;
-			}
-
 			function setInput(inputName, input) {
 				var lookup, value, effectInput, i;
 
@@ -1731,20 +1827,9 @@
 
 				if (typeof input === 'string' && isNaN(input)) {
 					if (effectInput.type === 'enum') {
-						if (effectInput.options && effectInput.options.filter) {
-							i = String(input).toLowerCase();
-							value = effectInput.options.filter(function (e) {
-								return (typeof e === 'string' && e.toLowerCase() === i) ||
-									(e.length && typeof e[0] === 'string' && e[0].toLowerCase() === i);
-							});
-
-							value = value.length;
-						}
-
-						if (!value) {
+						if (!effectInput.options.hasOwnProperty(input)) {
 							input = getElement(input, ['select']);
 						}
-
 					} else if (effectInput.type === 'number' || effectInput.type === 'boolean') {
 						input = getElement(input, ['input', 'select']);
 					} else if (effectInput.type === 'image') {
@@ -1780,7 +1865,7 @@
 
 									//special case for color type
 									if (effectInput.type === 'color') {
-										newValue = arrayToHex(newValue);
+										newValue = colorArrayToHex(newValue).substr(0, 7);
 									}
 
 									//if input validator changes our value, update HTML Element
@@ -1929,7 +2014,6 @@
 				var result,
 					input,
 					inputs,
-					enumOption,
 					i,
 					key;
 
@@ -1952,18 +2036,8 @@
 						result.max = input.max;
 						result.step = input.step;
 					} else if (input.type === 'enum') {
-						//make a deep copy
-						result.options = [];
-						if (options) {
-							for (i = 0; i < input.options.length; i++) {
-								enumOption = input.options[i];
-								if (Array.isArray(enumOption)) {
-									result.options.push(enumOption.slice(0));
-								} else {
-									result.options.push(enumOption);
-								}
-							}
-						}
+						//make a copy
+						result.options = extend({}, input.options);
 					} else if (input.type === 'vector') {
 						result.dimensions = input.dimensions;
 					}
@@ -2000,7 +2074,7 @@
 				me.destroy();
 
 				for (i in this) {
-					if (this.hasOwnProperty(i) && i !== 'isDestroyed') {
+					if (this.hasOwnProperty(i) && i !== 'isDestroyed' && i !== 'id') {
 						descriptor = Object.getOwnPropertyDescriptor(this, i);
 						if (descriptor.get || descriptor.set ||
 								typeof this[i] !== 'function') {
@@ -2023,7 +2097,6 @@
 
 		EffectNode = function (hook, options) {
 			var key, name, input,
-				hasImage = false,
 				defaultValue,
 				defaults,
 				defaultSources = {};
@@ -2041,23 +2114,15 @@
 			this.options = options;
 			this.transform = null;
 
+			this.effect = extend({}, this.effectRef);
 			if (this.effectRef.definition) {
-				this.effect = this.effectRef.definition.call(this, options);
 				/*
 				todo: copy over inputs object separately in case some are specified
 				in advance and some are specified in definition function
 				*/
-				for (key in this.effectRef) {
-					if (this.effectRef.hasOwnProperty(key) && !this.effect[key]) {
-						this.effect[key] = this.effectRef[key];
-					}
-				}
-				if (this.effect.inputs !== this.effectRef.inputs) {
-					validateInputSpecs(this.effect);
-				}
-			} else {
-				this.effect = extend({}, this.effectRef);
+				extend(this.effect, this.effectRef.definition.call(this, options));
 			}
+			validateInputSpecs(this.effect);
 
 			this.uniforms.transform = identity;
 			this.inputs = {};
@@ -2065,6 +2130,20 @@
 			for (name in this.effect.inputs) {
 				if (this.effect.inputs.hasOwnProperty(name)) {
 					input = this.effect.inputs[name];
+
+					if (input.defaultValue === undefined || input.defaultValue === null) {
+						if (input.type === 'number') {
+							input.defaultValue = Math.min(Math.max(0, input.min), input.max);
+						} else if (input.type === 'color') {
+							input.defaultValue = [0, 0, 0, 0];
+						} else if (input.type === 'boolean') {
+							input.defaultValue = false;
+						} else if (input.type === 'string') {
+							input.defaultValue = '';
+						} else if (input.type === 'enum') {
+							input.defaultValue = input.firstValue;
+						}
+					}
 
 					defaultValue = input.validate.call(this, input.defaultValue, input);
 					if (defaults && defaults[name] !== undefined) {
@@ -2078,9 +2157,6 @@
 					this.inputs[name] = defaultValue;
 					if (input.uniform) {
 						this.uniforms[input.uniform] = input.defaultValue;
-					}
-					if (input.type === 'image') {
-						hasImage = true;
 					}
 				}
 			}
@@ -2183,7 +2259,7 @@
 			if (this.ready !== ready) {
 				this.ready = ready;
 				this.emit(ready ? 'ready' : 'unready');
-				method = ready ? 'setReady' : 'setUnready'
+				method = ready ? 'setReady' : 'setUnready';
 
 				if (this.targets) {
 					for (i = 0; i < this.targets.length; i++) {
@@ -2430,7 +2506,7 @@
 			var that = this;
 
 			if (reservedNames.indexOf(aliasName) >= 0) {
-				throw new Error(aliasName + ' is a reserved name and cannot be used as an alias.');
+				throw new Error('\'' + aliasName + '\' is a reserved name and cannot be used as an alias.');
 			}
 
 			if (this.effect.inputs.hasOwnProperty(inputName)) {
@@ -2986,7 +3062,7 @@
 				me.destroy();
 
 				for (i in this) {
-					if (this.hasOwnProperty(i) && i !== 'isDestroyed') {
+					if (this.hasOwnProperty(i) && i !== 'isDestroyed' && i !== 'id') {
 						descriptor = Object.getOwnPropertyDescriptor(this, i);
 						if (descriptor.get || descriptor.set ||
 								typeof this[i] !== 'function') {
@@ -3060,6 +3136,7 @@
 					deferTexture = plugin.deferTexture;
 					this.plugin = plugin;
 					this.compare = plugin.compare;
+					this.checkDirty = plugin.checkDirty;
 					if (plugin.source) {
 						source = plugin.source;
 					}
@@ -3146,6 +3223,7 @@
 							deferTexture = plugin.deferTexture;
 							this.plugin = plugin;
 							this.compare = plugin.compare;
+							this.checkDirty = plugin.checkDirty;
 							if (plugin.source) {
 								source = plugin.source;
 							}
@@ -3292,50 +3370,9 @@
 			}
 
 			if (this.plugin && this.plugin.render &&
+					(this.dirty || this.checkDirty && this.checkDirty()) &&
 					this.plugin.render.call(this, gl, draw, rectangleModel, baseShader)) {
 
-				this.dirty = false;
-				this.emit('render');
-			}
-		};
-
-		SourceNode.prototype.renderVideo = function () {
-			var video = this.source;
-
-			if (!gl || !video || !video.videoHeight || !video.videoWidth || video.readyState < 2 || !this.ready) {
-				return;
-			}
-
-			if (!this.initialized) {
-				this.initialize();
-			}
-
-			if (!this.allowRefresh) {
-				return;
-			}
-
-			if (this.dirty ||
-				this.lastRenderFrame !== video.mozPresentedFrames ||
-				this.lastRenderTime !== video.currentTime) {
-
-				gl.bindTexture(gl.TEXTURE_2D, this.texture);
-				gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, this.flip);
-				gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
-				try {
-					gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, video);
-				} catch (securityError) {
-					if (securityError.code === window.DOMException.SECURITY_ERR) {
-						this.allowRefresh = false;
-						Seriously.logger.error('Unable to access cross-domain image');
-					}
-				}
-
-				// Render a few extra times because the canvas takes a while to catch up
-				if (Date.now() - 100 > this.lastRenderTimeStamp) {
-					this.lastRenderTime = video.currentTime;
-				}
-				this.lastRenderFrame = video.mozPresentedFrames;
-				this.lastRenderTimeStamp = Date.now();
 				this.dirty = false;
 				this.emit('render');
 			}
@@ -3362,6 +3399,10 @@
 				gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
 				try {
 					gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, media);
+
+					this.dirty = false;
+					this.emit('render');
+					return true;
 				} catch (securityError) {
 					if (securityError.code === window.DOMException.SECURITY_ERR) {
 						this.allowRefresh = false;
@@ -3369,9 +3410,7 @@
 					}
 				}
 
-				this.lastRenderTime = Date.now() / 1000;
-				this.dirty = false;
-				this.emit('render');
+				return false;
 			}
 		};
 
@@ -3421,17 +3460,6 @@
 
 			//priveleged accessor methods
 			Object.defineProperties(this, {
-				inputs: {
-					enumerable: true,
-					configurable: true,
-					get: function () {
-						return {
-							source: {
-								type: 'image'
-							}
-						};
-					}
-				},
 				source: {
 					enumerable: true,
 					configurable: true,
@@ -3459,21 +3487,9 @@
 					},
 					set: function (value) {
 						if (!isNaN(value) && value >0 && me.width !== value) {
-							me.width = me.desiredWidth = value;
-							me.target.width = value;
-
+							me.width = value;
+							me.resize();
 							me.setTransformDirty();
-							me.emit('resize');
-							/*
-							if (this.source && this.source.resize) {
-								this.source.resize(value);
-
-								//todo: for secondary webgl nodes, we need a new array
-								//if (this.pixels && this.pixels.length !== (this.width * this.height * 4)) {
-								//	delete this.pixels;
-								//}
-							}
-							*/
 						}
 					}
 				},
@@ -3485,22 +3501,9 @@
 					},
 					set: function (value) {
 						if (!isNaN(value) && value >0 && me.height !== value) {
-							me.height = me.desiredHeight = value;
-							me.target.height = value;
-
+							me.height = value;
+							me.resize();
 							me.setTransformDirty();
-							me.emit('resize');
-
-							/*
-							if (this.source && this.source.resize) {
-								this.source.resize(undefined, value);
-
-								//for secondary webgl nodes, we need a new array
-								//if (this.pixels && this.pixels.length !== (this.width * this.height * 4)) {
-								//	delete this.pixels;
-								//}
-							}
-							*/
 						}
 					}
 				},
@@ -3548,7 +3551,7 @@
 				me.destroy();
 
 				for (i in this) {
-					if (this.hasOwnProperty(i) && i !== 'isDestroyed') {
+					if (this.hasOwnProperty(i) && i !== 'isDestroyed' && i !== 'id') {
 						descriptor = Object.getOwnPropertyDescriptor(this, i);
 						if (descriptor.get || descriptor.set ||
 								typeof this[i] !== 'function') {
@@ -3558,6 +3561,14 @@
 						}
 					}
 				}
+			};
+
+			this.inputs = function (name) {
+				return {
+					source: {
+						type: 'image'
+					}
+				};
 			};
 
 			this.isDestroyed = function () {
@@ -3572,37 +3583,76 @@
 		/*
 			possible targets: canvas (2d or 3d), gl render buffer (must be same canvas)
 		*/
-		TargetNode = function (target, options) {
-			var opts = options || {},
-				flip = opts.flip === undefined ? true : opts.flip,
-				width = parseInt(opts.width, 10),
-				height = parseInt(opts.height, 10),
+		TargetNode = function (hook, target, options) {
+			var opts,
+				flip,
+				width,
+				height,
+				that = this,
 				matchedType = false,
 				i, element, elements, context,
-				debugContext = opts.debugContext,
+				debugContext,
 				frameBuffer,
-				triedWebGl = false;
+				targetList,
+				triedWebGl = false,
+				key;
 
-			Node.call(this, opts);
+			function targetPlugin(hook, target, options, force) {
+				var plugin = seriousTargets[hook];
+				if (plugin.definition) {
+					plugin = plugin.definition.call(that, target, options, force);
+					if (!plugin) {
+						return null;
+					}
+					plugin = extend(extend({}, seriousTargets[hook]), plugin);
+					that.hook = key;
+					matchedType = true;
+					that.plugin = plugin;
+					that.compare = plugin.compare;
+					if (plugin.target) {
+						target = plugin.target;
+					}
+					if (plugin.gl && !that.gl) {
+						that.gl = plugin.gl;
+						if (!gl) {
+							attachContext(plugin.gl);
+						}
+					}
+					if (that.gl === gl) {
+						that.model = rectangleModel;
+						that.shader = baseShader;
+					}
+				}
+				return plugin;
+			}
+
+			function compareTarget(target) {
+				return that.target === target;
+			}
+
+			Node.call(this);
+
+			if (hook && typeof hook !== 'string' || !target && target !== 0) {
+				if (!options || typeof options !== 'object') {
+					options = target;
+				}
+				target = hook;
+			}
+
+			opts = options || {};
+			flip = opts.flip === undefined ? true : opts.flip
+			width = parseInt(opts.width, 10);
+			height = parseInt(opts.height, 10);
+			debugContext = opts.debugContext;
+
+			// forced target type?
+			if (typeof hook === 'string' && seriousTargets[hook]) {
+				targetPlugin(hook, target, opts, true);
+			}
 
 			this.renderToTexture = opts.renderToTexture;
 
-			if (typeof target === 'string') {
-				elements = document.querySelectorAll(target);
-
-				for (i = 0; i < elements.length; i++) {
-					element = elements[i];
-					if (element.tagName === 'CANVAS') {
-						break;
-					}
-				}
-
-				if (i >= elements.length) {
-					throw new Error('not a valid HTML element (must be image, video or canvas)');
-				}
-
-				target = element;
-			} else if (target instanceof WebGLFramebuffer) {
+			if (target instanceof WebGLFramebuffer) {
 				frameBuffer = target;
 
 				if (opts instanceof HTMLCanvasElement) {
@@ -3652,6 +3702,10 @@
 						attachContext(context);
 					}
 					this.render = this.renderWebGL;
+
+					/*
+					Don't remember what this is for. Maybe we should remove it
+					*/
 					if (opts.renderToTexture) {
 						if (gl) {
 							this.frameBuffer = new FrameBuffer(gl, width, height, false);
@@ -3673,6 +3727,7 @@
 					};
 					this.shader = new ShaderProgram(this.gl, baseVertexShader, baseFragmentShader);
 					this.model = buildRectangleModel.call(this, this.gl);
+					this.pixels = null;
 
 					this.texture = this.gl.createTexture();
 					this.gl.bindTexture(gl.TEXTURE_2D, this.texture);
@@ -3688,15 +3743,46 @@
 			}
 
 			if (!matchedType) {
+				for (key in seriousTargets) {
+					if (seriousTargets.hasOwnProperty(key) && seriousTargets[key]) {
+						if (targetPlugin(key, target, opts, false)) {
+							break;
+						}
+					}
+				}
+			}
+
+			if (!matchedType) {
 				throw new Error('Unknown target type');
+			}
+
+			if (allTargets) {
+				targetList = allTargets.get(target);
+				if (targetList) {
+					Seriously.logger.warn(
+						'Target already in use by another instance',
+						target,
+						Object.keys(targetList).map(function (key) {
+							return targetList[key];
+						})
+					);
+				} else {
+					targetList = {};
+					allTargets.set(target, targetList);
+				}
+				targetList[seriously.id] = seriously;
 			}
 
 			this.target = target;
 			this.transform = null;
 			this.transformDirty = true;
 			this.flip = flip;
-			this.width = width;
-			this.height = height;
+			if (width) {
+				this.width = width;
+			}
+			if (height) {
+				this.height = height;
+			}
 
 			this.uniforms.resolution[0] = this.width;
 			this.uniforms.resolution[1] = this.height;
@@ -3733,10 +3819,13 @@
 				this.source = newSource;
 				newSource.addTarget(this);
 
-				if (newSource && newSource.ready) {
-					this.setReady();
-				} else {
-					this.setUnready();
+				if (newSource) {
+					this.resize();
+					if (newSource.ready) {
+						this.setReady();
+					} else {
+						this.setUnready();
+					}
 				}
 
 				this.setDirty();
@@ -3753,14 +3842,17 @@
 
 		TargetNode.prototype.resize = function () {
 			//if target is a canvas, reset size to canvas size
-			if (this.target instanceof HTMLCanvasElement &&
-					(this.width !== this.target.width || this.height !== this.target.height)) {
-				this.width = this.target.width;
-				this.height = this.target.height;
-				this.uniforms.resolution[0] = this.width;
-				this.uniforms.resolution[1] = this.height;
-				this.emit('resize');
-				this.setTransformDirty();
+			if (this.target instanceof HTMLCanvasElement) {
+				if (this.width !== this.target.width || this.height !== this.target.height) {
+					this.target.width = this.width;
+					this.target.height = this.height;
+					this.uniforms.resolution[0] = this.width;
+					this.uniforms.resolution[1] = this.height;
+					this.emit('resize');
+					this.setTransformDirty();
+				}
+			} else if (this.plugin && this.plugin.resize) {
+				this.plugin.resize.call(this);
 			}
 
 			if (this.source &&
@@ -3783,6 +3875,12 @@
 
 		TargetNode.prototype.stop = function () {
 			this.auto = false;
+		};
+
+		TargetNode.prototype.render = function () {
+			if (gl && this.plugin && this.plugin.render) {
+				this.plugin.render.call(this, draw, baseShader, rectangleModel);
+			}
 		};
 
 		TargetNode.prototype.renderWebGL = function () {
@@ -3826,32 +3924,32 @@
 		};
 
 		TargetNode.prototype.renderSecondaryWebGL = function () {
-			var width,
-				height,
+			var sourceWidth,
+				sourceHeight,
 				matrix,
 				x,
 				y;
 
-			if (this.dirty && this.source) {
+			if (this.dirty && this.ready && this.source) {
 				this.emit('render');
-				this.source.render();
+				this.source.render(true);
 
-				width = this.source.width;
-				height = this.source.height;
+				sourceWidth = this.source.width;
+				sourceHeight = this.source.height;
 
-				if (!this.pixels || this.pixels.length !== width * height * 4) {
-					this.pixels = new Uint8Array(width * height * 4);
+				if (!this.pixels || this.pixels.length !== sourceWidth * sourceHeight * 4) {
+					this.pixels = new Uint8Array(sourceWidth * sourceHeight * 4);
 				}
 
-				this.source.readPixels(0, 0, this.source.width, this.source.height, this.pixels);
+				this.source.readPixels(0, 0, sourceWidth, sourceHeight, this.pixels);
 
-				this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, width, height, 0, this.gl.RGBA, this.gl.UNSIGNED_BYTE, this.pixels);
+				this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, sourceWidth, sourceHeight, 0, this.gl.RGBA, this.gl.UNSIGNED_BYTE, this.pixels);
 
-				if (this.source.width === width && this.source.height === height) {
-					this.uniforms.transform = this.source.cumulativeMatrix || identity;
+				if (sourceWidth === this.width && sourceHeight === this.height) {
+					this.uniforms.transform = identity;
 				} else if (this.transformDirty) {
 					matrix = this.transform;
-					mat4.copy(matrix, this.source.cumulativeMatrix || identity);
+					mat4.copy(matrix, identity);
 					x = this.source.width / this.width;
 					y = this.source.height / this.height;
 					matrix[0] *= x;
@@ -3880,12 +3978,26 @@
 		};
 
 		TargetNode.prototype.destroy = function () {
-			var i;
+			var i,
+				targetList;
 
 			//source
 			if (this.source && this.source.removeTarget) {
 				this.source.removeTarget(this);
 			}
+
+			if (allTargets) {
+				targetList = allTargets.get(this.target);
+				delete targetList[seriously.id];
+				if (!Object.keys(targetList).length) {
+					allTargets.delete(this.target);
+				}
+			}
+
+			if (this.plugin && this.plugin.destroy) {
+				this.plugin.destroy.call(this);
+			}
+
 			delete this.source;
 			delete this.target;
 			delete this.pub;
@@ -3922,22 +4034,9 @@
 				//todo: there is some duplicate code with Effect here. Consolidate.
 				if (typeof input === 'string' && isNaN(input)) {
 					if (def.type === 'enum') {
-						if (def.options && def.options.filter) {
-							inputKey = String(input).toLowerCase();
-
-							//todo: possible memory leak on this function?
-							value = def.options.filter(function (e) {
-								return (typeof e === 'string' && e.toLowerCase() === inputKey) ||
-									(e.length && typeof e[0] === 'string' && e[0].toLowerCase() === inputKey);
-							});
-
-							value = value.length;
-						}
-
-						if (!value) {
+						if (!def.options.hasOwnProperty(input)) {
 							input = getElement(input, ['select']);
 						}
-
 					} else if (def.type === 'number' || def.type === 'boolean') {
 						input = getElement(input, ['input', 'select']);
 					} else if (def.type === 'image') {
@@ -3968,20 +4067,12 @@
 									} else {
 										oldValue = element.value;
 									}
-
-									if (def.set.call(me, oldValue)) {
-										me.setTransformDirty();
-									}
-
-									newValue = def.get.call(me);
+									newValue = me.setInput(inputName, oldValue);
 
 									//special case for color type
-									/*
-									no colors on transform nodes just yet. maybe later
-									if (def.type === 'color') {
-										newValue = arrayToHex(newValue);
+									if (input.type === 'color') {
+										newValue = colorArrayToHex(newValue);
 									}
-									*/
 
 									//if input validator changes our value, update HTML Element
 									//todo: make this optional...somehow
@@ -4013,9 +4104,7 @@
 					value = input;
 				}
 
-				if (def.set.call(me, value)) {
-					me.setTransformDirty();
-				}
+				me.setInput(inputName, value);
 			}
 
 			function setProperty(name, def) {
@@ -4039,8 +4128,6 @@
 					}
 				};
 			}
-
-			this.inputElements = {};
 
 			//priveleged accessor methods
 			Object.defineProperties(this, {
@@ -4083,7 +4170,7 @@
 					enumerable: true,
 					configurable: true,
 					get: function () {
-						return me.source.pub;
+						return me.source && me.source.pub;
 					},
 					set: function (source) {
 						me.setSource(source);
@@ -4112,15 +4199,18 @@
 				var result,
 					input,
 					inputs,
-					enumOption,
 					i,
 					key;
 
 				inputs = me.plugin.inputs;
 
+				/*
+				Only reports setter/getter inputs, not methods
+				*/
+
 				if (name) {
 					input = inputs[name];
-					if (!input) {
+					if (!input || input.method) {
 						return null;
 					}
 
@@ -4135,18 +4225,8 @@
 						result.max = input.max;
 						result.step = input.step;
 					} else if (input.type === 'enum') {
-						//make a deep copy
-						result.options = [];
-						if (options) {
-							for (i = 0; i < input.options.length; i++) {
-								enumOption = input.options[i];
-								if (Array.isArray(enumOption)) {
-									result.options.push(enumOption.slice(0));
-								} else {
-									result.options.push(enumOption);
-								}
-							}
-						}
+						//make a copy
+						result.options = extend({}, input.options);
 					} else if (input.type === 'vector') {
 						result.dimensions = input.dimensions;
 					}
@@ -4160,7 +4240,7 @@
 
 				result = {};
 				for (key in inputs) {
-					if (inputs.hasOwnProperty(key)) {
+					if (inputs.hasOwnProperty(key) && !inputs[key].method) {
 						result[key] = this.inputs(key);
 					}
 				}
@@ -4187,7 +4267,7 @@
 				me.destroy();
 
 				for (i in this) {
-					if (this.hasOwnProperty(i) && i !== 'isDestroyed') {
+					if (this.hasOwnProperty(i) && i !== 'isDestroyed' && i !== 'id') {
 						//todo: probably can simplify this if the only setter/getter is id
 						descriptor = Object.getOwnPropertyDescriptor(this, i);
 						if (descriptor.get || descriptor.set ||
@@ -4211,7 +4291,10 @@
 
 		TransformNode = function (hook, options) {
 			var key,
-				input;
+				input,
+				initialValue,
+				defaultValue,
+				defaults;
 
 			this.matrix = new Float32Array(16);
 			this.cumulativeMatrix = new Float32Array(16);
@@ -4245,24 +4328,12 @@
 			this.isDestroyed = false;
 			this.transformed = false;
 
+			this.plugin = extend({}, this.transformRef);
 			if (this.transformRef.definition) {
-				this.plugin = this.transformRef.definition.call(this, options);
-				for (key in this.transformRef) {
-					if (this.transformRef.hasOwnProperty(key) && !this.plugin[key]) {
-						this.plugin[key] = this.transformRef[key];
-					}
-				}
-
-				/*
-				todo: validate method definitions, check against reserved names
-				if (this.plugin.inputs !== this.transformRef.inputs) {
-					validateInputSpecs(this.plugin);
-				}
-				*/
-			} else {
-				this.plugin = extend({}, this.transformRef);
+				extend(this.plugin, this.transformRef.definition.call(this, options));
 			}
 
+			// set up inputs and methods
 			for (key in this.plugin.inputs) {
 				if (this.plugin.inputs.hasOwnProperty(key)) {
 					input = this.plugin.inputs[key];
@@ -4271,6 +4342,30 @@
 						this.methods[key] = input.method;
 					} else if (typeof input.set === 'function' && typeof input.get === 'function') {
 						this.inputs[key] = input;
+					}
+				}
+			}
+			validateInputSpecs(this.plugin);
+
+			// set default value for all inputs (no defaults for methods)
+			defaults = defaultInputs[hook];
+			for (key in this.plugin.inputs) {
+				if (this.plugin.inputs.hasOwnProperty(key)) {
+					input = this.plugin.inputs[key];
+
+					if (typeof input.set === 'function' && typeof input.get === 'function' &&
+							typeof input.method !== 'function') {
+
+						initialValue = input.get.call(this);
+						defaultValue = input.defaultValue === undefined ? initialValue : input.defaultValue;
+						defaultValue = input.validate.call(this, defaultValue, input, initialValue);
+						if (defaults && defaults[key] !== undefined) {
+							defaultValue = input.validate.call(this, defaults[key], input, input.defaultValue, defaultValue);
+							defaults[key] = defaultValue;
+						}
+						if (defaultValue !== initialValue) {
+							input.set.call(this, defaultValue);
+						}
 					}
 				}
 			}
@@ -4373,13 +4468,41 @@
 			}
 		};
 
+		TransformNode.prototype.setInput = function (name, value) {
+			var input,
+				defaultValue,
+				previous;
+
+			if (this.plugin.inputs.hasOwnProperty(name)) {
+				input = this.plugin.inputs[name];
+
+				if (defaultInputs[this.hook] && defaultInputs[this.hook][name] !== undefined) {
+					defaultValue = defaultInputs[this.hook][name];
+				} else {
+					defaultValue = input.defaultValue;
+				}
+
+				previous = input.get.call(this);
+				if (defaultValue === undefined) {
+					defaultValue = previous;
+				}
+				value = input.validate.call(this, value, input, defaultValue, previous);
+
+				if (input.set.call(this, value)) {
+					this.setTransformDirty();
+				}
+
+				return input.get.call(this);
+			}
+		};
+
 		TransformNode.prototype.alias = function (inputName, aliasName) {
 			var me = this,
 				input,
 				def;
 
 			if (reservedNames.indexOf(aliasName) >= 0) {
-				throw new Error(aliasName + ' is a reserved name and cannot be used as an alias.');
+				throw new Error('\'' + aliasName + '\' is a reserved name and cannot be used as an alias.');
 			}
 
 			if (this.plugin.inputs.hasOwnProperty(inputName)) {
@@ -4622,7 +4745,7 @@
 
 			if (hook) {
 				if (!seriousTransforms[hook]) {
-					throw new Error('Unknown transforms: ' + hook);
+					throw new Error('Unknown transform: ' + hook);
 				}
 			} else {
 				hook = options && options.defaultTransform || '2d';
@@ -4635,26 +4758,38 @@
 			return transformNode.pub;
 		};
 
-		this.target = function (target, options) {
+		this.target = function (hook, target, options) {
 			var targetNode,
-				renderToTexture,
-				targetRenderToTexture,
+				element,
+				hook,
 				i;
 
-			/*
-			Returns existing target if duplicate texture or canvas is passed
-			*/
-			renderToTexture = !!(options && options.renderToTexture);
+			if (hook && typeof hook === 'string' && !seriousTargets[hook]) {
+				element = document.querySelector(hook);
+			}
+
+			if (typeof hook !== 'string' || !target && target !== 0 || element) {
+				if (!options || typeof options !== 'object') {
+					options = target;
+				}
+				target = element || hook;
+				hook = null;
+			}
+
+			if (typeof target === 'string' && isNaN(target)) {
+				target = document.querySelector(target);
+			}
+
 			for (i = 0; i < targets.length; i++) {
-				if (targets[i] === target || targets[i].target === target) {
-					targetRenderToTexture = !!targets[i].renderToTexture;
-					if (renderToTexture === targetRenderToTexture) {
-						return targets[i].pub;
-					}
+				targetNode = targets[i];
+				if ((!hook || hook === targetNode.hook) &&
+						(targetNode.target === target || targetNode.compare && targetNode.compare(target, options))) {
+
+					return targetNode.pub;
 				}
 			}
 
-			targetNode = new TargetNode(target, options);
+			targetNode = new TargetNode(hook, target, options);
 
 			return targetNode.pub;
 		};
@@ -4747,7 +4882,7 @@
 			}
 
 			for (i in this) {
-				if (this.hasOwnProperty(i) && i !== 'isDestroyed') {
+				if (this.hasOwnProperty(i) && i !== 'isDestroyed' && i !== 'id') {
 					descriptor = Object.getOwnPropertyDescriptor(this, i);
 					if (descriptor.get || descriptor.set ||
 							typeof this[i] !== 'function') {
@@ -4814,6 +4949,37 @@
 			}
 
 			return false;
+		};
+
+		/*
+		Informational utility methods
+		*/
+
+		this.isNode = function (candidate) {
+			var node;
+			if (candidate) {
+				node = nodesById[candidate.id];
+				if (node && !node.isDestroyed) {
+					return true;
+				}
+			}
+			return false;
+		};
+
+		this.isSource = function (candidate) {
+			return this.isNode(candidate) && candidate instanceof Source;
+		};
+
+		this.isEffect = function (candidate) {
+			return this.isNode(candidate) && candidate instanceof Effect;
+		};
+
+		this.isTransform = function (candidate) {
+			return this.isNode(candidate) && candidate instanceof Transform;
+		};
+
+		this.isTarget = function (candidate) {
+			return this.isNode(candidate) && candidate instanceof Target;
 		};
 
 		Object.defineProperties(this, {
@@ -4934,6 +5100,8 @@
 		if (typeof definition === 'function') {
 			effect.definition = definition;
 		}
+
+		effect.reserved = reservedEffectProperties;
 
 		if (effect.inputs) {
 			validateInputSpecs(effect);
@@ -5064,17 +5232,16 @@
 			transform.definition = definition;
 		}
 
-		/*
-		todo: validate method definitions
-		if (effect.inputs) {
-			validateInputSpecs(effect);
+		transform.reserved = reservedTransformProperties;
+
+		//todo: validate method definitions
+		if (transform.inputs) {
+			validateInputSpecs(transform);
 		}
-		*/
 
 		if (!transform.title) {
 			transform.title = hook;
 		}
-
 
 		seriousTransforms[hook] = transform;
 		allTransformsByHook[hook] = [];
@@ -5105,6 +5272,66 @@
 		}
 
 		delete seriousTransforms[hook];
+
+		return this;
+	};
+
+	Seriously.target = function (hook, definition, meta) {
+		var target;
+
+		if (seriousTargets[hook]) {
+			Seriously.logger.warn('Target [' + hook + '] already loaded');
+			return;
+		}
+
+		if (meta === undefined && typeof definition === 'object') {
+			meta = definition;
+		}
+
+		if (!meta && !definition) {
+			return;
+		}
+
+		target = extend({}, meta);
+
+		if (typeof definition === 'function') {
+			target.definition = definition;
+		}
+
+		if (!target.title) {
+			target.title = hook;
+		}
+
+
+		seriousTargets[hook] = target;
+		allTargetsByHook[hook] = [];
+
+		return target;
+	};
+
+	Seriously.removeTarget = function (hook) {
+		var all, target, plugin;
+
+		if (!hook) {
+			return this;
+		}
+
+		plugin = seriousTargets[hook];
+
+		if (!plugin) {
+			return this;
+		}
+
+		all = allTargetsByHook[hook];
+		if (all) {
+			while (all.length) {
+				target = all.shift();
+				target.destroy();
+			}
+			delete allTargetsByHook[hook];
+		}
+
+		delete seriousTargets[hook];
 
 		return this;
 	};
@@ -5254,13 +5481,18 @@
 		},
 		'enum': function (value, input, defaultValue) {
 			var options = input.options || [],
-				filtered;
+				i,
+				opt;
 
-			filtered = options.filter(function (opt) {
-				return (isArrayLike(opt) && opt.length && opt[0] === value) || opt === value;
-			});
+			if (typeof value === 'string') {
+				value = value.toLowerCase();
+			} else if (typeof value === 'number') {
+				value = value.toString();
+			} else if (!value) {
+				value = '';
+			}
 
-			if (filtered.length) {
+			if (options.hasOwnProperty(value)) {
 				return value;
 			}
 
@@ -5403,7 +5635,6 @@
 		error: consoleMethod('error')
 	};
 
-	//expose Seriously to the global object
 	Seriously.util = {
 		mat4: mat4,
 		checkSource: checkSource,
@@ -5429,23 +5660,32 @@
 		}
 	};
 
-	Seriously.source('video', function (source, options, force) {
+	Seriously.source('video', function (video, options, force) {
 		var me = this,
 			video,
 			key,
 			opts,
+
+			canvas,
+			ctx2d,
+
 			destroyed = false,
-			deferTexture = false;
+			deferTexture = false,
+
+			isSeeking = false,
+			lastRenderTime = 0;
 
 		function initializeVideo() {
+			video.removeEventListener('loadedmetadata', initializeVideo, true);
+
 			if (destroyed) {
 				return;
 			}
 
-			if (source.videoWidth) {
-				if (me.width !== source.videoWidth || me.height !== source.videoHeight) {
-					me.width = source.videoWidth;
-					me.height = source.videoHeight;
+			if (video.videoWidth) {
+				if (me.width !== video.videoWidth || me.height !== video.videoHeight) {
+					me.width = video.videoWidth;
+					me.height = video.videoHeight;
 					me.resize();
 				}
 
@@ -5459,23 +5699,90 @@
 			}
 		}
 
-		if (source instanceof window.HTMLVideoElement) {
-			if (source.readyState) {
+		function seeking() {
+			// IE doesn't report .seeking properly so make our own
+			isSeeking = true;
+		}
+
+		function seeked() {
+			isSeeking = false;
+			me.setDirty();
+		}
+
+		if (video instanceof window.HTMLVideoElement) {
+			if (video.readyState) {
 				initializeVideo();
 			} else {
 				deferTexture = true;
-				source.addEventListener('loadedmetadata', initializeVideo, true);
+				video.addEventListener('loadedmetadata', initializeVideo, true);
 			}
+
+			video.addEventListener('seeking', seeking, false);
+			video.addEventListener('seeked', seeked, false);
 
 			return {
 				deferTexture: deferTexture,
 				source: video,
-				render: Object.getPrototypeOf(this).renderVideo,
+				render: function renderVideo(gl) {
+					var source,
+						error;
+
+					lastRenderTime = video.currentTime;
+
+					if (!video.videoHeight || !video.videoWidth) {
+						return false;
+					}
+
+					if (noVideoTextureSupport) {
+						if (!ctx2d) {
+							ctx2d = document.createElement('canvas').getContext('2d');
+							canvas = ctx2d.canvas;
+							canvas.width = me.width;
+							canvas.height = me.height;
+						}
+						source = canvas;
+						ctx2d.drawImage(video, 0, 0, me.width, me.height);
+					} else {
+						source = video;
+					}
+
+					gl.bindTexture(gl.TEXTURE_2D, me.texture);
+					gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, me.flip);
+					gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+					try {
+						gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source);
+
+						//workaround for lack of video texture support in IE
+						if (noVideoTextureSupport === undefined) {
+							error = gl.getError();
+							if (error === gl.INVALID_VALUE) {
+								noVideoTextureSupport = true;
+								return renderVideo(gl);
+							}
+							noVideoTextureSupport = false;
+						}
+						return true;
+					} catch (securityError) {
+						if (securityError.code === window.DOMException.SECURITY_ERR) {
+							me.allowRefresh = false;
+							Seriously.logger.error('Unable to access cross-domain image');
+						} else {
+							Seriously.logger.error('Error rendering video source', securityError);
+						}
+					}
+					return false;
+				},
+				checkDirty: function () {
+					return !isSeeking && video.currentTime !== lastRenderTime;
+				},
 				compare: function (source) {
 					return me.source === source;
 				},
 				destroy: function () {
 					destroyed = true;
+					video.removeEventListener('seeking', seeking, false);
+					video.removeEventListener('seeked', seeked, false);
+					video.removeEventListener('loadedmetadata', initializeVideo, true);
 				}
 			};
 		}
@@ -6367,5 +6674,4 @@
 		'#endif\n';
 
 	return Seriously;
-
 }));

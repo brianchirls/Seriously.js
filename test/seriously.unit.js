@@ -3,15 +3,17 @@
 (function () {
 	'use strict';
 
-	function compare(a, b) {
+	function compare(a, b, epsilon) {
 		var i;
 
 		if (a.length !== b.length) {
 			return false;
 		}
 
+		epsilon = epsilon || 0;
+
 		for (i = 0; i < a.length; i++) {
-			if (a[i] !== b[i]) {
+			if (Math.abs(a[i] - b[i]) > epsilon) {
 				return false;
 			}
 		}
@@ -158,6 +160,28 @@
 		Seriously.removeSource('incompatiblesource');
 	});
 
+	test('Node Info', 3, function () {
+		var inputs,
+			seriously,
+			s2,
+			source;
+
+
+		seriously = new Seriously();
+		source = seriously.source('#colorbars');
+
+		s2 = new Seriously();
+
+		ok(seriously.isNode(source), 'isNode detects source from same Seriously instance');
+		ok(!s2.isNode(source), 'isNode rejects source from different Seriously instance');
+
+		source.destroy();
+		ok(!seriously.isNode(source), 'isNode rejects destroyed source');
+
+		seriously.destroy();
+		s2.destroy();
+	});
+
 	module('Plugin');
 	/*
 	 * define plugin
@@ -220,7 +244,7 @@
 		try {
 			p = Seriously.plugin('badPlugin', {
 				inputs: {
-					initialize: {
+					id: {
 						type: 'number'
 					}
 				}
@@ -229,7 +253,7 @@
 			error1 = e;
 		}
 
-		equal(error1 && error1.message, 'Reserved effect input name: initialize', 'Defining plugin throws error');
+		equal(error1 && error1.message, 'Reserved input name: id', 'Defining plugin throws error');
 
 		try {
 			s = new Seriously();
@@ -369,29 +393,40 @@
 		Seriously.removePlugin('removeme');
 	});
 
-	test('Effect alias', 2, function () {
+	test('Effect input names', function () {
 		var seriously,
-			effect;
+			effect,
+			names;
 
-		Seriously.plugin('removeme', {
-			inputs: {
-				input: {
-					type: 'number'
-				}
-			}
-		});
+		Seriously.plugin('removeme', {});
 		seriously = new Seriously();
 		effect = seriously.effect('removeme');
 
-		effect.alias('input', 'input');
-		seriously.input = 5;
-		equal(effect.input, 5, 'Effect alias sets value');
+		names = Object.keys(effect).filter(function (key) {
+			return key !== 'width' && key !== 'height';
+		});
+
+		expect(names.length);
 
 		effect.destroy();
-		ok(!seriously.hasOwnProperty('input'), 'Effect alias removed');
+		Seriously.removePlugin('removeme');
+
+		names.forEach(function (name) {
+			var inputs = {};
+			inputs[name] = {
+				type: 'number'
+			};
+			try {
+				Seriously.plugin('removeme', {
+					inputs: inputs
+				});
+				ok(false, 'Failed to block effect input with reserved name: ' + name);
+			} catch (e) {
+				equal(e.message, 'Reserved input name: ' + name);
+			}
+		});
 
 		seriously.destroy();
-		Seriously.removePlugin('removeme');
 	});
 
 	test('Graph Loop', 1, function () {
@@ -421,7 +456,7 @@
 		Seriously.removePlugin('removeme');
 	});
 
-	test('Effect Info', 17, function () {
+	test('Effect Info', 24, function () {
 		var inputs,
 			seriously,
 			effect;
@@ -476,10 +511,20 @@
 		equal(inputs.vector.dimensions, 3, 'Vector dimensions reported');
 
 		equal(inputs.e.type, 'enum', 'Enum type reported');
-		ok(Array.isArray(inputs.e.options), 'Enum options reported');
+		ok(inputs.e.options && inputs.e.options.one === 'One', 'Enum options reported');
+		ok(inputs.e.options && inputs.e.defaultValue === 'one', 'Enum default reported');
 
-		inputs.e.options[1][0] = 'three';
-		equal(effect.inputs('e').options[1][0], 'two', 'Enum options fully copied, cannot be tampered with');
+		inputs.e.options.two = 'three';
+		equal(effect.inputs('e').options.two, 'Two', 'Enum options fully copied, cannot be tampered with');
+
+		ok(seriously.isEffect(effect), 'isEffect detects effect');
+		ok(!seriously.isEffect(null), 'isEffect rejects null');
+		ok(!seriously.isEffect(seriously.source('#colorbars')), 'isEffect rejects source');
+		ok(!seriously.isEffect(seriously.transform('2d')), 'isEffect rejects transform');
+		ok(!seriously.isEffect(seriously.target(document.createElement('canvas'))), 'isEffect rejects target');
+
+		effect.destroy();
+		ok(!seriously.isEffect(effect), 'isEffect rejects destroyed effect');
 
 		seriously.destroy();
 		Seriously.removePlugin('test');
@@ -855,6 +900,141 @@
 		}
 	});
 
+	test('Source Info', 10, function () {
+		var inputs,
+			seriously,
+			source;
+
+		Seriously.plugin('removeme', {});
+
+		seriously = new Seriously();
+		source = seriously.source('#colorbars');
+
+		ok(source.id >= 0, 'Source id reported');
+
+		equal(source.width, 672, 'Source width reported');
+		equal(source.height, 504, 'Source height reported');
+		equal(source.original, document.getElementById('colorbars'), 'Source original reported');
+
+		ok(seriously.isSource(source), 'isSource detects source');
+		ok(!seriously.isSource(null), 'isSource rejects null');
+		ok(!seriously.isSource(seriously.effect('removeme')), 'isSource rejects effect');
+		ok(!seriously.isSource(seriously.transform('2d')), 'isSource rejects transform');
+		ok(!seriously.isSource(seriously.target(document.createElement('canvas'))), 'isSource rejects target');
+
+		source.destroy();
+		ok(!seriously.isSource(source), 'isSource rejects destroyed source');
+
+		seriously.destroy();
+		Seriously.removePlugin('removeme');
+	});
+
+	asyncTest('Video Source', 5, function () {
+		var seriously,
+			source,
+			dupSource,
+			target,
+			reformat,
+			video,
+
+			//for iOS
+			div,
+
+			// 2 x 2 pixels
+			data = [
+				127, 0, 40, 255,
+				34, 1, 39, 255,
+				126, 1, 123, 255,
+				34, 1, 121, 255
+			];
+
+		function finish() {
+			if (div && div.parentNode) {
+				div.parentNode.removeChild(div);
+			}
+			seriously.destroy();
+			start();
+		}
+
+		seriously = new Seriously();
+		target = seriously.target(document.createElement('canvas'));
+		target.width = 2;
+		target.height = 2;
+		video = document.createElement('video');
+		video.setAttribute('preload', 'auto');
+
+		video.addEventListener('canplaythrough', function () {
+			var pixels;
+			if (!video.videoWidth) {
+				console.log('Browser failed to properly report video dimensions');
+			}
+			ok(source.width === video.videoWidth && source.height === video.videoHeight,
+				'Source node correctly calculates size from video');
+
+			try {
+				pixels = target.readPixels(0, 0, 2, 2);
+
+				/*
+				Allow for slight variations in how different codecs interpret video pixel colors.
+				*/
+				ok(compare(pixels, data, 8), 'Video source rendered.');
+			} catch (e) {
+				ok(seriously.incompatible(), 'Cannot read pixels without WebGL support');
+			}
+			finish();
+		});
+
+		if (video.canPlayType('video/mp4')) {
+			video.src = 'media/tiny.mp4';
+		} else {
+			video.src = 'media/tiny.webm';
+		}
+		video.loop = true;
+		video.load();
+
+		/*
+		iOS will not load any part of a video until there is a touch or click event,
+		So we give a chance to touch to proceed. If no touch after 10 seconds, just skip the test and move on.
+		*/
+		setTimeout(function () {
+			if (!video.readyState) {
+				div = document.createElement('div');
+				div.innerHTML = 'Touch here to enable video test';
+				div.setAttribute('style', 'position: fixed; top: 0; right: 0; padding: 20px;' +
+					'color: darkred; background-color: lightgray; font-size: 20px; cursor: pointer;');
+				document.body.appendChild(div);
+				div.onclick = function () {
+					if (video && !video.readyState) {
+						video.load();
+					}
+				};
+
+				setTimeout(function () {
+					if (!video.readyState) {
+						console.log('Skipped video source render test');
+						expect(3);
+						finish();
+					}
+				}, 10000);
+			}
+		}, 100);
+
+		source = seriously.source(video);
+		equal(source.original, video, 'Video source created by passing video element');
+		source.destroy();
+
+		source = seriously.source('video', video);
+		equal(source.original, video, 'Video source created with explicit source plugin hook');
+
+		dupSource = seriously.source(video);
+		equal(dupSource, source, 'Trying to create a second source with the same video returns the original');
+
+		reformat = seriously.transform('reformat');
+		reformat.width = reformat.height = target.height;
+		reformat.source = source;
+		target.source = reformat;
+	});
+
 	module('Inputs');
 	/*
 	 * all different types
@@ -1067,6 +1247,10 @@
 				yellowgreen: [154 / 255, 205 / 255, 50 / 255, 1]
 			};
 
+		function normalizeChannel(val) {
+			return val * 255;
+		}
+
 		Seriously.plugin('testColorInput', {
 			inputs: {
 				color: {
@@ -1124,7 +1308,7 @@
 				val = e.color;
 				ok(compare(val, colorNames[name]), 'Set color by name (' + name + ')');
 				if (!compare(val, colorNames[name])) {
-					console.log(name + ': ' + JSON.stringify(colorNames[name].map(function (val) { return val * 255; })) + ',');
+					console.log(name + ': ' + JSON.stringify(colorNames[name].map(normalizeChannel)) + ',');
 				}
 			}
 		}
@@ -1162,7 +1346,7 @@
 		Seriously.removePlugin('testColorInput');
 	});
 
-	test('Enum', 4, function() {
+	test('Enum', 7, function() {
 		var s, e, val;
 
 		Seriously.plugin('testEnumInput', {
@@ -1173,7 +1357,9 @@
 					options: [
 						['foo', 'Foo'],
 						['bar', 'Bar'],
-						'baz'
+						'baz',
+						1,
+						"2"
 					]
 				}
 			}
@@ -1195,6 +1381,15 @@
 		e.input = 'biddle';
 		val = e.input;
 		equal(val, 'foo', 'Set unknown value reverts to default');
+
+		e.input = 1;
+		equal(e.input, '1', 'Numerical option');
+
+		e.input = 2;
+		equal(e.input, '2', 'Numerical option defined as string');
+
+		e.input = '1';
+		equal(e.input, '1', 'Numerical option set as string');
 
 		s.destroy();
 		Seriously.removePlugin('testEnumInput');
@@ -1259,7 +1454,7 @@
 		Seriously.removePlugin('testVectorInput');
 	});
 
-	test('Defaults', 8, function (argument) {
+	test('Effect Defaults', 8, function (argument) {
 		var seriously,
 			effect,
 			source;
@@ -1440,7 +1635,6 @@
 		]), 'Translate 1 pixel to the right');
 
 		seriously.destroy();
-		return;
 	});
 
 	test('Transform definition function', 5, function () {
@@ -1508,10 +1702,12 @@
 		Seriously.removePlugin('removeme');
 	});
 
-	test('Transform Info', 17, function () {
+	test('Transform Info', 23, function () {
 		var inputs,
 			seriously,
 			transform;
+
+		Seriously.plugin('removeme', {});
 
 		Seriously.transform('test', {
 			inputs: {
@@ -1563,36 +1759,251 @@
 		equal(inputs.vector.dimensions, 3, 'Vector dimensions reported');
 
 		equal(inputs.e.type, 'enum', 'Enum type reported');
-		ok(Array.isArray(inputs.e.options), 'Enum options reported');
+		ok(inputs.e.options && inputs.e.options.one === 'One', 'Enum options reported');
 
-		inputs.e.options[1][0] = 'three';
-		equal(transform.inputs('e').options[1][0], 'two', 'Enum options fully copied, cannot be tampered with');
+		inputs.e.options.two = 'three';
+		equal(transform.inputs('e').options.two, 'Two', 'Enum options fully copied, cannot be tampered with');
+
+		ok(seriously.isTransform(transform), 'isTransform detects transform');
+		ok(!seriously.isTransform(null), 'isTransform rejects null');
+		ok(!seriously.isTransform(seriously.source('#colorbars')), 'isTransform rejects source');
+		ok(!seriously.isTransform(seriously.effect('removeme')), 'isTransform rejects effect');
+		ok(!seriously.isTransform(seriously.target(document.createElement('canvas'))), 'isTransform rejects target');
+
+		transform.destroy();
+		ok(!seriously.isTransform(transform), 'isTransform rejects destroyed transform');
+
+		seriously.destroy();
+		Seriously.removeTransform('test');
+		Seriously.removePlugin('removeme');
+	});
+
+	test('Transform Input Validation', function () {
+		var inputs,
+			seriously,
+			transform;
+
+		Seriously.transform('test', function (options) {
+			var values = {
+					color: [1, 1, 1, 1],
+					number: 8,
+					e: 'two',
+					vector: [0, 0, 0],
+					bool: true,
+					string: 'foo'
+				},
+				inputs = {
+					color: {
+						type: 'color'
+					},
+					number: {
+						type: 'number',
+						min: -4
+					},
+					e: {
+						type: 'enum',
+						options: [
+							['one', 'One'],
+							['two', 'Two']
+						]
+					},
+					vector: {
+						type: 'vector',
+						dimensions: 3
+					},
+					bool: {
+						type: 'boolean'
+					},
+					string: {
+						type: 'string'
+					}
+				},
+				key;
+
+			function getter(name) {
+				return function () {
+					return values[name];
+				};
+			}
+
+			function setter(name) {
+				return function (val) {
+					values[name] = val;
+				};
+			}
+
+			for (key in inputs) {
+				if (inputs.hasOwnProperty(key)) {
+					inputs[key].get = getter(key);
+					inputs[key].set = setter(key);
+				}
+			}
+
+			return {
+				inputs: inputs
+			};
+		});
+
+		seriously = new Seriously();
+		transform = seriously.transform('test');
+
+		/*
+		No need to be as aggressive as the effect input validation tests,
+		since a lot of it uses the same code
+		*/
+		transform.color = 'rgb(10, 20, 30)';
+		ok(compare(transform.color, [10 / 255, 20 / 255, 30 / 255, 1]), 'Set color by rgb');
+
+		transform.number = 'not a number';
+		equal(transform.number, 8, 'Reject invalid number, use default');
+
+		transform.number = '-20';
+		equal(transform.number, -4, 'Validate number as string');
+
+		transform.e = 'foo';
+		equal(transform.e, 'two', 'Reject invalid enum, use default');
+
+		transform.e = 'ONE';
+		equal(transform.e, 'one', 'Validate enum');
+
+		transform.vector = {
+			x: 1,
+			y: 2,
+			z: 3,
+			w: 4
+		};
+		ok(compare(transform.vector, [1, 2, 3]), 'Validate vector');
+
+		transform.bool = 0;
+		equal(transform.bool, false, 'Validate boolean');
+
+		transform.string = 12345;
+		equal(transform.string, '12345', 'Validate number string');
+
+		transform.string = undefined;
+		equal(transform.string, '', 'Validate empty string');
 
 		seriously.destroy();
 		Seriously.removeTransform('test');
 	});
 
-	test('Transform alias', 5, function () {
+	test('Transform input names', function () {
 		var seriously,
-			transform;
+			effect,
+			names;
 
+		Seriously.plugin('removeme', {});
 		seriously = new Seriously();
-		transform = seriously.transform('2d');
+		effect = seriously.effect('removeme');
 
-		transform.alias('translateX', 'translateX');
-		seriously.translateX = 5;
-		equal(transform.translateX, 5, 'Transform alias works for property');
+		names = Object.keys(effect).filter(function (key) {
+			return key !== 'width' && key !== 'height';
+		});
 
-		transform.alias('scale', 'scale');
-		seriously.scale(3, 4);
-		equal(transform.scaleX, 3, 'Transform alias works for method');
-		equal(transform.scaleY, 4, 'Transform alias works for method, second parameter');
+		expect(names.length);
 
-		transform.destroy();
-		ok(!seriously.hasOwnProperty('translateX'), 'Transform property alias removed');
-		ok(!seriously.hasOwnProperty('scale'), 'Transform method alias removed');
+		effect.destroy();
+		Seriously.removePlugin('removeme');
+
+		names.forEach(function (name) {
+			var inputs = {};
+			inputs[name] = {
+				type: 'number'
+			};
+			try {
+				Seriously.plugin('removeme', {
+					inputs: inputs
+				});
+				ok(false, 'Failed to block effect input with reserved name: ' + name);
+			} catch (e) {
+				equal(e.message, 'Reserved input name: ' + name);
+			}
+		});
 
 		seriously.destroy();
+	});
+
+	test('Transform Defaults', 7, function (argument) {
+		var seriously,
+			transform,
+			source;
+
+		Seriously.transform('testDefaults', function (){
+			var number = 0,
+				badNumber = 0;
+			return {
+				inputs: {
+					number: {
+						get: function () {
+							return number;
+						},
+						set: function (num) {
+							number = num;
+						},
+						type: 'number',
+						defaultValue: 42
+					},
+					badNumber: {
+						get: function () {
+							return badNumber;
+						},
+						set: function (num) {
+							badNumber = num;
+						},
+						type: 'number',
+						defaultValue: 9
+					}
+				}
+			};
+		});
+
+		// Passed as an option to the Seriously constructor
+		seriously = new Seriously({
+			defaults: {
+				testDefaults: {
+					number: 1337,
+					badNumber: 'not a number'
+				}
+			}
+		});
+
+		transform = seriously.transform('testDefaults');
+		equal(transform.number, 1337, 'Default set when passed as an option to the Seriously constructor');
+		equal(transform.badNumber, 9, 'Invalid default value ignored');
+		transform.destroy();
+
+		// reset all defaults
+		seriously.defaults(null);
+		transform = seriously.transform('testDefaults');
+		equal(transform.number, 42, 'All defaults reset successfully');
+		seriously.destroy();
+
+		// defaults method on the Seriously instance
+		seriously = new Seriously();
+		seriously.defaults({
+			testDefaults: {
+				number: 43
+			}
+		});
+
+		transform = seriously.transform('testDefaults');
+		equal(transform.number, 43, 'Default set with defaults method');
+		transform.number = 7;
+		transform.number = 'not a number';
+		equal(transform.number, 43, 'New default used when trying to set an invalid value');
+		transform.destroy();
+
+		seriously.defaults('testDefaults', {});
+		transform = seriously.transform('testDefaults');
+		equal(transform.number, 42, 'Default value reset by setting to a different hash');
+		transform.destroy();
+
+		seriously.defaults('testDefaults', null);
+		transform = seriously.transform('testDefaults');
+		equal(transform.number, 42, 'Defaults reset for single transform');
+
+		seriously.destroy();
+		Seriously.removeTransform('testDefaults');
 	});
 
 	module('Target');
@@ -1611,7 +2022,7 @@
 		equal(target.width, 17, 'target.width');
 		equal(target.height, 19, 'target.height');
 		equal(target.original, canvas, 'target.original');
-		equal(target.inputs.source.type, 'image', 'target.inputs.source');
+		equal(target.inputs().source.type, 'image', 'target.inputs.source');
 
 		dupTarget = seriously.target(canvas);
 		equal(target, dupTarget, 'return existing target node if given the same canvas');
@@ -1700,6 +2111,8 @@
 			error = e;
 		}
 		ok(incompatible && error || !error && pixels && compare(pixels, comparison), 'Secondary WebGL target rendered accurately.');
+
+		seriously.destroy();
 	});
 
 	asyncTest('WebGL Context Lost', function () {
@@ -1772,6 +2185,7 @@
 				return;
 			}
 			canvas = WebGLDebugUtils.makeLostContextSimulatingCanvas(canvas);
+			canvas.setRestoreTimeout(-1);
 			ext = canvas;
 		}
 
@@ -1856,9 +2270,178 @@
 		});
 	});
 
+	test('Target Info', 9, function () {
+		var inputs,
+			seriously,
+			target;
+
+		Seriously.plugin('removeme', {});
+
+		seriously = new Seriously();
+		target = seriously.target(document.createElement('canvas'));
+
+		ok(target.id >= 0, 'Target id reported');
+
+		//Check inputs
+		inputs = target.inputs();
+		ok(inputs.source && inputs.source.type === 'image', 'Source input is present');
+		equal(Object.keys(inputs).length, 1, 'No extra properties');
+
+		ok(seriously.isTarget(target), 'isTarget detects target');
+		ok(!seriously.isTarget(null), 'isTarget rejects null');
+		ok(!seriously.isTarget(seriously.source('#colorbars')), 'isTarget rejects source');
+		ok(!seriously.isTarget(seriously.effect('removeme')), 'isTarget rejects effect');
+		ok(!seriously.isTarget(seriously.transform('2d')), 'isTarget rejects transform');
+
+		target.destroy();
+		ok(!seriously.isTarget(target), 'isTarget rejects destroyed transform');
+
+		seriously.destroy();
+		Seriously.removePlugin('removeme');
+	});
+
+	test('Shared target warning', function () {
+		var seriously1,
+			seriously2,
+			target1,
+			target2,
+			canvas;
+
+		function firstTarget(message) {
+			ok(false, 'First target should not fire a warning: ' + message);
+		}
+
+		function secondTarget(message, target, instances) {
+			equal(message, 'Target already in use by another instance', 'Warning fired when using a shared target canvas');
+			equal(target, canvas, 'Warning passes shared canvas');
+			equal(instances[0], seriously1, 'Warning passes Seriously instances using shared canvas');
+		}
+
+		function thirdTarget(message) {
+			ok(false, 'Reused target after other target nodes destroyed should not fire a warning: ' + message);
+		}
+
+		expect(window.WeakMap ? 3 : 0);
+
+		Seriously.logger.warn = firstTarget;
+
+		canvas = document.createElement('canvas');
+		seriously1 = new Seriously();
+		seriously2 = new Seriously();
+
+		target1 = seriously1.target(canvas);
+
+		Seriously.logger.warn = secondTarget;
+		target2 = seriously2.target(canvas);
+
+		Seriously.logger.warn = thirdTarget;
+		target1.destroy();
+		target2.destroy();
+		target1 = seriously1.target(canvas);
+
+		seriously1.destroy();
+		seriously2.destroy();
+		Seriously.logger.warn = nop;
+	});
+
+	module('Alias');
+	test('Effect alias', 2, function () {
+		var seriously,
+			effect,
+			names;
+
+		Seriously.plugin('removeme', {
+			inputs: {
+				foo: {
+					type: 'number'
+				}
+			}
+		});
+		seriously = new Seriously();
+		effect = seriously.effect('removeme');
+
+		effect.alias('foo', 'input');
+		seriously.input = 5;
+		equal(effect.foo, 5, 'Effect alias sets value');
+
+		effect.destroy();
+		ok(!seriously.hasOwnProperty('input'), 'Effect alias removed');
+
+		Seriously.removePlugin('removeme');
+		seriously.destroy();
+	});
+
+	test('Transform alias', 5, function () {
+		var seriously,
+			transform;
+
+		seriously = new Seriously();
+		transform = seriously.transform('2d');
+
+		transform.alias('translateX', 'translateX');
+		seriously.translateX = 5;
+		equal(transform.translateX, 5, 'Transform alias works for property');
+
+		transform.alias('scale', 'scale');
+		seriously.scale(3, 4);
+		equal(transform.scaleX, 3, 'Transform alias works for method');
+		equal(transform.scaleY, 4, 'Transform alias works for method, second parameter');
+
+		transform.destroy();
+		ok(!seriously.hasOwnProperty('translateX'), 'Transform property alias removed');
+		ok(!seriously.hasOwnProperty('scale'), 'Transform method alias removed');
+
+		seriously.destroy();
+	});
+
+	test('Reserved names', function () {
+		var seriously,
+			effect,
+			transform,
+			names;
+
+		Seriously.plugin('removeme', {
+			inputs: {
+				foo: {
+					type: 'number'
+				}
+			}
+		});
+		seriously = new Seriously();
+		effect = seriously.effect('removeme');
+		transform = seriously.transform('2d');
+
+		names = Object.keys(seriously);
+		expect(names.length * 2);
+
+		names.forEach(function (name) {
+			var successTest = '\'' + name + '\' is a reserved name and cannot be used as an alias.',
+				fail = 'Failed to block alias with reserved name: ' + name,
+				success = 'Blocked alias with reserved name: ' + name;
+			try {
+				effect.alias('foo', name);
+				ok(false, fail + ' on effect.');
+			} catch (e) {
+				equal(e.message, successTest, success + ' on effect.');
+			}
+
+			try {
+				transform.alias('scaleX', name);
+				ok(false, fail + ' on transform.');
+			} catch (e) {
+				equal(e.message, successTest, success + ' on transform.');
+			}
+		});
+
+		Seriously.removePlugin('removeme');
+		seriously.destroy();
+	});
+
+
 	module('Destroy');
-	test('Destroy things', 15, function() {
-		var seriously, source, target, effect, transform, canvas;
+	test('Destroy things', 20, function() {
+		var seriously, source, target, effect, transform, canvas,
+			seriouslyId, sourceId, targetId, effectId, transformId;
 
 		Seriously.plugin('test', {});
 
@@ -1869,6 +2452,12 @@
 		effect = seriously.effect('test');
 		transform = seriously.transform('2d');
 		target = seriously.target(canvas);
+
+		seriouslyId = seriously.id;
+		sourceId = source.id;
+		effectId = effect.id;
+		transformId = transform.id;
+		targetId = target.id;
 
 		ok(!seriously.isDestroyed(), 'New Seriously instance is not destroyed');
 		ok(!source.isDestroyed(), 'New source is not destroyed');
@@ -1886,6 +2475,11 @@
 		ok(transform.isDestroyed(), 'Destroyed transform is destroyed');
 		ok(target.isDestroyed(), 'Destroyed target is destroyed');
 
+		equal(source.id, sourceId, 'id property retained on destroyed source');
+		equal(effect.id, effectId, 'id property retained on destroyed effect');
+		equal(transform.id, transformId, 'id property retained on destroyed transform');
+		equal(target.id, targetId, 'id property retained on destroyed target');
+
 		source = seriously.source('#colorbars');
 		effect = seriously.effect('test');
 		transform = seriously.transform('2d');
@@ -1893,6 +2487,7 @@
 
 		seriously.destroy();
 		ok(seriously.isDestroyed(), 'Destroyed Seriously instance is destroyed');
+		equal(seriously.id, seriouslyId, 'id property retained on destroyed Seriously instance');
 
 		ok(source.isDestroyed(), 'Destroy Seriously instance destroys source');
 		ok(effect.isDestroyed(), 'Destroy Seriously instance destroys effect');
@@ -1947,9 +2542,9 @@
 			if (!effect.ready && !target.ready && !seriously.isDestroyed()) {
 				//clean up
 				seriously.destroy();
-				Seriously.removePlugin('testReady');
-				Seriously.removeSource('deferred');
-				Seriously.removeSource('immediate');
+				Seriously.removePlugin('ready-testReady');
+				Seriously.removeSource('ready-deferred');
+				Seriously.removeSource('ready-immediate');
 				start();
 			}
 		}
@@ -1963,7 +2558,7 @@
 			}
 		}
 
-		Seriously.source('deferred', function (source) {
+		Seriously.source('ready-deferred', function (source) {
 			var me = this;
 			if (!proceeded) {
 				setTimeout(function () {
@@ -1980,7 +2575,7 @@
 			title: 'delete me'
 		});
 
-		Seriously.source('immediate', function () {
+		Seriously.source('ready-immediate', function () {
 			return {
 				render: function () {}
 			};
@@ -1988,7 +2583,7 @@
 			title: 'delete me'
 		});
 
-		Seriously.plugin('testReady', {
+		Seriously.plugin('ready-testReady', {
 			inputs: {
 				source: {
 					type: 'image'
@@ -2002,10 +2597,10 @@
 
 		seriously = new Seriously();
 
-		immediate = seriously.source('immediate');
-		deferred = seriously.source('deferred', 0);
+		immediate = seriously.source('ready-immediate');
+		deferred = seriously.source('ready-deferred', 0);
 
-		effect = seriously.effect('testReady');
+		effect = seriously.effect('ready-testReady');
 		effect.source = immediate;
 		effect.compare = deferred;
 
@@ -2058,7 +2653,10 @@
 		function proceed() {
 			if (deferredResized && effectResized && transformResized && targetResized) {
 				seriously.destroy();
-				Seriously.removeSource('size');
+				Seriously.removeSource('resize-size');
+				Seriously.removeSource('resize-immediate');
+				Seriously.removeSource('resize-deferred');
+				Seriously.removePlugin('resize-test');
 				start();
 			}
 		}
@@ -2067,7 +2665,7 @@
 			ok(false, 'Removed event listener should not run');
 		}
 
-		Seriously.source('immediate', function (source) {
+		Seriously.source('resize-immediate', function (source) {
 			this.width = source.width;
 			this.height = source.height;
 			return {
@@ -2077,7 +2675,7 @@
 			title: 'delete me'
 		});
 
-		Seriously.source('deferred', function (source) {
+		Seriously.source('resize-deferred', function (source) {
 			var that = this;
 			this.width = 1;
 			this.height = 1;
@@ -2094,7 +2692,7 @@
 			title: 'delete me'
 		});
 
-		Seriously.plugin('test', {
+		Seriously.plugin('resize-test', {
 			title: 'Test Effect',
 			inputs: {
 				source: {
@@ -2104,12 +2702,12 @@
 		});
 
 		seriously = new Seriously();
-		source = seriously.source('size', {
+		source = seriously.source('resize-size', {
 			width: 17,
 			height: 19
 		});
 
-		effect = seriously.effect('test');
+		effect = seriously.effect('resize-test');
 		effect.on('resize', function () {
 			effectResized = true;
 			ok(true, 'Effect resize event runs when connected to a source');
@@ -2133,7 +2731,7 @@
 		});
 		target.width = 60;
 
-		deferred = seriously.source('deferred', {
+		deferred = seriously.source('resize-deferred', {
 			width: 17,
 			height: 19
 		});
@@ -2185,7 +2783,6 @@
 			if (!tests) {
 				start();
 			}
-
 		}
 
 		function checkImageFail(img) {
@@ -2236,9 +2833,11 @@
 		fail = document.createElement('img');
 		fail.src = 'http://www.mozilla.org/images/template/screen/logo_footer.png';
 		fail.addEventListener('load', function() {
+			console.log('successfully loaded cross-origin test image');
 			checkImageFail(this);
 		}, false);
 		fail.addEventListener('error', function() {
+			console.log('failed to load cross-origin test image');
 			checkImageFail(this);
 		}, false);
 	});
@@ -2247,7 +2846,7 @@
 	use require for loading plugins
 	*/
 	module('Effect Plugins');
-	asyncTest('invert', 3, function () {
+	asyncTest('Invert', 3, function () {
 		require([
 			'seriously',
 			'effects/seriously.invert',
@@ -2291,6 +2890,110 @@
 
 			seriously.destroy();
 			Seriously.removePlugin('invert');
+
+			start();
+		});
+	});
+
+	asyncTest('Chroma Key', function () {
+		require([
+			'seriously',
+			'effects/seriously.chroma',
+			'sources/seriously.array'
+		], function (Seriously) {
+			var seriously,
+				effect,
+				target,
+				canvas,
+				source,
+				pixels,
+				error,
+				incompatible,
+
+				colors = [
+					[31, 57, 28], // low saturation, any balance
+					[28, 57, 33], // low saturation only when balance = 0
+					[0, 23, 0], // low maximum channel
+					[51, 230, 77], // high saturation
+					[51, 179, 77] // mid saturation (partial alpha)
+				],
+				sourcePixels = [];
+
+			colors.forEach(function (color, index) {
+				var i;
+
+				// green
+				i = index * 4;
+				sourcePixels[i + 0] = color[0];// / 255;
+				sourcePixels[i + 1] = color[1];// / 255;
+				sourcePixels[i + 2] = color[2];// / 255;
+				sourcePixels[i + 3] = 255; // alpha
+
+				// blue
+				i = index * 4 + colors.length * 4;
+				sourcePixels[i + 0] = color[0];// / 255;
+				sourcePixels[i + 1] = color[2];// / 255;
+				sourcePixels[i + 2] = color[1];// / 255;
+				sourcePixels[i + 3] = 255; // alpha
+			});
+
+			incompatible = Seriously.incompatible('chroma');
+
+			expect(incompatible ? 3 : 23);
+
+			seriously = new Seriously();
+			source = seriously.source(sourcePixels, {
+				width: colors.length,
+				height: 2
+			});
+
+			canvas = document.createElement('canvas');
+			canvas.width = 5;
+			canvas.height = 2;
+			target = seriously.target(canvas);
+
+			effect = seriously.effect('chroma');
+			ok(effect, 'Chroma effect successfully created');
+
+			effect.source = source;
+			target.source = effect;
+			effect.balance = 0;
+			effect.clipBlack = 0.1;
+			effect.clipWhite = 0.88;
+
+			// test with both green and blue screen colors
+			['rgb(51, 204, 77)', 'rgb(51, 77, 204)'].forEach(function (screen, row) {
+				var matchOffset = row * colors.length * 4,
+					noMatchOffset = (1 - row) * colors.length * 4,
+					color = row ? 'Blue' : 'Green';
+
+				effect.screen = screen;
+				target.render();
+
+				try {
+					pixels = target.readPixels(0, 0, colors.length, 2, pixels);
+				} catch (e) {
+					error = e;
+				}
+				ok(incompatible ? error : !error, 'readPixels throws error iff incompatible');
+				if (!incompatible) {
+					equal(pixels[matchOffset + 3], 247, color + ' - Low saturation partially keyed out');
+					equal(pixels[matchOffset + 7], 255, color + ' - Very low saturation remains opaque');
+					equal(pixels[matchOffset + 11], 255, color + ' - Low saturation and max channel remains opaque');
+					equal(pixels[matchOffset + 15], 0, color + ' - High saturation fully keyed out');
+					equal(pixels[matchOffset + 19], 11, color + ' - Mid saturation partially keyed out');
+
+					equal(pixels[noMatchOffset + 3], 255, color + ' - Low saturation, different color remains opaque');
+					equal(pixels[noMatchOffset + 7], 255, color + ' - Very low saturation, different color remains opaque');
+					equal(pixels[noMatchOffset + 11], 255, color + ' - Low saturation and max channel, different color remains opaque');
+					equal(pixels[noMatchOffset + 15], 255, color + ' - High saturation, different color remains opaque');
+					equal(pixels[noMatchOffset + 19], 255, color + ' - Mid saturation, different color remains opaque');
+				}
+			});
+
+
+			seriously.destroy();
+			Seriously.removePlugin('chroma');
 
 			start();
 		});

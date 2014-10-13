@@ -54,7 +54,7 @@
 			}
 
 			if (!(source instanceof Uint8Array)) {
-				typedArray = new Uint8Array(source);
+				typedArray = new Uint8Array(source.length);
 			}
 
 			return {

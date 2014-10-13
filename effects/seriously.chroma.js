@@ -17,15 +17,13 @@
 }(this, function (Seriously) {
 	'use strict';
 
-	/*	experimental chroma key algorithm
-		todo: see if we can minimize branching
-		todo: calculate HSL of screen color outside shader
+	/*
+		experimental chroma key algorithm
 		todo: try allowing some color despill on opaque pixels
 		todo: add different modes?
-		todo: rename parameters
 	*/
+
 	Seriously.plugin('chroma', {
-		commonShader: true,
 		shader: function (inputs, shaderSource) {
 			shaderSource.vertex = [
 				'precision mediump float;',
@@ -44,12 +42,10 @@
 				'varying vec3 screenPrimary;',
 
 				'void main(void) {',
-				'	float fmin = min(min(screen.r, screen.g), screen.b);    //Min. value of RGB',
-				'	float fmax = max(max(screen.r, screen.g), screen.b);    //Max. value of RGB',
+				'	float fmin = min(min(screen.r, screen.g), screen.b);', //Min. value of RGB
+				'	float fmax = max(max(screen.r, screen.g), screen.b);', //Max. value of RGB
 				'	float secondaryComponents;',
 
-				//'	luminance = (fmax + fmin) / 2.0; // Luminance',
-				//'	screenSat = fmax - fmin; // Saturation',
 				'	screenPrimary = step(fmax, screen.rgb);',
 				'	secondaryComponents = dot(1.0 - screenPrimary, screen.rgb);',
 				'	screenSat = fmax - mix(secondaryComponents - fmin, secondaryComponents / 2.0, balance);',
@@ -66,6 +62,7 @@
 				'}'
 			].join('\n');
 			shaderSource.fragment = [
+				this.inputs.mask ? '#define MASK' : '',
 				'precision mediump float;',
 
 				'varying vec2 vTexCoord;',
@@ -81,52 +78,51 @@
 				'varying float screenSat;',
 				'varying vec3 screenPrimary;',
 
-				'vec4 sourcePixel;',
-
-				'const mat3 yuv = mat3(',
-				'	54.213, 182.376, 18.411,',
-				'	-54.213, -182.376, 236.589,',
-				'	200.787, -182.376, -18.411',
-				');',
-
-				'float round(float n) {',
-				'	return floor(n) + step(0.5, fract(n));',
-				'}',
-
 				'void main(void) {',
-				'	float pixelSat, luminance, secondaryComponents;',
-				'	vec3 pixelPrimary;',
-				'	vec4 pixel = vec4(0.0);',
-				'	sourcePixel = texture2D(source, vTexCoord);',
+				'	float pixelSat, secondaryComponents;',
+				'	vec4 sourcePixel = texture2D(source, vTexCoord);',
 
-				'	float fmin = min(min(sourcePixel.r, sourcePixel.g), sourcePixel.b);    //Min. value of RGB',
-				'	float fmax = max(max(sourcePixel.r, sourcePixel.g), sourcePixel.b);    //Max. value of RGB',
-				//'	float delta = fmax - fmin;             //Delta RGB value',
+				'	float fmin = min(min(sourcePixel.r, sourcePixel.g), sourcePixel.b);', //Min. value of RGB
+				'	float fmax = max(max(sourcePixel.r, sourcePixel.g), sourcePixel.b);', //Max. value of RGB
+				//	luminance = fmax
 
-				//'	luminance = (fmax + fmin) / 2.0; // Luminance',
-				//'	luminance = dot(vec3(0.3, 0.59, 0.11), sourcePixel.rgb); // Luminance',
-				'	luminance = fmax; // Luminance',
-				'	pixelPrimary = step(fmax, sourcePixel.rgb);',
-				//'	pixelSat = delta; // Saturation',
+				'	vec3 pixelPrimary = step(fmax, sourcePixel.rgb);',
+
 				'	secondaryComponents = dot(1.0 - pixelPrimary, sourcePixel.rgb);',
 				'	pixelSat = fmax - mix(secondaryComponents - fmin, secondaryComponents / 2.0, balance);', // Saturation
-				'	if (pixelSat < 0.1 || luminance < 0.1 || any(notEqual(pixelPrimary, screenPrimary))) {',
+
+				// solid pixel if primary color component is not the same as the screen color
+				'	float diffPrimary = dot(abs(pixelPrimary - screenPrimary), vec3(1.0));',
+				'	float solid = step(1.0, step(pixelSat, 0.1) + step(fmax, 0.1) + diffPrimary);',
+
+				/*
+				Semi-transparent pixel if the primary component matches but if saturation is less
+				than that of screen color. Otherwise totally transparent
+				*/
+				'	float alpha = max(0.0, 1.0 - pixelSat / screenSat);',
+				'	alpha = smoothstep(clipBlack, clipWhite, alpha);',
+				'	vec4 semiTransparentPixel = vec4((sourcePixel.rgb - (1.0 - alpha) * screen.rgb * screenWeight) / alpha, alpha);',
+
+				'	vec4 pixel = mix(semiTransparentPixel, sourcePixel, solid);',
+
+				/*
+				Old branching code
+				'	if (pixelSat < 0.1 || fmax < 0.1 || any(notEqual(pixelPrimary, screenPrimary))) {',
 				'		pixel = sourcePixel;',
-				//'		pixel = vec4(1.0);',
 
 				'	} else if (pixelSat < screenSat) {',
-				'		float alpha = 1.0 - pixelSat / screenSat;',
+				'		float alpha = max(0.0, 1.0 - pixelSat / screenSat);',
 				'		alpha = smoothstep(clipBlack, clipWhite, alpha);',
-				//'		float despill = alpha / screenWeight;',
 				'		pixel = vec4((sourcePixel.rgb - (1.0 - alpha) * screen.rgb * screenWeight) / alpha, alpha);',
-				//'		pixel = vec4(vec3(alpha), 1.0);',
 				'	}',
+				//*/
 
-				'	if (mask) {',
-				'		gl_FragColor = vec4(vec3(pixel.a), 1.0);',
-				'	} else {',
-				'		gl_FragColor = pixel;',
-				'	}',
+
+				'#ifdef MASK',
+				'	gl_FragColor = vec4(vec3(pixel.a), 1.0);',
+				'#else',
+				'	gl_FragColor = pixel;',
+				'#endif',
 				'}'
 			].join('\n');
 			return shaderSource;
@@ -172,9 +168,9 @@
 			mask: {
 				type: 'boolean',
 				defaultValue: false,
-				uniform: 'mask'
+				uniform: 'mask',
+				shaderDirty: true
 			}
-
 		},
 		title: 'Chroma Key',
 		description: ''
