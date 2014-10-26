@@ -14,10 +14,10 @@ Full documentation is in progress at the [wiki](https://github.com/brianchirls/S
 ## Features
 
 - Optimized rendering path and GPU accelerated up to 60 frames per second
-- Accept image input from varied sources: videos, images, canvases and arrays
+- Accept image input from varied sources: video, image, canvas, array, webcam, Three.js
 - Effect parameters accept multiple formats and can monitor HTML form inputs
 - Basic 2D transforms (translate, rotate, scale, skew) on effect nodes
-- Plugin architecture for adding new effects
+- Plugin architecture for adding new effects, sources and targets
 - Read pixel array from any node
 - Load with [AMD](http://requirejs.org/docs/whyamd.html#amd)/[RequireJS](http://www.requirejs.org/)
 
@@ -88,8 +88,8 @@ on the system's graphics card. Seriously.js is heavily optimized, so most
 modern desktops and notebooks should be sufficient. Older systems may
 run slower, especially when using high-resolution videos.
 
-Mobile browser support for WebGL is limited. Mobile Firefox and Chrome have decent
-support, but the Android Browser and Mobile Safari do not.
+Mobile browser support for WebGL has improved. Mobile Firefox, Chrome and Safari have decent
+support, but they can be slower than desktop versions due to limited system resources.
 
 Seriously.js provides a method to detect browser support and offer
 descriptive error messages wherever possible.
