@@ -232,8 +232,12 @@
 				was its own render buffer. But Seriously.js changed it, so 
 				we need to make this call to force Three.js to update itself.
 				Setting render target to anything other than null should do it.
+
+				We also need to call resetGLState to force Three.js to use
+				its own shader
 				*/
 				renderer.setRenderTarget(noiseTexture);
+				renderer.resetGLState();
 
 				// render updated 3D scene to render target texture
 				renderer.render(scene, camera);
