@@ -2190,7 +2190,7 @@
 			}
 		};
 
-		extend(EffectNode, Node);
+		EffectNode.prototype = Object.create(Node.prototype);
 
 		EffectNode.prototype.initialize = function () {
 			if (!this.initialized) {
@@ -3261,7 +3261,7 @@
 			}
 		};
 
-		extend(SourceNode, Node);
+		SourceNode.prototype = Object.create(Node.prototype);
 
 		SourceNode.prototype.initialize = function () {
 			var texture;
@@ -3801,7 +3801,7 @@
 			targets.push(this);
 		};
 
-		extend(TargetNode, Node);
+		TargetNode.prototype = Object.create(Node.prototype);
 
 		TargetNode.prototype.setSource = function (source) {
 			var newSource;
@@ -4379,6 +4379,8 @@
 
 			allTransformsByHook[hook].push(this);
 		};
+
+		TransformNode.prototype = Object.create(Node.prototype);
 
 		TransformNode.prototype.setDirty = function () {
 			this.renderDirty = true;
