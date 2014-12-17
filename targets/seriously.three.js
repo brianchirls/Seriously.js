@@ -33,7 +33,7 @@
 		]),
 		mat4 = Seriously.util.mat4;
 
-	Seriously.target('three', function (target, options, force) {
+	Seriously.target('three', function (target, options) {
 		var me = this,
 			gl,
 			frameBuffer;
@@ -59,16 +59,16 @@
 			} else if (options) {
 				if (options.gl) {
 					gl = options.gl;
-				} else if (options.canvas) {
+				} else if (options.canvas && options.canvas.getContext) {
 					try {
-						gl = canvas.getContext('webgl');
-					} catch (expError) {
+						gl = options.canvas.getContext('webgl');
+					} catch (ignore) {
 					}
 
 					if (!gl) {
 						try {
-							gl = canvas.getContext('experimental-webgl');
-						} catch (error) {
+							gl = options.canvas.getContext('experimental-webgl');
+						} catch (ignore) {
 						}
 					}
 				}
