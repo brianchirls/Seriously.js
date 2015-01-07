@@ -61,7 +61,7 @@
 					gl = options.gl;
 				} else if (options.canvas) {
 					try {
-						gl = canvas.getContext('webgl');
+						gl = options.canvas.getContext('webgl');
 					} catch (expError) {
 					}
 
