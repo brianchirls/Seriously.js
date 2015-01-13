@@ -101,7 +101,7 @@
 				*/
 				'	float alpha = max(0.0, 1.0 - pixelSat / screenSat);',
 				'	alpha = smoothstep(clipBlack, clipWhite, alpha);',
-				'	vec4 semiTransparentPixel = vec4((sourcePixel.rgb - (1.0 - alpha) * screen.rgb * screenWeight) / alpha, alpha);',
+				'	vec4 semiTransparentPixel = vec4((sourcePixel.rgb - (1.0 - alpha) * screen.rgb * screenWeight) / max(0.00001, alpha), alpha);',
 
 				'	vec4 pixel = mix(semiTransparentPixel, sourcePixel, solid);',
 
