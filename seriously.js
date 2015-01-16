@@ -4763,7 +4763,6 @@
 		this.target = function (hook, target, options) {
 			var targetNode,
 				element,
-				hook,
 				i;
 
 			if (hook && typeof hook === 'string' && !seriousTargets[hook]) {
