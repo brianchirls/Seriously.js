@@ -3640,7 +3640,7 @@
 			}
 
 			opts = options || {};
-			flip = opts.flip === undefined ? true : opts.flip
+			flip = opts.flip === undefined ? true : opts.flip;
 			width = parseInt(opts.width, 10);
 			height = parseInt(opts.height, 10);
 			debugContext = opts.debugContext;
