@@ -261,8 +261,10 @@
 		'matte',
 		'off',
 		'on',
+		'purge',
 		'readPixels',
 		'render',
+		'restore',
 		'title',
 		'update'
 	],
@@ -276,6 +278,8 @@
 		'isReady',
 		'off',
 		'on',
+		'purge',
+		'restore',
 		'source',
 		'title',
 		'update'
@@ -295,8 +299,10 @@
 		'isSource',
 		'isTarget',
 		'isTransform',
+		'purge',
 		'removeAlias',
 		'render',
+		'restore',
 		'source',
 		'stop',
 		'target',
@@ -491,6 +497,7 @@
 				context = canvas.getContext('webgl', options);
 			}
 		} catch (expError) {
+			Seriously.logger.warn('Unable to create WebGL Context', expError);
 		}
 
 		if (!context) {
@@ -1132,9 +1139,41 @@
 			return makeGlModel(shape, gl);
 		}
 
-		function attachContext(context) {
+		function restoreBasics() {
+			if (!rectangleModel) {
+				rectangleModel = buildRectangleModel(gl);
+			}
+
+			if (!baseShader) {
+				baseShader = new ShaderProgram(gl, baseVertexShader, baseFragmentShader);
+			}
+		}
+
+		function restoreAll() {
 			var i, node;
 
+			if (!gl) {
+				return;
+			}
+
+			restoreBasics();
+
+			for (i = 0; i < nodes.length; i++) {
+				node = nodes[i];
+				node.gl = gl;
+				node.restore();
+
+				// if (!node.model) {
+				// 	node.model = rectangleModel;
+				// 	node.shader = baseShader;
+				// }
+
+				//todo: initialize frame buffer for target if not main canvas
+			}
+		}
+
+
+		function attachContext(context) {
 			if (gl) {
 				return;
 			}
@@ -1150,32 +1189,7 @@
 			gl = context;
 			glCanvas = context.canvas;
 
-			rectangleModel = buildRectangleModel(gl);
-
-			baseShader = new ShaderProgram(gl, baseVertexShader, baseFragmentShader);
-
-			for (i = 0; i < effects.length; i++) {
-				node = effects[i];
-				node.gl = gl;
-				node.initialize();
-				node.buildShader();
-			}
-
-			for (i = 0; i < sources.length; i++) {
-				node = sources[i];
-				node.initialize();
-			}
-
-			for (i = 0; i < targets.length; i++) {
-				node = targets[i];
-
-				if (!node.model) {
-					node.model = rectangleModel;
-					node.shader = baseShader;
-				}
-
-				//todo: initialize frame buffer if not main canvas
-			}
+			restoreAll();
 		}
 
 		function restoreContext() {
@@ -1236,24 +1250,43 @@
 			}
 		}
 
+		function purgeAll() {
+			var i;
+
+			for (i = 0; i < nodes.length; i++) {
+				nodes[i].purge();
+			}
+
+			if (baseShader && baseShader.destroy) {
+				baseShader.destroy();
+			}
+
+			//clean up rectangleModel
+			if (rectangleModel) {
+				if (gl) {
+					gl.deleteBuffer(rectangleModel.vertex);
+					gl.deleteBuffer(rectangleModel.texCoord);
+					gl.deleteBuffer(rectangleModel.index);
+				}
+
+				delete rectangleModel.vertex;
+				delete rectangleModel.texCoord;
+				delete rectangleModel.index;
+			}
+
+			rectangleModel = null;
+			baseShader = null;
+		}
+
 		function destroyContext(event) {
 			// either webglcontextlost or primary target node has been destroyed
-			var i, node;
+			var i;
 
 			/*
 			todo: once multiple shared webgl resources are supported,
 			see if we can switch context to another existing one and
 			rebuild immediately
 			*/
-
-			if (event) {
-				Seriously.logger.warn('WebGL context lost');
-				/*
-				todo: if too many webglcontextlost events fired in too short a time,
-				don't preventDefault
-				*/
-				event.preventDefault();
-			}
 
 			//don't draw anymore until context is restored
 			if (rafId) {
@@ -1265,83 +1298,24 @@
 				glCanvas.removeEventListener('webglcontextlost', destroyContext, false);
 			}
 
-			for (i = 0; i < effects.length; i++) {
-				node = effects[i];
-				node.gl = null;
-				node.initialized = false;
-				node.baseShader = null;
-				node.model = null;
-				node.frameBuffer = null;
-				node.texture = null;
-				if (node.shader && node.shader.destroy) {
-					node.shader.destroy();
-				}
-				node.shaderDirty = true;
-				node.shader = null;
-				if (node.effect.lostContext) {
-					node.effect.lostContext.call(node);
-				}
-
+			if (event) {
+				Seriously.logger.warn('WebGL context lost');
 				/*
-				todo: do we need to set nodes to uready?
-				if so, make sure nodes never get set to ready unless gl exists
-				and make sure to set ready again when context is restored
+				todo: if too many webglcontextlost events fired in too short a time,
+				don't preventDefault
 				*/
+				event.preventDefault();
 
-				if (event) {
-					node.emit('webglcontextlost');
+				for (i = 0; i < nodes.length; i++) {
+					nodes[i].emit('webglcontextlost');
+					/*
+					todo: do we need to set nodes to uready?
+					if so, make sure nodes never get set to ready unless gl exists
+					and make sure to set ready again when context is restored
+					*/
 				}
 			}
 
-			for (i = 0; i < sources.length; i++) {
-				node = sources[i];
-				//node.setUnready();
-				node.texture = null;
-				node.initialized = false;
-				node.allowRefresh = false;
-				if (event) {
-					node.emit('webglcontextlost');
-				}
-			}
-
-			for (i = 0; i < transforms.length; i++) {
-				node = transforms[i];
-				node.frameBuffer = null;
-				node.texture = null;
-				if (event) {
-					node.emit('webglcontextlost');
-				}
-			}
-
-			for (i = 0; i < targets.length; i++) {
-				node = targets[i];
-				node.model = false;
-				node.frameBuffer = null;
-				//texture?
-				if (event) {
-					node.emit('webglcontextlost');
-				}
-			}
-
-			if (baseShader && baseShader.destroy) {
-				baseShader.destroy();
-			}
-
-			//clean up rectangleModel
-			if (gl) {
-				gl.deleteBuffer(rectangleModel.vertex);
-				gl.deleteBuffer(rectangleModel.texCoord);
-				gl.deleteBuffer(rectangleModel.index);
-			}
-
-			if (rectangleModel) {
-				delete rectangleModel.vertex;
-				delete rectangleModel.texCoord;
-				delete rectangleModel.index;
-			}
-
-			rectangleModel = null;
-			baseShader = null;
 			gl = null;
 			glCanvas = null;
 		}
@@ -1773,9 +1747,29 @@
 			}
 		};
 
+		Node.prototype.purge = function () {
+			//clear out frameBuffer
+			if (this.frameBuffer && this.frameBuffer.destroy) {
+				this.frameBuffer.destroy();
+				this.frameBuffer = null;
+			}
+
+			if (this.model && this.gl && this.model !== rectangleModel) {
+				this.gl.deleteBuffer(this.model.vertex);
+				this.gl.deleteBuffer(this.model.texCoord);
+				this.gl.deleteBuffer(this.model.index);
+				this.model = null;
+			}
+
+			this.dirty = true;
+			this.gl = null;
+		};
+
 		Node.prototype.destroy = function () {
 			var i,
 				key;
+
+			this.purge();
 
 			delete this.gl;
 			delete this.seriously;
@@ -1797,12 +1791,6 @@
 			//clear out list of targets and disconnect each
 			if (this.targets) {
 				delete this.targets;
-			}
-
-			//clear out frameBuffer
-			if (this.frameBuffer && this.frameBuffer.destroy) {
-				this.frameBuffer.destroy();
-				delete this.frameBuffer;
 			}
 
 			//remove from main nodes index
@@ -2086,6 +2074,16 @@
 				}
 			};
 
+			this.purge = function () {
+				me.purge();
+				return this;
+			};
+
+			this.restore = function () {
+				me.restore();
+				return this;
+			};
+
 			this.isDestroyed = function () {
 				return me.isDestroyed;
 			};
@@ -2193,8 +2191,10 @@
 		EffectNode.prototype = Object.create(Node.prototype);
 
 		EffectNode.prototype.initialize = function () {
+			var that = this;
 			if (!this.initialized) {
-				var that = this;
+
+				restoreBasics();
 
 				this.baseShader = baseShader;
 
@@ -2218,6 +2218,43 @@
 
 				this.initialized = true;
 			}
+		};
+
+		EffectNode.prototype.purge = function () {
+			var hook = this.hook;
+
+			Node.prototype.purge.call(this);
+
+			this.initialized = false;
+			this.baseShader = null;
+			this.model = null;
+
+			this.texture = null;
+
+			//shader
+			if (this.shader) {
+				if (commonShaders[hook]) {
+					commonShaders[hook].count--;
+					if (!commonShaders[hook].count) {
+						delete commonShaders[hook];
+					}
+				}
+				if (this.shader.destroy && this.shader !== baseShader && !commonShaders[hook]) {
+					this.shader.destroy();
+				}
+			}
+
+			this.shaderDirty = true;
+			this.shader = null;
+
+			if (this.effect && this.effect.lostContext) {
+				this.effect.lostContext.call(this);
+			}
+		};
+
+		EffectNode.prototype.restore = function () {
+			this.initialize();
+			this.buildShader();
 		};
 
 		EffectNode.prototype.resize = function () {
@@ -2924,24 +2961,6 @@
 		EffectNode.prototype.destroy = function () {
 			var i, key, item, hook = this.hook;
 
-			//let effect destroy itself
-			if (this.effect.destroy && typeof this.effect.destroy === 'function') {
-				this.effect.destroy.call(this);
-			}
-			delete this.effect;
-
-			//shader
-			if (commonShaders[hook]) {
-				commonShaders[hook].count--;
-				if (!commonShaders[hook].count) {
-					delete commonShaders[hook];
-				}
-			}
-			if (this.shader && this.shader.destroy && this.shader !== baseShader && !commonShaders[hook]) {
-				this.shader.destroy();
-			}
-			delete this.shader;
-
 			//stop watching any input elements
 			for (key in this.inputElements) {
 				if (this.inputElements.hasOwnProperty(key)) {
@@ -2970,11 +2989,13 @@
 				}
 			}
 
-			for (key in this) {
-				if (this.hasOwnProperty(key) && key !== 'id') {
-					delete this[key];
-				}
+			Node.prototype.destroy.call(this);
+
+			//let effect destroy itself
+			if (this.effect.destroy && typeof this.effect.destroy === 'function') {
+				this.effect.destroy.call(this);
 			}
+			delete this.effect;
 
 			//remove any aliases
 			for (key in aliases) {
@@ -2996,8 +3017,6 @@
 			if (i >= 0) {
 				allEffectsByHook[hook].splice(i, 1);
 			}
-
-			Node.prototype.destroy.call(this);
 		};
 
 		Source = function (sourceNode) {
@@ -3053,6 +3072,16 @@
 
 			this.off = function (eventName, callback) {
 				me.off(eventName, callback);
+			};
+
+			this.purge = function () {
+				me.purge();
+				return this;
+			};
+
+			this.restore = function () {
+				me.restore();
+				return this;
 			};
 
 			this.destroy = function () {
@@ -3285,6 +3314,17 @@
 			this.setDirty();
 		};
 
+		SourceNode.prototype.restore = SourceNode.prototype.initialize;
+
+		SourceNode.prototype.purge = function () {
+			if (this.texture && this.gl) {
+				this.gl.deleteTexture(this.texture);
+			}
+			this.texture = null;
+			this.initialized = false;
+			this.allowRefresh = false;
+		};
+
 		SourceNode.prototype.initFrameBuffer = function (useFloat) {
 			if (gl) {
 				this.frameBuffer = new FrameBuffer(gl, this.width, this.height, {
@@ -3421,7 +3461,7 @@
 				this.plugin.destroy.call(this);
 			}
 
-			if (gl && this.texture) {
+			if (gl && this.texture && gl.isTexture(this.texture)) {
 				gl.deleteTexture(this.texture);
 			}
 
@@ -3878,6 +3918,7 @@
 		};
 
 		TargetNode.prototype.render = function () {
+			restoreBasics();
 			if (gl && this.plugin && this.plugin.render) {
 				this.plugin.render.call(this, draw, baseShader, rectangleModel);
 			}
@@ -3892,6 +3933,8 @@
 				if (!this.source) {
 					return;
 				}
+
+				restoreBasics();
 
 				this.source.render();
 
@@ -3977,6 +4020,24 @@
 			}
 		};
 
+		TargetNode.prototype.restore = function () {
+			if (this !== primaryTarget && this.hasOwnProperty('pixels')) {
+				this.frameBuffer = {
+					frameBuffer: frameBuffer || null
+				};
+				this.shader = new ShaderProgram(this.gl, baseVertexShader, baseFragmentShader);
+				this.model = buildRectangleModel.call(this, this.gl);
+				this.pixels = null;
+
+				this.texture = this.gl.createTexture();
+				this.gl.bindTexture(gl.TEXTURE_2D, this.texture);
+				this.gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+				this.gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+				this.gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+				this.gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+			}
+		};
+
 		TargetNode.prototype.destroy = function () {
 			var i,
 				targetList;
@@ -4015,7 +4076,9 @@
 
 			//clear out context so we can start over
 			if (this === primaryTarget) {
-				glCanvas.removeEventListener('webglcontextrestored', restoreContext, false);
+				if (glCanvas) {
+					glCanvas.removeEventListener('webglcontextrestored', restoreContext, false);
+				}
 				destroyContext();
 				primaryTarget = null;
 			}
@@ -4260,6 +4323,16 @@
 				me.off(eventName, callback);
 			};
 
+			this.purge = function () {
+				me.purge();
+				return this;
+			};
+
+			this.restore = function () {
+				me.restore();
+				return this;
+			};
+
 			this.destroy = function () {
 				var i,
 					descriptor;
@@ -4418,6 +4491,18 @@
 
 			this.setTransformDirty();
 		};
+
+		TransformNode.prototype.purge = function () {
+			Node.prototype.purge.call(this);
+			if (this.texture && this.gl) {
+				this.gl.deleteTexture(this.texture);
+			}
+			this.texture = null;
+			this.renderDirty = true;
+		};
+
+		//todo: actually do work here if the node needs its own framebuffer and texture
+		TransformNode.prototype.restore = nop;
 
 		TransformNode.prototype.setSource = function (source) {
 			var newSource;
@@ -4872,6 +4957,10 @@
 				targets[i].render(options);
 			}
 		};
+
+		this.restore = restoreAll;
+
+		this.purge = purgeAll;
 
 		this.destroy = function () {
 			var i,

@@ -497,7 +497,7 @@
 		//Check inputs
 		inputs = effect.inputs();
 		ok(inputs.number && inputs.vector && inputs.e, 'All inputs are present');
-		equal(Object.keys(inputs).length, 3, 'No extra properties');
+		equal(Object.keys(inputs).length, 3, 'No extra properties: ' + Object.keys(inputs).join(','));
 
 		equal(inputs.number.type, 'number', 'Number type reported');
 		equal(inputs.number.min, -4, 'Number minimum reported');
@@ -2189,23 +2189,26 @@
 			ext = canvas;
 		}
 
-		//every test should run once,
-		//except the render loop should run twice
+		/*
+		every test should run once,
+		except the render loop should run twice
+		*/
 		expect(11);
 
 		Seriously.logger.log = function (s) {
 			console.log(s);
-			equal(s, 'WebGL context restored', 'context lost warning');
+			equal(s, 'WebGL context restored', 'log: WebGL context restored');
 		};
 
 		Seriously.logger.warn = function (s) {
 			console.log(s);
-			equal(s, 'WebGL context lost', 'context lost warning');
+			equal(s, 'WebGL context lost', 'warn: WebGL context lost');
 		};
 
 		Seriously.plugin('test', {
 			title: 'Test Effect',
 			lostContext: function () {
+				//runs when context is lost or when node is purged
 				ok(true, 'context lost callback fired');
 			},
 			inputs: {
