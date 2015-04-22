@@ -157,7 +157,7 @@
 
 				//tv glitch plane
 				object = new THREE.Mesh(
-					new THREE.PlaneGeometry(300, 300),
+					new THREE.PlaneBufferGeometry(300, 300),
 					new THREE.MeshLambertMaterial({
 						ambient: 0xffffff,
 						map: glitchTexture,
@@ -169,7 +169,7 @@
 
 				//checkerboard plane
 				object = new THREE.Mesh(
-					new THREE.PlaneGeometry(800, 800),
+					new THREE.PlaneBufferGeometry(800, 800),
 					new THREE.MeshLambertMaterial({
 						ambient: 0xffffff,
 						map: checkerTexture,
