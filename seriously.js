@@ -81,6 +81,9 @@
 	vectorFields = ['x', 'y', 'z', 'w'],
 	colorFields = ['r', 'g', 'b', 'a'],
 
+	baseVertexShader,
+	baseFragmentShader,
+
 	/*
 		utility functions
 	*/
@@ -1070,7 +1073,6 @@
 			rectangleModel,
 			commonShaders = {},
 			baseShader,
-			baseVertexShader, baseFragmentShader,
 			Node, SourceNode, EffectNode, TransformNode, TargetNode,
 			Effect, Source, Transform, Target,
 			auto = false,
@@ -4894,8 +4896,6 @@
 				}
 			}
 
-			baseFragmentShader = null;
-			baseVertexShader = null;
 			seriously = null;
 
 			//todo: do we really need to allocate new arrays here?
@@ -4994,48 +4994,6 @@
 		});
 
 		//todo: load, save, find
-
-		baseVertexShader = [
-			'precision mediump float;',
-
-			'attribute vec4 position;',
-			'attribute vec2 texCoord;',
-
-			'uniform vec2 resolution;',
-			'uniform mat4 transform;',
-
-			'varying vec2 vTexCoord;',
-
-			'void main(void) {',
-			// first convert to screen space
-			'	vec4 screenPosition = vec4(position.xy * resolution / 2.0, position.z, position.w);',
-			'	screenPosition = transform * screenPosition;',
-
-			// convert back to OpenGL coords
-			'	gl_Position.xy = screenPosition.xy * 2.0 / resolution;',
-			'	gl_Position.z = screenPosition.z * 2.0 / (resolution.x / resolution.y);',
-			'	gl_Position.w = screenPosition.w;',
-			'	vTexCoord = texCoord;',
-			'}\n'
-		].join('\n');
-
-		baseFragmentShader = [
-			'precision mediump float;',
-
-			'varying vec2 vTexCoord;',
-
-			'uniform sampler2D source;',
-
-			'void main(void) {',
-			/*
-			'	if (any(lessThan(vTexCoord, vec2(0.0))) || any(greaterThanEqual(vTexCoord, vec2(1.0)))) {',
-			'		gl_FragColor = vec4(0.0);',
-			'	} else {',
-			*/
-			'		gl_FragColor = texture2D(source, vTexCoord);',
-			//'	}',
-			'}'
-		].join('\n');
 
 		this.defaults(options.defaults);
 	}
@@ -6439,6 +6397,48 @@
 	- matrix
 	- crop? - maybe not - probably would just scale.
 	*/
+
+	baseVertexShader = [
+		'precision mediump float;',
+
+		'attribute vec4 position;',
+		'attribute vec2 texCoord;',
+
+		'uniform vec2 resolution;',
+		'uniform mat4 transform;',
+
+		'varying vec2 vTexCoord;',
+
+		'void main(void) {',
+		// first convert to screen space
+		'	vec4 screenPosition = vec4(position.xy * resolution / 2.0, position.z, position.w);',
+		'	screenPosition = transform * screenPosition;',
+
+		// convert back to OpenGL coords
+		'	gl_Position.xy = screenPosition.xy * 2.0 / resolution;',
+		'	gl_Position.z = screenPosition.z * 2.0 / (resolution.x / resolution.y);',
+		'	gl_Position.w = screenPosition.w;',
+		'	vTexCoord = texCoord;',
+		'}\n'
+	].join('\n');
+
+	baseFragmentShader = [
+		'precision mediump float;',
+
+		'varying vec2 vTexCoord;',
+
+		'uniform sampler2D source;',
+
+		'void main(void) {',
+		/*
+		'	if (any(lessThan(vTexCoord, vec2(0.0))) || any(greaterThanEqual(vTexCoord, vec2(1.0)))) {',
+		'		gl_FragColor = vec4(0.0);',
+		'	} else {',
+		*/
+		'		gl_FragColor = texture2D(source, vTexCoord);',
+		//'	}',
+		'}'
+	].join('\n');
 
 	/*
 	 * simplex noise shaders
