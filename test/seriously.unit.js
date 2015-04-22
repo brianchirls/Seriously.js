@@ -2859,12 +2859,14 @@
 				source,
 				pixels,
 				error,
-				incompatible;
+				incompatible,
+				input = [255, 128, 100, 200],
+				expected;
 
 			incompatible = Seriously.incompatible();
 
 			seriously = new Seriously();
-			source = seriously.source([255, 128, 100, 200], {
+			source = seriously.source(input, {
 				width: 1,
 				height: 1
 			});
@@ -2885,8 +2887,17 @@
 			} catch (e) {
 				error = e;
 			}
+
+			expected = input.map(function (value, channel) {
+				if (channel < 3) {
+					return Math.round(255 - value);
+				}
+
+				return value;
+			});
+
 			ok(incompatible ? error : !error, 'readPixels throws error iff incompatible');
-			ok(incompatible || pixels && compare(pixels, [0, 127, 155, 200]), 'Invert effect rendered accurately.');
+			ok(incompatible || pixels && compare(pixels, expected), 'Invert effect rendered accurately.');
 
 			seriously.destroy();
 			Seriously.removePlugin('invert');
