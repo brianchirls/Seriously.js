@@ -2890,7 +2890,7 @@
 
 			expected = input.map(function (value, channel) {
 				if (channel < 3) {
-					return Math.round(255 - value);
+					return Math.round((255 - value) * input[3] / 255);
 				}
 
 				return value;

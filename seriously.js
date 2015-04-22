@@ -81,6 +81,13 @@
 	vectorFields = ['x', 'y', 'z', 'w'],
 	colorFields = ['r', 'g', 'b', 'a'],
 
+	outputRenderOptions = {
+		srcRGB: 0x0302, //SRC_ALPHA
+		dstRGB: 0x0303, //ONE_MINUS_SRC_ALPHA
+		srcAlpha: 0x01, //ONE
+		dstAlpha: 0x0303 //ONE_MINUS_SRC_ALPHA
+	},
+
 	baseVertexShader,
 	baseFragmentShader,
 
@@ -1199,7 +1206,7 @@
 
 				context = getWebGlContext(target, {
 					alpha: true,
-					premultipliedAlpha: false,
+					premultipliedAlpha: true,
 					preserveDrawingBuffer: true,
 					stencil: true,
 					debugContext: primaryTarget.debugContext
@@ -3680,7 +3687,7 @@
 					triedWebGl = true;
 					context = getWebGlContext(target, {
 						alpha: true,
-						premultipliedAlpha: false,
+						premultipliedAlpha: true,
 						preserveDrawingBuffer: true,
 						stencil: true,
 						debugContext: debugContext
@@ -3918,7 +3925,7 @@
 					this.transformDirty = false;
 				}
 
-				draw(baseShader, rectangleModel, this.uniforms, this.frameBuffer.frameBuffer, this);
+				draw(baseShader, rectangleModel, this.uniforms, this.frameBuffer.frameBuffer, this, outputRenderOptions);
 
 				this.emit('render');
 				this.dirty = false;
@@ -3967,7 +3974,7 @@
 				}
 
 				this.uniforms.source = this.texture;
-				draw(this.shader, this.model, this.uniforms, null, this);
+				draw(this.shader, this.model, this.uniforms, null, this, outputRenderOptions);
 
 				this.dirty = false;
 			}
