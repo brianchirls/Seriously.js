@@ -3,8 +3,21 @@
 <head>
 	<title>Seriously.js Channels Example</title>
 	<style type="text/css">
+		body {
+			margin: 0;
+			padding: 0;
+		}
+
 		img {
 			display: none;
+		}
+
+		#canvas {
+			position: absolute;
+			top: 0;
+			left: 0;
+			width: 100%;
+			height: 100%;
 		}
 	</style>
 </head>
@@ -36,14 +49,64 @@
 				mask = document.createElement('canvas'),
 				ctx = mask.getContext('2d');
 
+			function resize() {
+				target.width = window.innerWidth;
+				target.height = window.innerHeight;
+				scalePencils.width = target.width;
+				scalePencils.height = target.height;
+				scaleRobot.width = target.width;
+				scaleRobot.height = target.height;
+				resizeMask.width = target.width;
+				resizeMask.height = target.height;
+			}
+
+			function setPosition(pageX, pageY) {
+				var canvas = target.original,
+					x = pageX - canvas.offsetLeft,
+					y = pageY - canvas.offsetTop;
+
+				moveMask.translateX = x - canvas.width / 2;
+				moveMask.translateY = canvas.height / 2 - y;
+			}
+
+			function mouseMove(evt) {
+				setPosition(evt.pageX, evt.pageY);
+			}
+
+			function touchStart(evt) {
+				function update(touch) {
+					setPosition(touch.pageX, touch.pageY);
+				}
+
+				function touchMove(evt) {
+					update(evt.changedTouches[0]);
+					evt.preventDefault();
+				}
+
+				function touchEnd() {
+					document.body.removeEventListener('touchmove', touchMove, false);
+					document.body.removeEventListener('touchend', touchEnd, false);
+				}
+
+				if (evt.touches.length !== 1) {
+					evt.preventDefault();
+					return;
+				}
+
+				document.body.addEventListener('touchmove', touchMove, false);
+				document.body.addEventListener('touchend', touchEnd, false);
+
+				update(evt.touches[0]);
+			}
+
 			seriously = new Seriously();
 			target = seriously.target('#canvas');
 			channels = seriously.effect('channels');
 			blend = seriously.effect('blend');
 
-			scaleRobot = seriously.transform('2d');
+			scaleRobot = seriously.transform('reformat');
 			scaleRobot.source = seriously.source('#robot');
-			scaleRobot.scale(640/989);
+			scaleRobot.mode = 'cover';
 
 			scalePencils = seriously.transform('reformat');
 			scalePencils.source = seriously.source('#pencils');
@@ -62,8 +125,6 @@
 
 			resizeMask = seriously.transform('reformat');
 			resizeMask.source = mask;
-			resizeMask.width = target.width;
-			resizeMask.height = target.height;
 
 			moveMask = seriously.transform();
 			moveMask.source = resizeMask;
@@ -81,14 +142,13 @@
 
 			target.source = blend;
 
-			window.addEventListener('mousemove', function (evt) {
-				var canvas = target.original,
-					x = evt.pageX - canvas.offsetLeft,
-					y = evt.pageY - canvas.offsetTop;
+			window.addEventListener('mousemove', mouseMove, false);
+			document.body.addEventListener('touchstart', touchStart, true);
 
-				moveMask.translateX = x - canvas.width / 2;
-				moveMask.translateY = canvas.height / 2 - y;
-			}, false);
+			window.addEventListener('resize', resize, false);
+			window.addEventListener('deviceorientation', resize, false);
+
+			resize();
 
 			seriously.go(function (now) {
 				moveMask.rotation = (now % 18000) / 50;
