@@ -2200,6 +2200,7 @@
 		};
 
 		EffectNode.prototype = Object.create(Node.prototype);
+		EffectNode.prototype.constructor = EffectNode;
 
 		EffectNode.prototype.initialize = function () {
 			if (!this.initialized) {
@@ -3271,6 +3272,7 @@
 		};
 
 		SourceNode.prototype = Object.create(Node.prototype);
+		SourceNode.prototype.constructor = SourceNode;
 
 		SourceNode.prototype.initialize = function () {
 			var texture;
@@ -3811,6 +3813,7 @@
 		};
 
 		TargetNode.prototype = Object.create(Node.prototype);
+		TargetNode.prototype.constructor = TargetNode;
 
 		TargetNode.prototype.setSource = function (source) {
 			var newSource;
@@ -4390,6 +4393,7 @@
 		};
 
 		TransformNode.prototype = Object.create(Node.prototype);
+		TransformNode.prototype.constructor = TransformNode;
 
 		TransformNode.prototype.setDirty = function () {
 			this.renderDirty = true;
