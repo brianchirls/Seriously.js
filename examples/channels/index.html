@@ -88,8 +88,8 @@
 					document.body.removeEventListener('touchend', touchEnd, false);
 				}
 
+				evt.preventDefault();
 				if (evt.touches.length !== 1) {
-					evt.preventDefault();
 					return;
 				}
 
