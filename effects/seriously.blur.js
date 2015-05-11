@@ -43,6 +43,7 @@ http://v002.info/plugins/v002-blurs/
 			baseShader,
 			loopUniforms = {
 				amount: 0,
+				blendGamma: 2,
 				inputScale: 1,
 				resolution: [this.width, this.height],
 				transform: identity,
@@ -156,6 +157,7 @@ http://v002.info/plugins/v002-blurs/
 					'varying vec2 vTexCoord;',
 
 					'uniform sampler2D source;',
+					'uniform float blendGamma;',
 
 					'#ifdef USE_VARYINGS',
 					'varying vec2 vTexCoord1;',
@@ -172,7 +174,18 @@ http://v002.info/plugins/v002-blurs/
 					'const vec2 zero = vec2(0.0, 0.0);',
 					'#endif',
 
+					'vec3 exp;',
+
+					'vec4 sample(sampler2D sampler, vec2 coord) {',
+					'	vec4 pixel = texture2D(sampler, coord);',
+					'	pixel.rgb = pow(pixel.rgb, exp);',
+					'	return pixel;',
+					'}',
+
 					'void main(void) {',
+
+					'exp = vec3(blendGamma);',
+
 					'#ifndef USE_VARYINGS',
 					'	vec2 vTexCoord1 = max(zero, min(one, vTexCoord + amount1));',
 					'	vec2 vTexCoord2 = max(zero, min(one, vTexCoord + amount1 * 3.0));',
@@ -183,16 +196,19 @@ http://v002.info/plugins/v002-blurs/
 					'	vec2 vTexCoord7 = max(zero, min(one, vTexCoord - amount1 * 6.0));',
 					'	vec2 vTexCoord8 = max(zero, min(one, vTexCoord - amount1 * 9.0));',
 					'#endif',
-					'	gl_FragColor = texture2D(source, vTexCoord) / 9.0;',
-					'	gl_FragColor += texture2D(source, vTexCoord1) / 9.0;',
-					'	gl_FragColor += texture2D(source, vTexCoord2) / 9.0;',
-					'	gl_FragColor += texture2D(source, vTexCoord3) / 9.0;',
-					'	gl_FragColor += texture2D(source, vTexCoord4) / 9.0;',
-					'	gl_FragColor += texture2D(source, vTexCoord5) / 9.0;',
-					'	gl_FragColor += texture2D(source, vTexCoord6) / 9.0;',
-					'	gl_FragColor += texture2D(source, vTexCoord7) / 9.0;',
-					'	gl_FragColor += texture2D(source, vTexCoord8) / 9.0;',
-					'}'
+					'	gl_FragColor = sample(source, vTexCoord) / 9.0;',
+					'	gl_FragColor += sample(source, vTexCoord1) / 9.0;',
+					'	gl_FragColor += sample(source, vTexCoord2) / 9.0;',
+					'	gl_FragColor += sample(source, vTexCoord3) / 9.0;',
+					'	gl_FragColor += sample(source, vTexCoord4) / 9.0;',
+					'	gl_FragColor += sample(source, vTexCoord5) / 9.0;',
+					'	gl_FragColor += sample(source, vTexCoord6) / 9.0;',
+					'	gl_FragColor += sample(source, vTexCoord7) / 9.0;',
+					'	gl_FragColor += sample(source, vTexCoord8) / 9.0;',
+
+					'	gl_FragColor.rgb = pow(gl_FragColor.rgb, 1.0 / exp);',
+
+					'}',
 				].join('\n');
 
 				return shaderSource;
@@ -232,6 +248,7 @@ http://v002.info/plugins/v002-blurs/
 				}
 
 				loopUniforms.amount = amount;
+				loopUniforms.blendGamma = uniforms.blendGamma;
 				loopUniforms.source = this.inputs.source.texture;
 
 				for (i = 0; i < passes.length; i++) {
@@ -292,6 +309,13 @@ http://v002.info/plugins/v002-blurs/
 				defaultValue: 0.2,
 				min: 0,
 				max: 1
+			},
+			blendGamma: {
+				type: 'number',
+				uniform: 'blendGamma',
+				defaultValue: 2.2,
+				min: 0,
+				max: 4
 			}
 		},
 		title: 'Gaussian Blur'

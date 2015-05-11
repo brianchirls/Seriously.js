@@ -81,9 +81,9 @@
 		glow: vectorBlendFormula('BlendReflectf(blend, base)')
 	},
 	nativeBlendModes = {
-		normal: ['FUNC_ADD', 'SRC_ALPHA', 'ONE_MINUS_SRC_ALPHA', 'SRC_ALPHA', 'DST_ALPHA']/*,
-		add: ['FUNC_ADD', 'SRC_ALPHA', 'ONE_MINUS_SRC_ALPHA', 'SRC_ALPHA', 'DST_ALPHA']*/
-		//todo: multiply, screen
+		//native blend modes removed for now, because they don't work with linear blending
+		// normal: ['FUNC_ADD', 'SRC_ALPHA', 'ONE_MINUS_SRC_ALPHA', 'SRC_ALPHA', 'DST_ALPHA']
+		//todo: add, multiply, screen
 	},
 	identity = new Float32Array([
 		1, 0, 0, 0,
@@ -459,6 +459,7 @@
 					'uniform sampler2D top;',
 					'uniform sampler2D bottom;',
 					'uniform float opacity;',
+					'uniform float blendGamma;',
 
 					'vec3 BlendOpacity(vec4 base, vec4 blend, float opacity) {',
 					//apply blend, then mix by (opacity * blend.a)
@@ -466,14 +467,20 @@
 					'	return mix(base.rgb, blendedColor, opacity * blend.a);',
 					'}',
 
+					'vec4 linear(vec4 color, vec3 gamma) {',
+					'	return vec4(pow(color.rgb, gamma), color.a);',
+					'}',
+
 					'void main(void) {',
-					'	vec4 topPixel = texture2D(top, texCoordTop);',
+					'	vec3 exp = vec3(blendGamma);',
+					'	vec4 topPixel = linear(texture2D(top, texCoordTop), exp);',
 					'	vec4 bottomPixel = texture2D(bottom, texCoordBottom);',
 
 					'	if (topPixel.a == 0.0) {',
 					'		gl_FragColor = bottomPixel;',
 					'	} else {',
-					'		gl_FragColor = vec4(BlendOpacity(bottomPixel, topPixel, opacity), bottomPixel.a);',
+					'		bottomPixel = linear(bottomPixel, exp);',
+					'		gl_FragColor = vec4(pow(BlendOpacity(bottomPixel, topPixel, opacity), 1.0 / exp), bottomPixel.a);',
 					'	}',
 					'}'
 				].join('\n');
@@ -540,6 +547,13 @@
 							topUniforms.opacity = opacity;
 						}
 					}
+				},
+				blendGamma: {
+					type: 'number',
+					uniform: 'blendGamma',
+					defaultValue: 2.2,
+					min: 0,
+					max: 4
 				},
 				sizeMode: {
 					type: 'enum',

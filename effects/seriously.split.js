@@ -156,18 +156,22 @@
 					'uniform float split;',
 					'uniform float angle;',
 					'uniform float fuzzy;',
+					'uniform float blendGamma;',
 
-					'vec4 textureLookup(sampler2D tex, vec2 texCoord) {',
+					'vec4 textureLookup(sampler2D tex, vec2 texCoord, vec3 exp) {',
 					'	if (any(lessThan(texCoord, vec2(0.0))) || any(greaterThan(texCoord, vec2(1.0)))) {',
 					'		return vec4(0.0);',
 					'	} else {',
-					'		return texture2D(tex, texCoord);',
+					'		vec4 pixel = texture2D(tex, texCoord);',
+					'		pixel.rgb = pow(pixel.rgb, exp);',
+					'		return pixel;',
 					'	}',
 					'}',
 
 					'void main(void) {',
-					'	vec4 pixel1 = textureLookup(sourceA, vTexCoordA);',
-					'	vec4 pixel2 = textureLookup(sourceB, vTexCoordB);',
+					'	vec3 exp = vec3(blendGamma);',
+					'	vec4 pixel1 = textureLookup(sourceA, vTexCoordA, exp);',
+					'	vec4 pixel2 = textureLookup(sourceB, vTexCoordB, exp);',
 					'	float mn = (split - fuzzy * (1.0 - split));',
 					'	float mx = (split + fuzzy * split);;',
 					'	vec2 coords = vTexCoord - vec2(0.5);',
@@ -175,8 +179,9 @@
 					'	float scale = max(abs(c - s), abs(s + c));',
 					'	coords /= scale;',
 					'	coords += vec2(0.5);',
-					'	float x = coords.x;;',
+					'	float x = coords.x;',
 					'	gl_FragColor = mix(pixel2, pixel1, smoothstep(mn, mx, x));',
+					'	gl_FragColor.rgb = pow(gl_FragColor.rgb, 1.0 / exp);',
 					'}'
 				].join('\n');
 
@@ -261,6 +266,13 @@
 				defaultValue: 0,
 				min: 0,
 				max: 1
+			},
+			blendGamma: {
+				type: 'number',
+				uniform: 'blendGamma',
+				defaultValue: 2.2,
+				min: 0,
+				max: 4
 			}
 		},
 		description: 'Split screen or wipe',
