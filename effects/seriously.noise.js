@@ -31,7 +31,7 @@
 
 				'uniform vec2 resolution;',
 				'uniform float amount;',
-				'uniform float timer;',
+				'uniform float time;',
 
 				utilities.shader.noiseHelpers,
 				utilities.shader.snoise3d,
@@ -39,8 +39,8 @@
 
 				'void main(void) {',
 				'	vec4 pixel = texture2D(source, vTexCoord);',
-				'	float r = random(vec2(timer * vTexCoord.xy));',
-				'	float noise = snoise(vec3(vTexCoord * (1024.4 + r * 512.0), timer)) * 0.5;'
+				'	float r = random(vec2(time * vTexCoord.xy));',
+				'	float noise = snoise(vec3(vTexCoord * (1024.4 + r * 512.0), time)) * 0.5;'
 			];
 
 			if (inputs.overlay) {
@@ -73,9 +73,9 @@
 				max: 1,
 				defaultValue: 1
 			},
-			timer: {
+			time: {
 				type: 'number',
-				uniform: 'timer',
+				uniform: 'time',
 				defaultValue: 0,
 				step: 1
 			}
