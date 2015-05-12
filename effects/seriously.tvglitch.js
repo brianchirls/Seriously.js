@@ -129,7 +129,7 @@
 					'	vec2 texCoord = vTexCoord;',
 
 						//distortion
-					'	float drandom = snoise(vec2(time * 50.0, texCoord.y /lineHeight));',
+					'	float drandom = snoise(vec2(time * 10.0, texCoord.y /lineHeight));',
 					'	float distortAmount = distortion * (drandom - 0.25) * 0.5;',
 						//line sync
 					'	vec4 particleOffset = texture2D(particles, vec2(0.0, texCoord.y));',
@@ -208,7 +208,7 @@
 					gl.vertexAttribPointer(particleShader.location.particle, particleBuffer.itemSize, gl.FLOAT, false, 0, 0);
 					gl.enable(gl.BLEND);
 					gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
-					particleShader.time.set(uniforms.time);
+					particleShader.time.set(uniforms.time * this.inputs.barsRate);
 					particleShader.height.set(this.height);
 					gl.drawArrays(gl.POINTS, 0, particleCount);
 
@@ -271,6 +271,10 @@
 				defaultValue: 0,
 				min: 0,
 				max: 1
+			},
+			barsRate: {
+				type: 'number',
+				defaultValue: 1
 			},
 			frameShape: {
 				type: 'number',
