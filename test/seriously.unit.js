@@ -2148,6 +2148,7 @@
 			Seriously.logger.log = nop;
 			seriously.destroy();
 			Seriously.removePlugin('test');
+			Seriously.removePlugin('common-shader');
 			start();
 		}
 
