@@ -4193,7 +4193,7 @@
 			// attach methods
 			for (key in me.methods) {
 				if (me.methods.hasOwnProperty(key)) {
-					this[key] = makeMethod(me.methods[key].bind(me));
+					this[key] = makeMethod(me.methods[key]);
 				}
 			}
 
