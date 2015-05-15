@@ -1284,6 +1284,9 @@
 				node.texture = null;
 				if (node.shader && node.shader.destroy) {
 					node.shader.destroy();
+					if (node.effect.commonShader) {
+						delete commonShaders[node.hook];
+					}
 				}
 				node.shaderDirty = true;
 				node.shader = null;

@@ -2120,6 +2120,7 @@
 			canvas,
 			source,
 			effect,
+			commonEffect,
 			target,
 
 			gl,
@@ -2215,6 +2216,26 @@
 			}
 		});
 
+		Seriously.plugin('common-shader', {
+			title: 'Test Effect with common shader',
+			commonShader: true,
+			shader: function (inputs, shaderSource) {
+				return shaderSource;
+			},
+			draw: function (shader, model, uniforms, frameBuffer, draw) {
+				try {
+					draw(shader, model, uniforms, frameBuffer);
+				} catch (e) {
+					ok(false, 'Failed to draw effect with common shader');
+				}
+			},
+			inputs: {
+				source: {
+					type: 'image'
+				}
+			}
+		});
+
 		seriously = new Seriously();
 
 		source = seriously.source('#colorbars');
@@ -2222,8 +2243,11 @@
 		effect = seriously.effect('test');
 		effect.source = source;
 
+		commonEffect = seriously.effect('common-shader');
+		commonEffect.source = effect;
+
 		target = seriously.target(canvas);
-		target.source = effect;
+		target.source = commonEffect;
 
 		source.on('webglcontextlost', function () {
 			lostFired = true;
@@ -2250,6 +2274,8 @@
 		target.on('webglcontextrestored', function () {
 			restoredFired = true;
 			ok(!lost && restored, 'webglcontextrestored event fired on target node');
+
+			target.render();
 		});
 
 		seriously.go(function () {
