@@ -45,10 +45,10 @@
 				'		color.g = 0.3900815787690196 * log(temp) - 0.6318414437886275;',
 				'		color.b = 0.543206789110196 * log(temp - 10.0) - 1.19625408914;',
 				'	} else {',
-        		'		color.r = 1.292936186062745 * pow(temp - 60.0, -0.1332047592);',
-        		'		color.g = 1.129890860895294 * pow(temp - 60.0, -0.0755148492);',
-        		'	}',
-        		'	return color;',
+				'		color.r = 1.292936186062745 * pow(temp - 60.0, -0.1332047592);',
+				'		color.g = 1.129890860895294 * pow(temp - 60.0, -0.0755148492);',
+				'	}',
+				'	return color;',
 				'}',
 
 				'void main(void) {',
@@ -76,7 +76,7 @@
 
 				'void main(void) {',
 				'	vec4 pixel = texture2D(source, vTexCoord);',
-        		'	gl_FragColor = vec4(pixel.rgb * tempFactor, pixel.a);',
+				'	gl_FragColor = vec4(pixel.rgb * tempFactor, pixel.a);',
 				'}'
 			].join('\n');
 			return shaderSource;
