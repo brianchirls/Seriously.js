@@ -17,9 +17,9 @@
 }(this, function (Seriously) {
 	'use strict';
 
-	//based on tutorial by to Gregg Tavares 
-	//http://www.youtube.com/watch?v=rfQ8rKGTVlg&t=24m30s
-	//todo: find a way to not invert every single texture
+	// based on tutorial by to Gregg Tavares
+	// http://www.youtube.com/watch?v=rfQ8rKGTVlg&t=24m30s
+	// todo: find a way to not invert every single texture
 
 	Seriously.plugin('colorcube', {
 		commonShader: true,
