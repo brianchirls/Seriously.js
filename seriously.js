@@ -186,6 +186,50 @@
 
 			return dest;
 		},
+		inverse: function (mat, dest) {
+			if(!dest) { dest = mat; }
+
+			// Cache the matrix values (makes for huge speed increases!)
+			var a00 = mat[0], a01 = mat[1], a02 = mat[2], a03 = mat[3];
+			var a10 = mat[4], a11 = mat[5], a12 = mat[6], a13 = mat[7];
+			var a20 = mat[8], a21 = mat[9], a22 = mat[10], a23 = mat[11];
+			var a30 = mat[12], a31 = mat[13], a32 = mat[14], a33 = mat[15];
+
+			var b00 = a00*a11 - a01*a10;
+			var b01 = a00*a12 - a02*a10;
+			var b02 = a00*a13 - a03*a10;
+			var b03 = a01*a12 - a02*a11;
+			var b04 = a01*a13 - a03*a11;
+			var b05 = a02*a13 - a03*a12;
+			var b06 = a20*a31 - a21*a30;
+			var b07 = a20*a32 - a22*a30;
+			var b08 = a20*a33 - a23*a30;
+			var b09 = a21*a32 - a22*a31;
+			var b10 = a21*a33 - a23*a31;
+			var b11 = a22*a33 - a23*a32;
+
+			// Calculate the determinant (inlined to avoid double-caching)
+			var invDet = 1/(b00*b11 - b01*b10 + b02*b09 + b03*b08 - b04*b07 + b05*b06);
+
+			dest[0] = (a11*b11 - a12*b10 + a13*b09)*invDet;
+			dest[1] = (-a01*b11 + a02*b10 - a03*b09)*invDet;
+			dest[2] = (a31*b05 - a32*b04 + a33*b03)*invDet;
+			dest[3] = (-a21*b05 + a22*b04 - a23*b03)*invDet;
+			dest[4] = (-a10*b11 + a12*b08 - a13*b07)*invDet;
+			dest[5] = (a00*b11 - a02*b08 + a03*b07)*invDet;
+			dest[6] = (-a30*b05 + a32*b02 - a33*b01)*invDet;
+			dest[7] = (a20*b05 - a22*b02 + a23*b01)*invDet;
+			dest[8] = (a10*b10 - a11*b08 + a13*b06)*invDet;
+			dest[9] = (-a00*b10 + a01*b08 - a03*b06)*invDet;
+			dest[10] = (a30*b04 - a31*b02 + a33*b00)*invDet;
+			dest[11] = (-a20*b04 + a21*b02 - a23*b00)*invDet;
+			dest[12] = (-a10*b09 + a11*b07 - a12*b06)*invDet;
+			dest[13] = (a00*b09 - a01*b07 + a02*b06)*invDet;
+			dest[14] = (-a30*b03 + a31*b01 - a32*b00)*invDet;
+			dest[15] = (a20*b03 - a21*b01 + a22*b00)*invDet;
+
+			return dest;
+		},
 		identity: function (dest) {
 			dest[0] = 1;
 			dest[1] = 0;
@@ -2111,7 +2155,9 @@
 			var key, name, input,
 				defaultValue,
 				defaults,
-				defaultSources = {};
+				defaultSources = {},
+				sourceNames = [],
+				me = this;
 
 			Node.call(this, options);
 			this.gl = gl;
@@ -2124,7 +2170,9 @@
 			this.shaderDirty = true;
 			this.hook = hook;
 			this.options = options;
-			this.transform = null;
+
+			this.sourceTransforms = {};
+			this.sourceResolutions = {};
 
 			this.effect = extend({}, this.effectRef);
 			if (this.effectRef.definition) {
@@ -2137,6 +2185,7 @@
 			validateInputSpecs(this.effect);
 
 			this.uniforms.transform = identity;
+
 			this.inputs = {};
 			defaults = defaultInputs[hook];
 			for (name in this.effect.inputs) {
@@ -2154,6 +2203,8 @@
 							input.defaultValue = '';
 						} else if (input.type === 'enum') {
 							input.defaultValue = input.firstValue;
+						} else if (input.type === 'image') {
+							sourceNames.push(name);
 						}
 					}
 
@@ -2172,6 +2223,20 @@
 					}
 				}
 			}
+
+			//set up transforms for source nodes
+			this.uniforms.sourceResolution = new Float32Array(2 * sourceNames.length);
+			this.uniforms.sourceTransform = new Float32Array(16 * sourceNames.length);
+			sourceNames.forEach(function (name, i) {
+				//2 elements x 4 bytes per element
+				me.sourceResolutions[name] = new Float32Array(me.uniforms.sourceResolution.buffer, i * 2 * 4, 2);
+				me.sourceResolutions[name][0] = 1;
+				me.sourceResolutions[name][1] = 1;
+
+				//16 elements x 4 bytes per element
+				me.sourceTransforms[name] = new Float32Array(me.uniforms.sourceTransform.buffer, i * 16 * 4, 16);
+				mat4.identity(me.sourceTransforms[name]);
+			});
 
 			if (gl) {
 				this.initialize();
@@ -2234,9 +2299,16 @@
 		};
 
 		EffectNode.prototype.resize = function () {
-			var i;
+			var i, key;
 
 			Node.prototype.resize.call(this);
+
+			for (key in this.sources) {
+				if (this.sources.hasOwnProperty(key)) {
+					this.sourceResolutions[key][0] = this.sources[key].width;
+					this.sourceResolutions[key][1] = this.sources[key].height;
+				}
+			}
 
 			if (this.effect.resize) {
 				this.effect.resize.call(this);
@@ -2394,6 +2466,10 @@
 
 						inPlace = typeof this.inPlace === 'function' ? this.inPlace(key) : this.inPlace;
 						this.sources[key].render(!inPlace);
+
+						if (this.sources[key].cumulativeMatrix) {
+							mat4.inverse(this.sources[key].cumulativeMatrix, this.sourceTransforms[key]);
+						}
 					}
 				}
 
@@ -2458,6 +2534,7 @@
 							}
 
 							this.sources[name] = value;
+							mat4.identity(this.sourceTransforms[name]);
 							value.addTarget(this);
 						}
 					} else {
@@ -3788,7 +3865,6 @@
 			}
 
 			this.target = target;
-			this.transform = null;
 			this.transformDirty = true;
 			this.flip = flip;
 			if (width) {
@@ -3800,6 +3876,9 @@
 
 			this.uniforms.resolution[0] = this.width;
 			this.uniforms.resolution[1] = this.height;
+			this.uniforms.sourceResolution = [1, 1];
+			this.uniforms.sourceTransform = new Float32Array(identity);
+			this.uniforms.transform = new Float32Array(identity);
 
 			if (opts.auto !== undefined) {
 				this.auto = opts.auto;
@@ -3870,11 +3949,12 @@
 				this.plugin.resize.call(this);
 			}
 
-			if (this.source &&
-				(this.source.width !== this.width || this.source.height !== this.height)) {
-				if (!this.transform) {
-					this.transform = new Float32Array(16);
-				}
+			if (this.source) {
+				this.uniforms.sourceResolution[0] = this.source.width;
+				this.uniforms.sourceResolution[1] = this.source.height;
+			} else {
+				this.uniforms.sourceResolution[0] = 1;
+				this.uniforms.sourceResolution[1] = 1;
 			}
 		};
 
@@ -3912,6 +3992,7 @@
 
 				this.uniforms.source = this.source.texture;
 
+				/*
 				if (this.source.width === this.width && this.source.height === this.height) {
 					this.uniforms.transform = this.source.cumulativeMatrix || identity;
 				} else if (this.transformDirty) {
@@ -3930,6 +4011,10 @@
 					this.uniforms.transform = matrix;
 					this.transformDirty = false;
 				}
+				*/
+
+				//todo: bring back transformDirty
+				mat4.inverse(this.source.cumulativeMatrix || identity, this.uniforms.sourceTransform);
 
 				draw(baseShader, rectangleModel, this.uniforms, this.frameBuffer.frameBuffer, this, outputRenderOptions);
 
@@ -4598,7 +4683,7 @@
 				this.transformDirty = false;
 			}
 
-			if (renderTransform && gl) {
+			if (false && renderTransform && gl) {
 				if (this.renderDirty) {
 					if (!this.frameBuffer) {
 						this.uniforms = {
@@ -6417,10 +6502,23 @@
 		'attribute vec4 position;',
 		'attribute vec2 texCoord;',
 
+		//transform output of this node
 		'uniform vec2 resolution;',
 		'uniform mat4 transform;',
 
+		//transform sources
+		'uniform mat4 sourceTransform[1];',
+		'uniform vec2 sourceResolution[1];',
+
 		'varying vec2 vTexCoord;',
+
+		'const vec2 HALF = vec2(0.5);',
+		'vec2 adjustedCoords(vec2 coords, vec2 res, mat4 inv) {',
+		'	vec4 c4 = vec4((coords - HALF) * 2.0 * resolution, 0.0, 1.0);',
+		'	c4 = inv * c4;',
+		'	vec2 adjusted = c4.xy / c4.w;',
+		'	return adjusted / res / 2.0 + HALF;',
+		'}',
 
 		'void main(void) {',
 		// first convert to screen space
@@ -6431,7 +6529,8 @@
 		'	gl_Position.xy = screenPosition.xy * 2.0 / resolution;',
 		'	gl_Position.z = screenPosition.z * 2.0 / (resolution.x / resolution.y);',
 		'	gl_Position.w = screenPosition.w;',
-		'	vTexCoord = texCoord;',
+
+		'	vTexCoord = adjustedCoords(texCoord, sourceResolution[0], sourceTransform[0]);',
 		'}\n'
 	].join('\n');
 
@@ -6443,13 +6542,11 @@
 		'uniform sampler2D source;',
 
 		'void main(void) {',
-		/*
 		'	if (any(lessThan(vTexCoord, vec2(0.0))) || any(greaterThanEqual(vTexCoord, vec2(1.0)))) {',
 		'		gl_FragColor = vec4(0.0);',
 		'	} else {',
-		*/
 		'		gl_FragColor = texture2D(source, vTexCoord);',
-		//'	}',
+		'	}',
 		'}'
 	].join('\n');
 
