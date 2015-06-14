@@ -67,9 +67,9 @@
 			this.uniforms.pixelHeight = 1 / this.height;
 
 			if (this.inputs.mode === 'sobel') {
-				this.uniforms['G[0]'] = sobelMatrixConstants;
+				this.uniforms.G = sobelMatrixConstants;
 			} else {
-				this.uniforms['G[0]'] = freiChenMatrixConstants;
+				this.uniforms.G = freiChenMatrixConstants;
 			}
 		},
 		shader: function (inputs, shaderSource) {
@@ -157,9 +157,9 @@
 				],
 				update: function () {
 					if (this.inputs.mode === 'sobel') {
-						this.uniforms['G[0]'] = sobelMatrixConstants;
+						this.uniforms.G = sobelMatrixConstants;
 					} else {
-						this.uniforms['G[0]'] = freiChenMatrixConstants;
+						this.uniforms.G = freiChenMatrixConstants;
 					}
 				}
 			}

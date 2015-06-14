@@ -995,7 +995,7 @@
 				info: gl.getActiveUniform(program, i)
 			};
 
-			obj.name = obj.info.name;
+			obj.name = obj.info.name.replace(/\[0\]$/, '');
 			obj.loc = gl.getUniformLocation(program, obj.name);
 			obj.set = makeShaderSetter(obj.info, obj.loc);
 			obj.get = makeShaderGetter(obj.loc);
@@ -6409,7 +6409,6 @@
 	todo: additional transform node types
 	- perspective
 	- matrix
-	- crop? - maybe not - probably would just scale.
 	*/
 
 	baseVertexShader = [
