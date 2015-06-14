@@ -18,10 +18,6 @@
 	'use strict';
 
 	Seriously.plugin('split', function () {
-		var baseShader,
-			resolutionA = [1, 1],
-			resolutionB = [1, 1];
-
 		// custom resize method
 		this.resize = function () {
 			var width,
@@ -30,6 +26,7 @@
 				node,
 				fn,
 				i,
+				key,
 				sourceA = this.inputs.sourceA,
 				sourceB = this.inputs.sourceB;
 
@@ -76,13 +73,11 @@
 				this.setDirty();
 			}
 
-			if (sourceA) {
-				resolutionA[0] = sourceA.width;
-				resolutionA[1] = sourceA.height;
-			}
-			if (sourceB) {
-				resolutionB[0] = sourceB.width;
-				resolutionB[1] = sourceB.height;
+			for (key in this.sources) {
+				if (this.sources.hasOwnProperty(key)) {
+					this.sourceResolutions[key][0] = this.sources[key].width;
+					this.sourceResolutions[key][1] = this.sources[key].height;
+				}
 			}
 
 			for (i = 0; i < this.targets.length; i++) {
@@ -91,12 +86,6 @@
 		};
 
 		return {
-			initialize: function (initialize) {
-				initialize();
-				this.uniforms.resolutionA = resolutionA;
-				this.uniforms.resolutionB = resolutionB;
-				baseShader = this.baseShader;
-			},
 			commonShader: true,
 			shader: function (inputs, shaderSource) {
 				shaderSource.vertex = [
@@ -106,10 +95,12 @@
 					'attribute vec2 texCoord;',
 
 					'uniform vec2 resolution;',
-					'uniform vec2 resolutionA;',
-					'uniform vec2 resolutionB;',
 					'uniform mat4 projection;',
 					//'uniform mat4 transform;',
+
+					//transform sources
+					'uniform mat4 sourceTransform[2];',
+					'uniform vec2 sourceResolution[2];',
 
 					'varying vec2 vTexCoord;',
 					'varying vec2 vTexCoordA;',
@@ -119,6 +110,14 @@
 					'varying float c;',
 					'varying float s;',
 					'varying float t;',
+
+					'const vec2 HALF = vec2(0.5);',
+					'vec2 adjustedCoords(vec2 coords, vec2 res, mat4 inv) {',
+					'	vec4 c4 = vec4((coords - HALF) * 2.0 * resolution, 0.0, 1.0);',
+					'	c4 = inv * c4;',
+					'	vec2 adjusted = c4.xy / c4.w;',
+					'	return adjusted / res / 2.0 + HALF;',
+					'}',
 
 					'void main(void) {',
 					'   c = cos(angle);',
@@ -134,9 +133,8 @@
 					'	gl_Position.z = screenPosition.z * 2.0 / (resolution.x / resolution.y);',
 					'	gl_Position.w = screenPosition.w;',
 
-					'	vec2 adjustedTexCoord = (texCoord - 0.5) * resolution;',
-					'	vTexCoordA = adjustedTexCoord / resolutionA + 0.5;',
-					'	vTexCoordB = adjustedTexCoord / resolutionB + 0.5;',
+					'	vTexCoordA = adjustedCoords(texCoord, sourceResolution[0], sourceTransform[0]);',
+					'	vTexCoordB = adjustedCoords(texCoord, sourceResolution[0], sourceTransform[1]);',
 					'	vTexCoord = texCoord;',
 					'}'
 				].join('\n');
@@ -186,21 +184,6 @@
 				].join('\n');
 
 				return shaderSource;
-			},
-			draw: function (shader, model, uniforms, frameBuffer, parent) {
-				if (uniforms.split >= 1) {
-					uniforms.source = uniforms.sourceB;
-					parent(baseShader, model, uniforms, frameBuffer);
-					return;
-				}
-
-				if (uniforms.split <= 0) {
-					uniforms.source = uniforms.sourceA;
-					parent(baseShader, model, uniforms, frameBuffer);
-					return;
-				}
-
-				parent(shader, model, uniforms, frameBuffer);
 			},
 			inPlace: false,
 			requires: function (sourceName, inputs) {
