@@ -3993,6 +3993,9 @@
 				this.uniforms.source = this.source.texture;
 
 				/*
+				todo: re-work this code so target node still uses base shader but
+				ignores source transform so that it doesn't have to rasterize the whole image?
+
 				if (this.source.width === this.width && this.source.height === this.height) {
 					this.uniforms.transform = this.source.cumulativeMatrix || identity;
 				} else if (this.transformDirty) {
@@ -4013,8 +4016,10 @@
 				}
 				*/
 
-				//todo: bring back transformDirty
-				mat4.inverse(this.source.cumulativeMatrix || identity, this.uniforms.sourceTransform);
+				if (this.transformDirty && this.source.cumulativeMatrix) {
+					mat4.inverse(this.source.cumulativeMatrix, this.uniforms.sourceTransform);
+					this.transformDirty = false;
+				}
 
 				draw(baseShader, rectangleModel, this.uniforms, this.frameBuffer.frameBuffer, this, outputRenderOptions);
 
