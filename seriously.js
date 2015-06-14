@@ -4984,8 +4984,8 @@
 				descriptor;
 
 			while (nodes.length) {
-				node = nodes.shift();
-				node.destroy();
+				node = nodes[0];
+				node.pub.destroy();
 			}
 
 			for (i in this) {
