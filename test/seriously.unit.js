@@ -2466,7 +2466,7 @@
 
 
 	module('Destroy');
-	test('Destroy things', 20, function() {
+	test('Destroy things', 21, function() {
 		var seriously, source, target, effect, transform, canvas,
 			seriouslyId, sourceId, targetId, effectId, transformId;
 
@@ -2515,6 +2515,7 @@
 		seriously.destroy();
 		ok(seriously.isDestroyed(), 'Destroyed Seriously instance is destroyed');
 		equal(seriously.id, seriouslyId, 'id property retained on destroyed Seriously instance');
+		equal(target.width, undefined, 'Destorying Seriously instance cleans up node objects');
 
 		ok(source.isDestroyed(), 'Destroy Seriously instance destroys source');
 		ok(effect.isDestroyed(), 'Destroy Seriously instance destroys effect');
