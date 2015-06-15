@@ -937,7 +937,7 @@
 		function makeShaderSetter(info, loc) {
 			if (info.type === gl.SAMPLER_2D) {
 				return function (value) {
-					info.glTexture = gl['TEXTURE' + value];
+					info.glTexture = gl.TEXTURE0 + value;
 					gl.uniform1i(loc, value);
 				};
 			}
@@ -968,19 +968,19 @@
 
 			if (info.type === gl.FLOAT_VEC2) {
 				return function (obj) {
-					gl.uniform2f(loc, obj[0], obj[1]);
+					gl.uniform2fv(loc, obj);
 				};
 			}
 
 			if (info.type === gl.FLOAT_VEC3) {
 				return function (obj) {
-					gl.uniform3f(loc, obj[0], obj[1], obj[2]);
+					gl.uniform3fv(loc, obj);
 				};
 			}
 
 			if (info.type === gl.FLOAT_VEC4) {
 				return function (obj) {
-					gl.uniform4f(loc, obj[0], obj[1], obj[2], obj[3]);
+					gl.uniform4fv(loc, obj);
 				};
 			}
 
@@ -3876,7 +3876,7 @@
 
 			this.uniforms.resolution[0] = this.width;
 			this.uniforms.resolution[1] = this.height;
-			this.uniforms.sourceResolution = [1, 1];
+			this.uniforms.sourceResolution = new Float32Array([1, 1]);
 			this.uniforms.sourceTransform = new Float32Array(identity);
 			this.uniforms.transform = new Float32Array(identity);
 
@@ -4688,6 +4688,10 @@
 				this.transformDirty = false;
 			}
 
+			/*
+			todo: remove this junk and any reference to the frameBuffer, but figure out what
+			to do about readPixels on transform nodes
+			*/
 			if (false && renderTransform && gl) {
 				if (this.renderDirty) {
 					if (!this.frameBuffer) {
