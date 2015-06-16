@@ -29,9 +29,6 @@
 	<canvas id="canvas" width="640" height="619"></canvas>
 	<div id="controls">
 		<div>
-			<label>Amount <input type="range" id="amount" min="0" max="1" step="0.001" value="1"/></label>
-		</div>
-		<div>
 			<label>Look-Up Table
 				<select id="lut">
 					<option value="">Original</option>
@@ -40,6 +37,9 @@
 					<option value="supervivid">Super Vivid</option>
 				</select>
 			</label>
+		</div>
+		<div>
+			<label>Amount <input type="range" id="amount" min="0" max="1" step="0.001" value="1"/></label>
 		</div>
 	</div>
 	<script src="../../lib/require.js"></script>
