@@ -1086,7 +1086,8 @@
 			Effect, Source, Transform, Target,
 			auto = false,
 			isDestroyed = false,
-			rafId;
+			rafId,
+			renderPassId = 0;
 
 		function makeGlModel(shape, gl) {
 			var vertex, index, texCoord;
@@ -1415,6 +1416,10 @@
 			}
 		}
 
+		function incRenderPass() {
+			renderPassId = (renderPassId + 1) % (Number.MAX_SAFE_INTEGER / 2);
+		}
+
 		function draw(shader, model, uniforms, frameBuffer, node, options) {
 			var numTextures = 0,
 				name, value, shaderUniform,
@@ -1568,39 +1573,11 @@
 			return node;
 		}
 
-		//trace back all sources to make sure we're not making a cyclical connection
-		function traceSources(node, original) {
-			var i,
-				source,
-				nodeSources;
-
-			if (!(node instanceof EffectNode) && !(node instanceof TransformNode)) {
-				return false;
-			}
-
-			if (node === original) {
-				return true;
-			}
-
-			nodeSources = node.sources;
-
-			for (i in nodeSources) {
-				if (nodeSources.hasOwnProperty(i)) {
-					source = nodeSources[i];
-
-					if (source === original || traceSources(source, original)) {
-						return true;
-					}
-				}
-			}
-
-			return false;
-		}
-
 		Node = function () {
 			this.ready = false;
 			this.width = 1;
 			this.height = 1;
+			this.lastRenderPass = -1;
 
 			this.gl = gl;
 
@@ -2011,6 +1988,7 @@
 			});
 
 			this.render = function () {
+				incRenderPass();
 				me.render();
 				return this;
 			};
@@ -2189,7 +2167,7 @@
 				}
 			}
 
-			this.updateReady();
+			this.setReady();
 			this.inPlace = this.effect.inPlace;
 
 			this.pub = new Effect(this);
@@ -2239,7 +2217,9 @@
 		};
 
 		EffectNode.prototype.resize = function () {
-			var i;
+			var i,
+				w = this.width,
+				h = this.height;
 
 			Node.prototype.resize.call(this);
 
@@ -2247,26 +2227,61 @@
 				this.effect.resize.call(this);
 			}
 
-			for (i = 0; i < this.targets.length; i++) {
-				this.targets[i].resize();
+			if (w !== this.width || w !== this.height) {
+				for (i = 0; i < this.targets.length; i++) {
+					this.targets[i].resize();
+				}
 			}
 		};
 
-		EffectNode.prototype.updateReady = function () {
+		EffectNode.prototype.setReady = function () {
 			var i,
 				input,
 				key,
 				effect,
 				ready = true,
-				method;
+				visitedNodes = Object.create(null);
 
+			function traverseSources(node) {
+				var key;
+
+				if (!node) {
+					return false;
+				}
+
+				if (visitedNodes[node.id]) {
+					return true;
+				}
+
+				visitedNodes[node.id] = true;
+
+				if (node.effect) {
+					for (key in node.effect.inputs) {
+						if (node.effect.inputs.hasOwnProperty(key) && node.effect.inputs[key].type === 'image') {
+							if (!traverseSources(node.sources[key])) {
+								return false;
+							}
+						}
+					}
+					return true;
+				}
+
+				if (node.source && !(node instanceof SourceNode)) {
+					return traverseSources(node.source);
+				}
+
+				return node.ready;
+			}
+
+			visitedNodes[this.id] = true;
 			effect = this.effect;
 			for (key in effect.inputs) {
 				if (effect.inputs.hasOwnProperty(key)) {
 					input = this.effect.inputs[key];
 					if (input.type === 'image' &&
-							(!this.sources[key] || !this.sources[key].ready) &&
-							(!effect.requires || effect.requires.call(this, key, this.inputs))
+							// (!this.sources[key] || !this.sources[key].ready) &&
+							(!effect.requires || effect.requires.call(this, key, this.inputs)) &&
+							!traverseSources(this.sources[key])
 							) {
 						ready = false;
 						break;
@@ -2274,22 +2289,22 @@
 				}
 			}
 
-			if (this.ready !== ready) {
-				this.ready = ready;
-				this.emit(ready ? 'ready' : 'unready');
-				method = ready ? 'setReady' : 'setUnready';
+			if (!ready) {
+				this.setUnready();
+			} else if (!this.ready) {
+				this.ready = true;
+				this.emit('ready');
 
 				if (this.targets) {
 					for (i = 0; i < this.targets.length; i++) {
-						this.targets[i][method]();
+						this.targets[i].setReady();
 					}
 				}
 			}
 		};
 
-		EffectNode.prototype.setReady = EffectNode.prototype.updateReady;
-
-		EffectNode.prototype.setUnready = EffectNode.prototype.updateReady;
+		// EffectNode.prototype.setReady = EffectNode.prototype.setReady;
+		// EffectNode.prototype.setUnready = EffectNode.prototype.setReady;
 
 		EffectNode.prototype.addTarget = function (target) {
 			var i;
@@ -2397,6 +2412,12 @@
 				return;
 			}
 
+			//prevent infinite loops if node graph is cyclical
+			if (this.lastRenderPass >= renderPassId) {
+				return;
+			}
+			this.lastRenderPass = renderPassId;
+
 			if (!this.initialized) {
 				this.initialize();
 			}
@@ -2474,10 +2495,6 @@
 						if (value !== this.sources[name]) {
 							disconnectSource();
 
-							if (traceSources(value, this)) {
-								throw new Error('Attempt to make cyclical connection.');
-							}
-
 							this.sources[name] = value;
 							value.addTarget(this);
 						}
@@ -2517,9 +2534,9 @@
 
 				if (input.type === 'image') {
 					this.resize();
-					this.updateReady();
+					this.setReady();
 				} else if (input.updateSources) {
-					this.updateReady();
+					this.setReady();
 				}
 
 				if (input.shaderDirty) {
@@ -3070,6 +3087,7 @@
 			});
 
 			this.render = function () {
+				incRenderPass();
 				me.render();
 			};
 
@@ -3922,6 +3940,8 @@
 		TargetNode.prototype.renderWebGL = function () {
 			var matrix, x, y;
 
+			incRenderPass();
+
 			this.resize();
 
 			if (gl && this.dirty && this.ready) {
@@ -3965,6 +3985,8 @@
 				matrix,
 				x,
 				y;
+
+			incRenderPass();
 
 			if (this.dirty && this.ready && this.source) {
 				this.emit('render');
@@ -4441,7 +4463,9 @@
 		};
 
 		TransformNode.prototype.resize = function () {
-			var i;
+			var i,
+				w = this.width,
+				h = this.height;
 
 			Node.prototype.resize.call(this);
 
@@ -4449,8 +4473,11 @@
 				this.plugin.resize.call(this);
 			}
 
-			for (i = 0; i < this.targets.length; i++) {
-				this.targets[i].resize();
+			//prevent infinite loops
+			if (w !== this.width || h !== this.height) {
+				for (i = 0; i < this.targets.length; i++) {
+					this.targets[i].resize();
+				}
 			}
 
 			this.setTransformDirty();
@@ -4465,10 +4492,6 @@
 
 			if (newSource === this.source) {
 				return;
-			}
-
-			if (traceSources(newSource, this)) {
-				throw new Error('Attempt to make cyclical connection.');
 			}
 
 			if (this.source) {
@@ -4600,6 +4623,12 @@
 
 				return;
 			}
+
+			//prevent infinite loops if node graph is cyclical
+			if (this.lastRenderPass >= renderPassId) {
+				return;
+			}
+			this.lastRenderPass = renderPassId;
 
 			this.source.render();
 

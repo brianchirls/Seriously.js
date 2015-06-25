@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Loop</title>
+	<style type="text/css">
+		body {
+			margin: 0;
+		}
+
+		img, video {
+			display: none;
+		}
+
+		#canvas {
+			position: absolute;
+			top: 0;
+			left: 0;
+			width: 100%;
+			height: 100%;
+		}
+
+	</style>
+</head>
+<body>
+	<canvas id="canvas" width="960" height="540"></canvas>
+	<script src="../../lib/require.js"></script>
+	<img src="../images/pencils.jpg" id="pencils"/>
+	<script>
+		require.config({
+			baseUrl: '../../'
+		});
+
+		require([
+			'seriously',
+			'effects/seriously.blend'
+		], function (Seriously) {
+			// declare our variables
+			var seriously, // the main object that holds the entire composition
+				target, // a wrapper object for our target canvas
+				transform,
+				reformat,
+				blend;
+
+			function resize() {
+				var aspect = window.innerWidth / window.innerHeight;
+				target.width = Math.min(960, window.innerWidth);
+				target.height = target.width / aspect;
+				reformat.width = target.width;
+				reformat.height = target.height;
+
+				//temp
+				target.width = 411;
+				target.height = 425;
+			}
+
+			window.onresize = resize;
+
+			seriously = new Seriously();
+			reformat = seriously.transform('reformat');
+			transform = seriously.transform('2d');
+			blend = seriously.effect('blend');
+			target = seriously.target('#canvas');
+
+			reformat.mode = 'none';
+			reformat.source = '#pencils';
+
+			blend.top = '#pencils';
+			blend.sizeMode = 'top';
+
+			transform.source = blend;
+			transform.scale(1.05);
+
+			blend.bottom = blend;//transform; //loop!
+			// blend.bottom = '#pencils';
+
+			target.source = blend;
+
+			resize();
+			seriously.go(function (now) {
+				transform.rotation += 0.1;
+			});
+		});
+	</script>
+</body>
+</html>

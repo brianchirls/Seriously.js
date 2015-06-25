@@ -120,6 +120,7 @@
 				node,
 				fn,
 				i,
+				changed = false,
 				bottom = this.inputs.bottom,
 				top = this.inputs.top;
 
@@ -152,6 +153,7 @@
 			}
 
 			if (this.width !== width || this.height !== height) {
+				changed = true;
 				this.width = width;
 				this.height = height;
 
@@ -182,8 +184,11 @@
 				}
 			}
 
-			for (i = 0; i < this.targets.length; i++) {
-				this.targets[i].resize();
+			if (changed) {
+				//prevent infinite loops
+				for (i = 0; i < this.targets.length; i++) {
+					this.targets[i].resize();
+				}
 			}
 		};
 
