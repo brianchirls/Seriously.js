@@ -107,6 +107,7 @@
 				mode = mode.toLowerCase();
 
 				shaderSource.fragment = [
+					'#define SHADER_NAME seriously.accumulator.' + mode,
 					'precision mediump float;',
 
 					'const vec3 ZERO = vec3(0.0);',

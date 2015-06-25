@@ -88,6 +88,8 @@
 		dstAlpha: 0x0303 //ONE_MINUS_SRC_ALPHA
 	},
 
+	shaderNameRegex = /^[\t ]*#define[\t ]+SHADER_NAME/i,
+
 	baseVertexShader,
 	baseFragmentShader,
 
@@ -1161,7 +1163,10 @@
 
 			rectangleModel = buildRectangleModel(gl);
 
-			baseShader = new ShaderProgram(gl, baseVertexShader, baseFragmentShader);
+			baseShader = new ShaderProgram(
+				gl,
+				'#define SHADER_NAME seriously.base\n' + baseVertexShader, '#define SHADER_NAME seriously.base\n' + baseFragmentShader
+			);
 
 			for (i = 0; i < effects.length; i++) {
 				node = effects[i];
@@ -2323,7 +2328,19 @@
 		};
 
 		EffectNode.prototype.buildShader = function () {
-			var shader, effect = this.effect;
+			var shader,
+				effect = this.effect,
+				me = this;
+
+			function addShaderName(shaderSrc) {
+				if (shaderNameRegex.test(shaderSrc)) {
+					return shaderSrc;
+				}
+
+				return '#define SHADER_NAME seriously.' + me.hook + '\n' +
+					shaderSrc;
+			}
+
 			if (this.shaderDirty) {
 				if (effect.commonShader && commonShaders[this.hook]) {
 					if (!this.shader) {
@@ -2342,7 +2359,11 @@
 					if (shader instanceof ShaderProgram) {
 						this.shader = shader;
 					} else if (shader && shader.vertex && shader.fragment) {
-						this.shader = new ShaderProgram(gl, shader.vertex, shader.fragment);
+						this.shader = new ShaderProgram(
+							gl,
+							addShaderName(shader.vertex),
+							addShaderName(shader.fragment)
+						);
 					} else {
 						this.shader = baseShader;
 					}
