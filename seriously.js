@@ -300,7 +300,7 @@
 		'id',
 		'incompatible',
 		'isDestroyed',
-		'isEffect',,
+		'isEffect',
 		'isNode',
 		'isSource',
 		'isTarget',
@@ -1685,7 +1685,7 @@
 			//todo: figure out formats and types
 			if (dest === undefined) {
 				dest = new Uint8Array(width * height * 4);
-			} else if (!dest instanceof Uint8Array) {
+			} else if (!(dest instanceof Uint8Array)) {
 				throw new Error('Incompatible array type');
 			}
 
@@ -4638,7 +4638,7 @@
 
 			if (dest === undefined) {
 				dest = new Uint8Array(width * height * 4);
-			} else if (!dest instanceof Uint8Array) {
+			} else if (!(dest instanceof Uint8Array)) {
 				throw new Error('Incompatible array type');
 			}
 
@@ -5635,7 +5635,6 @@
 
 	Seriously.source('video', function (video, options, force) {
 		var me = this,
-			video,
 			key,
 			opts,
 
