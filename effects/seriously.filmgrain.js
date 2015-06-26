@@ -25,7 +25,7 @@ Modified to preserve alpha
 		}
 		factory(root.Seriously);
 	}
-}(this, function (Seriously) {
+}(window, function (Seriously) {
 	'use strict';
 
 	Seriously.plugin('filmgrain', {

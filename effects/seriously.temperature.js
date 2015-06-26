@@ -14,7 +14,7 @@
 		}
 		factory(root.Seriously);
 	}
-}(this, function (Seriously) {
+}(window, function (Seriously) {
 	'use strict';
 
 	// algorithm from http://www.tannerhelland.com/4435/convert-temperature-rgb-algorithm-code/

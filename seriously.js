@@ -20,7 +20,7 @@
 		// Browser globals
 		root.Seriously = factory(root);
 	}
-}(this, function (window) {
+}(window, function (window) {
 	'use strict';
 
 	var document = window.document,

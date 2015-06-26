@@ -14,7 +14,7 @@
 		}
 		factory(root.Seriously);
 	}
-}(this, function (Seriously) {
+}(window, function (Seriously) {
 	'use strict';
 
 	//http://msdn.microsoft.com/en-us/library/bb313868(v=xnagamestudio.10).aspx

@@ -17,7 +17,7 @@
 		*/
 		factory(root.Seriously);
 	}
-}(this, function (Seriously) {
+}(window, function (Seriously) {
 	'use strict';
 
 	/*
