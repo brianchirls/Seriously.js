@@ -17,9 +17,9 @@
 }(window, function (Seriously) {
 	'use strict';
 
-	//inspired by Evan Wallace (https://github.com/evanw/glfx.js)
+	// algorithm from http://www.tannerhelland.com/4435/convert-temperature-rgb-algorithm-code/
 
-	Seriously.plugin('hue-saturation', {
+	Seriously.plugin('temperature', {
 		commonShader: true,
 		shader: function (inputs, shaderSource) {
 			shaderSource.vertex = [
@@ -29,65 +29,54 @@
 				'attribute vec2 texCoord;',
 
 				'uniform vec2 resolution;',
-				'uniform mat4 projection;',
 				'uniform mat4 transform;',
 
-				'uniform float hue;',
-				'uniform float saturation;',
+				'uniform float temperature;',
 
 				'varying vec2 vTexCoord;',
+				'varying vec3 tempFactor;',
 
-				'varying vec3 weights;',
+				'const vec3 luma = vec3(0.2125,0.7154,0.0721);',
+
+				'vec3 temperatureRGB(float t) {',
+				'	float temp = t / 100.0;',
+				'	vec3 color = vec3(1.0);',
+				'	if (temp < 66.0) {',
+				'		color.g = 0.3900815787690196 * log(temp) - 0.6318414437886275;',
+				'		color.b = 0.543206789110196 * log(temp - 10.0) - 1.19625408914;',
+				'	} else {',
+				'		color.r = 1.292936186062745 * pow(temp - 60.0, -0.1332047592);',
+				'		color.g = 1.129890860895294 * pow(temp - 60.0, -0.0755148492);',
+				'	}',
+				'	return color;',
+				'}',
 
 				'void main(void) {',
-				'	float angle = hue * 3.14159265358979323846264;',
-				'	float s = sin(angle);',
-				'	float c = cos(angle);',
-				'	weights = (vec3(2.0 * c, -sqrt(3.0) * s - c, sqrt(3.0) * s - c) + 1.0) / 3.0;',
-
 				// first convert to screen space
 				'	vec4 screenPosition = vec4(position.xy * resolution / 2.0, position.z, position.w);',
 				'	screenPosition = transform * screenPosition;',
 
 				// convert back to OpenGL coords
-				'	gl_Position = screenPosition;',
 				'	gl_Position.xy = screenPosition.xy * 2.0 / resolution;',
 				'	gl_Position.z = screenPosition.z * 2.0 / (resolution.x / resolution.y);',
+				'	gl_Position.w = screenPosition.w;',
 				'	vTexCoord = texCoord;',
-				'}'
+				'	vec3 tempColor = temperatureRGB(temperature);',
+				'	tempFactor = dot(tempColor, luma) / tempColor;',
+				'}\n'
 			].join('\n');
+
 			shaderSource.fragment = [
 				'precision mediump float;',
 
 				'varying vec2 vTexCoord;',
-
-				'varying vec3 weights;',
+				'varying vec3 tempFactor;',
 
 				'uniform sampler2D source;',
-				'uniform float hue;',
-				'uniform float saturation;',
 
 				'void main(void) {',
-				'	vec4 color = texture2D(source, vTexCoord);',
-
-				//adjust hue
-				'	float len = length(color.rgb);',
-				'	color.rgb = vec3(' +
-						'dot(color.rgb, weights.xyz), ' +
-						'dot(color.rgb, weights.zxy), ' +
-						'dot(color.rgb, weights.yzx) ' +
-				');',
-
-				//adjust saturation
-				'	vec3 adjustment = (color.r + color.g + color.b) / 3.0 - color.rgb;',
-				'	if (saturation > 0.0) {',
-				'		adjustment *= (1.0 - 1.0 / (1.0 - saturation));',
-				'	} else {',
-				'		adjustment *= (-saturation);',
-				'	}',
-				'	color.rgb += adjustment;',
-
-				'	gl_FragColor = color;',
+				'	vec4 pixel = texture2D(source, vTexCoord);',
+				'	gl_FragColor = vec4(pixel.rgb * tempFactor, pixel.a);',
 				'}'
 			].join('\n');
 			return shaderSource;
@@ -98,22 +87,15 @@
 				type: 'image',
 				uniform: 'source'
 			},
-			hue: {
+			temperature: {
 				type: 'number',
-				uniform: 'hue',
-				defaultValue: 0.4,
-				min: -1,
-				max: 1
-			},
-			saturation: {
-				type: 'number',
-				uniform: 'saturation',
-				defaultValue: 0,
-				min: -1,
-				max: 1
+				uniform: 'temperature',
+				defaultValue: 6500,
+				min: 3000,
+				max: 25000
 			}
 		},
-		title: 'Hue/Saturation',
-		description: 'Rotate hue and multiply saturation.'
+		title: 'Color Temperature',
+		description: ''
 	});
 }));

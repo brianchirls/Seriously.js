@@ -20,7 +20,7 @@
 		// Browser globals
 		root.Seriously = factory(root);
 	}
-}(this, function (window) {
+}(window, function (window) {
 	'use strict';
 
 	var document = window.document,
@@ -80,6 +80,18 @@
 
 	vectorFields = ['x', 'y', 'z', 'w'],
 	colorFields = ['r', 'g', 'b', 'a'],
+
+	outputRenderOptions = {
+		srcRGB: 0x0302, //SRC_ALPHA
+		dstRGB: 0x0303, //ONE_MINUS_SRC_ALPHA
+		srcAlpha: 0x01, //ONE
+		dstAlpha: 0x0303 //ONE_MINUS_SRC_ALPHA
+	},
+
+	shaderNameRegex = /^[\t ]*#define[\t ]+SHADER_NAME/i,
+
+	baseVertexShader,
+	baseFragmentShader,
 
 	/*
 		utility functions
@@ -294,7 +306,7 @@
 		'id',
 		'incompatible',
 		'isDestroyed',
-		'isEffect',,
+		'isEffect',
 		'isNode',
 		'isSource',
 		'isTarget',
@@ -992,7 +1004,7 @@
 				info: gl.getActiveUniform(program, i)
 			};
 
-			obj.name = obj.info.name;
+			obj.name = obj.info.name.replace(/\[0\]$/, '');
 			obj.loc = gl.getUniformLocation(program, obj.name);
 			obj.set = makeShaderSetter(obj.info, obj.loc);
 			obj.get = makeShaderGetter(obj.loc);
@@ -1077,7 +1089,6 @@
 			rectangleModel,
 			commonShaders = {},
 			baseShader,
-			baseVertexShader, baseFragmentShader,
 			Node, SourceNode, EffectNode, TransformNode, TargetNode,
 			Effect, Source, Transform, Target,
 			auto = false,
@@ -1145,7 +1156,10 @@
 			}
 
 			if (!baseShader) {
-				baseShader = new ShaderProgram(gl, baseVertexShader, baseFragmentShader);
+				baseShader = new ShaderProgram(
+					gl,
+					'#define SHADER_NAME seriously.base\n' + baseVertexShader, '#define SHADER_NAME seriously.base\n' + baseFragmentShader
+				);
 			}
 		}
 
@@ -1211,7 +1225,7 @@
 
 				context = getWebGlContext(target, {
 					alpha: true,
-					premultipliedAlpha: false,
+					premultipliedAlpha: true,
 					preserveDrawingBuffer: true,
 					stencil: true,
 					debugContext: primaryTarget.debugContext
@@ -1647,7 +1661,7 @@
 			//todo: figure out formats and types
 			if (dest === undefined) {
 				dest = new Uint8Array(width * height * 4);
-			} else if (!dest instanceof Uint8Array) {
+			} else if (!(dest instanceof Uint8Array)) {
 				throw new Error('Incompatible array type');
 			}
 
@@ -2189,6 +2203,7 @@
 		};
 
 		EffectNode.prototype = Object.create(Node.prototype);
+		EffectNode.prototype.constructor = EffectNode;
 
 		EffectNode.prototype.initialize = function () {
 			var that = this;
@@ -2241,6 +2256,9 @@
 				}
 				if (this.shader.destroy && this.shader !== baseShader && !commonShaders[hook]) {
 					this.shader.destroy();
+					if (this.effect.commonShader) {
+						delete commonShaders[this.hook];
+					}
 				}
 			}
 
@@ -2347,7 +2365,19 @@
 		};
 
 		EffectNode.prototype.buildShader = function () {
-			var shader, effect = this.effect;
+			var shader,
+				effect = this.effect,
+				me = this;
+
+			function addShaderName(shaderSrc) {
+				if (shaderNameRegex.test(shaderSrc)) {
+					return shaderSrc;
+				}
+
+				return '#define SHADER_NAME seriously.' + me.hook + '\n' +
+					shaderSrc;
+			}
+
 			if (this.shaderDirty) {
 				if (effect.commonShader && commonShaders[this.hook]) {
 					if (!this.shader) {
@@ -2366,7 +2396,11 @@
 					if (shader instanceof ShaderProgram) {
 						this.shader = shader;
 					} else if (shader && shader.vertex && shader.fragment) {
-						this.shader = new ShaderProgram(gl, shader.vertex, shader.fragment);
+						this.shader = new ShaderProgram(
+							gl,
+							addShaderName(shader.vertex),
+							addShaderName(shader.fragment)
+						);
 					} else {
 						this.shader = baseShader;
 					}
@@ -3291,6 +3325,7 @@
 		};
 
 		SourceNode.prototype = Object.create(Node.prototype);
+		SourceNode.prototype.constructor = SourceNode;
 
 		SourceNode.prototype.initialize = function () {
 			var texture;
@@ -3680,7 +3715,7 @@
 			}
 
 			opts = options || {};
-			flip = opts.flip === undefined ? true : opts.flip
+			flip = opts.flip === undefined ? true : opts.flip;
 			width = parseInt(opts.width, 10);
 			height = parseInt(opts.height, 10);
 			debugContext = opts.debugContext;
@@ -3718,7 +3753,7 @@
 					triedWebGl = true;
 					context = getWebGlContext(target, {
 						alpha: true,
-						premultipliedAlpha: false,
+						premultipliedAlpha: true,
 						preserveDrawingBuffer: true,
 						stencil: true,
 						debugContext: debugContext
@@ -3842,6 +3877,7 @@
 		};
 
 		TargetNode.prototype = Object.create(Node.prototype);
+		TargetNode.prototype.constructor = TargetNode;
 
 		TargetNode.prototype.setSource = function (source) {
 			var newSource;
@@ -3959,7 +3995,7 @@
 					this.transformDirty = false;
 				}
 
-				draw(baseShader, rectangleModel, this.uniforms, this.frameBuffer.frameBuffer, this);
+				draw(baseShader, rectangleModel, this.uniforms, this.frameBuffer.frameBuffer, this, outputRenderOptions);
 
 				this.emit('render');
 				this.dirty = false;
@@ -4008,7 +4044,7 @@
 				}
 
 				this.uniforms.source = this.texture;
-				draw(this.shader, this.model, this.uniforms, null, this);
+				draw(this.shader, this.model, this.uniforms, null, this, outputRenderOptions);
 
 				this.dirty = false;
 			}
@@ -4244,7 +4280,7 @@
 			// attach methods
 			for (key in me.methods) {
 				if (me.methods.hasOwnProperty(key)) {
-					this[key] = makeMethod(me.methods[key].bind(me));
+					this[key] = makeMethod(me.methods[key]);
 				}
 			}
 
@@ -4454,6 +4490,7 @@
 		};
 
 		TransformNode.prototype = Object.create(Node.prototype);
+		TransformNode.prototype.constructor = TransformNode;
 
 		TransformNode.prototype.setDirty = function () {
 			this.renderDirty = true;
@@ -4707,7 +4744,7 @@
 
 			if (dest === undefined) {
 				dest = new Uint8Array(width * height * 4);
-			} else if (!dest instanceof Uint8Array) {
+			} else if (!(dest instanceof Uint8Array)) {
 				throw new Error('Incompatible array type');
 			}
 
@@ -4848,7 +4885,6 @@
 		this.target = function (hook, target, options) {
 			var targetNode,
 				element,
-				hook,
 				i;
 
 			if (hook && typeof hook === 'string' && !seriousTargets[hook]) {
@@ -4968,8 +5004,8 @@
 				descriptor;
 
 			while (nodes.length) {
-				node = nodes.shift();
-				node.destroy();
+				node = nodes[0];
+				node.pub.destroy();
 			}
 
 			for (i in this) {
@@ -4984,8 +5020,6 @@
 				}
 			}
 
-			baseFragmentShader = null;
-			baseVertexShader = null;
 			seriously = null;
 
 			//todo: do we really need to allocate new arrays here?
@@ -5084,48 +5118,6 @@
 		});
 
 		//todo: load, save, find
-
-		baseVertexShader = [
-			'precision mediump float;',
-
-			'attribute vec4 position;',
-			'attribute vec2 texCoord;',
-
-			'uniform vec2 resolution;',
-			'uniform mat4 transform;',
-
-			'varying vec2 vTexCoord;',
-
-			'void main(void) {',
-			// first convert to screen space
-			'	vec4 screenPosition = vec4(position.xy * resolution / 2.0, position.z, position.w);',
-			'	screenPosition = transform * screenPosition;',
-
-			// convert back to OpenGL coords
-			'	gl_Position.xy = screenPosition.xy * 2.0 / resolution;',
-			'	gl_Position.z = screenPosition.z * 2.0 / (resolution.x / resolution.y);',
-			'	gl_Position.w = screenPosition.w;',
-			'	vTexCoord = texCoord;',
-			'}\n'
-		].join('\n');
-
-		baseFragmentShader = [
-			'precision mediump float;',
-
-			'varying vec2 vTexCoord;',
-
-			'uniform sampler2D source;',
-
-			'void main(void) {',
-			/*
-			'	if (any(lessThan(vTexCoord, vec2(0.0))) || any(greaterThanEqual(vTexCoord, vec2(1.0)))) {',
-			'		gl_FragColor = vec4(0.0);',
-			'	} else {',
-			*/
-			'		gl_FragColor = texture2D(source, vTexCoord);',
-			//'	}',
-			'}'
-		].join('\n');
 
 		this.defaults(options.defaults);
 	}
@@ -5753,7 +5745,6 @@
 
 	Seriously.source('video', function (video, options, force) {
 		var me = this,
-			video,
 			key,
 			opts,
 
@@ -6527,8 +6518,49 @@
 	todo: additional transform node types
 	- perspective
 	- matrix
-	- crop? - maybe not - probably would just scale.
 	*/
+
+	baseVertexShader = [
+		'precision mediump float;',
+
+		'attribute vec4 position;',
+		'attribute vec2 texCoord;',
+
+		'uniform vec2 resolution;',
+		'uniform mat4 transform;',
+
+		'varying vec2 vTexCoord;',
+
+		'void main(void) {',
+		// first convert to screen space
+		'	vec4 screenPosition = vec4(position.xy * resolution / 2.0, position.z, position.w);',
+		'	screenPosition = transform * screenPosition;',
+
+		// convert back to OpenGL coords
+		'	gl_Position.xy = screenPosition.xy * 2.0 / resolution;',
+		'	gl_Position.z = screenPosition.z * 2.0 / (resolution.x / resolution.y);',
+		'	gl_Position.w = screenPosition.w;',
+		'	vTexCoord = texCoord;',
+		'}\n'
+	].join('\n');
+
+	baseFragmentShader = [
+		'precision mediump float;',
+
+		'varying vec2 vTexCoord;',
+
+		'uniform sampler2D source;',
+
+		'void main(void) {',
+		/*
+		'	if (any(lessThan(vTexCoord, vec2(0.0))) || any(greaterThanEqual(vTexCoord, vec2(1.0)))) {',
+		'		gl_FragColor = vec4(0.0);',
+		'	} else {',
+		*/
+		'		gl_FragColor = texture2D(source, vTexCoord);',
+		//'	}',
+		'}'
+	].join('\n');
 
 	/*
 	 * simplex noise shaders

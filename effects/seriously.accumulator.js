@@ -14,7 +14,7 @@
 		}
 		factory(root.Seriously);
 	}
-}(this, function (Seriously) {
+}(window, function (Seriously) {
 	'use strict';
 
 	/*
@@ -107,6 +107,7 @@
 				mode = mode.toLowerCase();
 
 				shaderSource.fragment = [
+					'#define SHADER_NAME seriously.accumulator.' + mode,
 					'precision mediump float;',
 
 					'const vec3 ZERO = vec3(0.0);',
@@ -266,6 +267,7 @@
 					'uniform sampler2D previous;',
 
 					'uniform float opacity;',
+					'uniform float blendGamma;',
 
 					'vec3 BlendOpacity(vec4 base, vec4 blend, float opacity) {',
 					//apply blend, then mix by (opacity * blend.a)
@@ -273,8 +275,13 @@
 					'	return mix(base.rgb, blendedColor, opacity * blend.a);',
 					'}',
 
+					'vec4 linear(vec4 color, vec3 gamma) {',
+					'	return vec4(pow(color.rgb, gamma), color.a);',
+					'}',
+
 					'void main(void) {',
-					'	vec4 topPixel = texture2D(source, vTexCoord);',
+					'	vec3 exp = vec3(blendGamma);',
+					'	vec4 topPixel = linear(texture2D(source, vTexCoord), exp);',
 					'	vec4 bottomPixel = texture2D(previous, vTexCoord);',
 
 					'	if (topPixel.a == 0.0) {',
@@ -287,7 +294,8 @@
 					'#else',
 					'		alpha = bottomPixel.a;',
 					'#endif',
-					'		gl_FragColor = vec4(BlendOpacity(bottomPixel, topPixel, opacity), alpha);',
+					'		bottomPixel = linear(bottomPixel, exp);',
+					'		gl_FragColor = vec4(pow(BlendOpacity(bottomPixel, topPixel, opacity), 1.0 / exp), alpha);',
 					'	}',
 					'}'
 				].join('\n');
@@ -344,6 +352,13 @@
 				defaultValue: 1,
 				min: 0,
 				max: 1
+			},
+			blendGamma: {
+				type: 'number',
+				uniform: 'blendGamma',
+				defaultValue: 2.2,
+				min: 0,
+				max: 4
 			},
 			blendMode: {
 				type: 'enum',

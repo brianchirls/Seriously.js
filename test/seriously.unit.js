@@ -2120,6 +2120,7 @@
 			canvas,
 			source,
 			effect,
+			commonEffect,
 			target,
 
 			gl,
@@ -2147,6 +2148,7 @@
 			Seriously.logger.log = nop;
 			seriously.destroy();
 			Seriously.removePlugin('test');
+			Seriously.removePlugin('common-shader');
 			start();
 		}
 
@@ -2218,6 +2220,26 @@
 			}
 		});
 
+		Seriously.plugin('common-shader', {
+			title: 'Test Effect with common shader',
+			commonShader: true,
+			shader: function (inputs, shaderSource) {
+				return shaderSource;
+			},
+			draw: function (shader, model, uniforms, frameBuffer, draw) {
+				try {
+					draw(shader, model, uniforms, frameBuffer);
+				} catch (e) {
+					ok(false, 'Failed to draw effect with common shader');
+				}
+			},
+			inputs: {
+				source: {
+					type: 'image'
+				}
+			}
+		});
+
 		seriously = new Seriously();
 
 		source = seriously.source('#colorbars');
@@ -2225,8 +2247,11 @@
 		effect = seriously.effect('test');
 		effect.source = source;
 
+		commonEffect = seriously.effect('common-shader');
+		commonEffect.source = effect;
+
 		target = seriously.target(canvas);
-		target.source = effect;
+		target.source = commonEffect;
 
 		source.on('webglcontextlost', function () {
 			lostFired = true;
@@ -2253,6 +2278,8 @@
 		target.on('webglcontextrestored', function () {
 			restoredFired = true;
 			ok(!lost && restored, 'webglcontextrestored event fired on target node');
+
+			target.render();
 		});
 
 		seriously.go(function () {
@@ -2442,7 +2469,7 @@
 
 
 	module('Destroy');
-	test('Destroy things', 20, function() {
+	test('Destroy things', 21, function() {
 		var seriously, source, target, effect, transform, canvas,
 			seriouslyId, sourceId, targetId, effectId, transformId;
 
@@ -2491,6 +2518,7 @@
 		seriously.destroy();
 		ok(seriously.isDestroyed(), 'Destroyed Seriously instance is destroyed');
 		equal(seriously.id, seriouslyId, 'id property retained on destroyed Seriously instance');
+		equal(target.width, undefined, 'Destorying Seriously instance cleans up node objects');
 
 		ok(source.isDestroyed(), 'Destroy Seriously instance destroys source');
 		ok(effect.isDestroyed(), 'Destroy Seriously instance destroys effect');
@@ -2862,12 +2890,14 @@
 				source,
 				pixels,
 				error,
-				incompatible;
+				incompatible,
+				input = [255, 128, 100, 200],
+				expected;
 
 			incompatible = Seriously.incompatible();
 
 			seriously = new Seriously();
-			source = seriously.source([255, 128, 100, 200], {
+			source = seriously.source(input, {
 				width: 1,
 				height: 1
 			});
@@ -2888,8 +2918,17 @@
 			} catch (e) {
 				error = e;
 			}
+
+			expected = input.map(function (value, channel) {
+				if (channel < 3) {
+					return Math.round((255 - value) * input[3] / 255);
+				}
+
+				return value;
+			});
+
 			ok(incompatible ? error : !error, 'readPixels throws error iff incompatible');
-			ok(incompatible || pixels && compare(pixels, [0, 127, 155, 200]), 'Invert effect rendered accurately.');
+			ok(incompatible || pixels && compare(pixels, expected), 'Invert effect rendered accurately.');
 
 			seriously.destroy();
 			Seriously.removePlugin('invert');
