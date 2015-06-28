@@ -18,3 +18,10 @@ Attribution-NonCommercial-ShareAlike 2.0 Generic (CC BY-NC-SA 2.0)
 ## Panorama
 by Jimmy Ferbuson
 http://www.jwjferguson.com
+
+## Color Look-Up Talbes
+by Ian Forrester
+http://www.bbc.co.uk/rd/people/ianforrester
+- Cyan Spike
+- Lock Stock
+- Super Vivid

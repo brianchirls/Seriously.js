@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Seriously.js Color Look-Up Table Example</title>
+	<style type="text/css">
+		img {
+			display: none;
+		}
+
+		#controls {
+			display: inline-block;
+			vertical-align: top;
+		}
+
+		#controls input {
+			width: 400px;
+		}
+
+		label {
+			display: block;
+		}
+	</style>
+</head>
+<body>
+	<img src="../../examples/images/robot.jpg" id="robot"/>
+	<img src="../../examples/images/lut_cyanspike.png" id="cyanspike"/>
+	<img src="../../examples/images/lut_lockstock.png" id="lockstock"/>
+	<img src="../../examples/images/lut_supervivid.png" id="supervivid"/>
+	<canvas id="canvas" width="640" height="619"></canvas>
+	<div id="controls">
+		<div>
+			<label>Look-Up Table
+				<select id="lut">
+					<option value="">Original</option>
+					<option value="cyanspike">Cyan Spike</option>
+					<option value="lockstock">Lock Stock</option>
+					<option value="supervivid">Super Vivid</option>
+				</select>
+			</label>
+		</div>
+		<div>
+			<label>Amount <input type="range" id="amount" min="0" max="1" step="0.001" value="1"/></label>
+		</div>
+	</div>
+	<script src="../../lib/require.js"></script>
+	<script>
+		require.config({
+			baseUrl: '../../'
+		});
+
+		require([
+			'seriously',
+			'effects/seriously.lut'
+		], function (Seriously) {
+			var seriously, // the main object that holds the entire composition
+				effect,
+				target, // a wrapper object for our target canvas
+				selectLut = document.getElementById('lut');
+
+			function selectTable() {
+				if (selectLut.value) {
+					effect.lut = document.getElementById(selectLut.value);
+					target.source = effect;
+				} else {
+					target.source = '#robot';
+				}
+			}
+
+			seriously = new Seriously();
+			target = seriously.target('#canvas');
+
+			effect = seriously.effect('lut');
+			effect.source = '#robot';
+			effect.amount = '#amount';
+
+			selectLut.onchange = selectTable;
+			selectTable();
+
+			seriously.go();
+		});
+	</script>
+</body>
+</html>
