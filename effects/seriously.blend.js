@@ -14,7 +14,7 @@
 		}
 		factory(root.Seriously);
 	}
-}(this, function (Seriously) {
+}(window, function (Seriously) {
 	'use strict';
 
 	/*
@@ -231,6 +231,7 @@
 					}
 
 					shaderSource.vertex = [
+						'#define SHADER_NAME seriously.blend.' + mode,
 						'precision mediump float;',
 
 						'attribute vec4 position;',
@@ -257,6 +258,7 @@
 					].join('\n');
 
 					shaderSource.fragment = [
+						'#define SHADER_NAME seriously.blend.' + mode,
 						'precision mediump float;',
 						'varying vec2 vTexCoord;',
 						'uniform sampler2D source;',
@@ -275,6 +277,7 @@
 
 				//todo: need separate texture coords for different size top/bottom images
 				shaderSource.vertex = [
+					'#define SHADER_NAME seriously.blend.' + mode,
 					'precision mediump float;',
 
 					'attribute vec4 position;',
@@ -301,6 +304,7 @@
 				].join('\n');
 
 				shaderSource.fragment = [
+					'#define SHADER_NAME seriously.blend.' + mode,
 					'precision mediump float;',
 
 					'const vec3 ZERO = vec3(0.0);',

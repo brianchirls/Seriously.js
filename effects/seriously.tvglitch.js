@@ -14,7 +14,7 @@
 		}
 		factory(root.Seriously);
 	}
-}(this, function (Seriously) {
+}(window, function (Seriously) {
 	'use strict';
 
 	//particle parameters
@@ -63,6 +63,7 @@
 				particleBuffer.numItems = particleCount;
 
 				particleVertex = [
+					'#define SHADER_NAME seriously.tvglitch.particle',
 					'precision mediump float;',
 
 					'attribute vec4 particle;',
@@ -83,6 +84,7 @@
 				].join('\n');
 
 				particleFragment = [
+					'#define SHADER_NAME seriously.tvglitch.particle',
 					'precision mediump float;',
 
 					'varying float intensity;',

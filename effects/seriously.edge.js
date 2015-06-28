@@ -14,7 +14,7 @@
 		}
 		factory(root.Seriously);
 	}
-}(this, function (Seriously) {
+}(window, function (Seriously) {
 	'use strict';
 
 	//	Adapted from http://rastergrid.com/blog/2011/01/frei-chen-edge-detector/

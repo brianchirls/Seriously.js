@@ -17,7 +17,7 @@
 		*/
 		factory(root.Seriously, root.THREE);
 	}
-}(this, function (Seriously, THREE) {
+}(window, function (Seriously, THREE) {
 	'use strict';
 
 	Seriously.source('three', function (source, options, force) {

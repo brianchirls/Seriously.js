@@ -14,7 +14,7 @@
 		}
 		factory(root.Seriously);
 	}
-}(this, function (Seriously) {
+}(window, function (Seriously) {
 	'use strict';
 
 	/*
@@ -107,6 +107,7 @@
 				mode = mode.toLowerCase();
 
 				shaderSource.fragment = [
+					'#define SHADER_NAME seriously.accumulator.' + mode,
 					'precision mediump float;',
 
 					'const vec3 ZERO = vec3(0.0);',
