@@ -14,12 +14,15 @@
 		}
 		factory(root.Seriously);
 	}
-}(this, function (Seriously) {
+}(window, function (Seriously) {
 	'use strict';
 
 	Seriously.plugin('lut', {
 		commonShader: true,
 		shader: function (inputs, shaderSource) {
+			/*
+			Shader borrowed from BBC R&D, with permission
+			*/
 			shaderSource.fragment = [
 				'precision mediump float;',
 
