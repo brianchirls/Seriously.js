@@ -92,7 +92,28 @@
 			clear: false
 		},
 		frameBuffers,
-		fbIndex = 0;
+		fbIndex = 0,
+		me = this,
+		width = this.width,
+		height = this.height;
+
+		function clear() {
+			var gl = me.gl,
+				width = me.width,
+				height = me.height,
+				color = me.inputs.startColor;
+
+			if (gl && width && height) {
+				gl.viewport(0, 0, width, height);
+				gl.clearColor.apply(gl, color);
+
+				gl.bindFramebuffer(gl.FRAMEBUFFER, frameBuffers[0].frameBuffer);
+				gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+				gl.bindFramebuffer(gl.FRAMEBUFFER, frameBuffers[1].frameBuffer);
+				gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+			}
+		}
 
 		return {
 			initialize: function (initialize, gl) {
@@ -101,6 +122,7 @@
 					this.frameBuffer,
 					new Seriously.util.FrameBuffer(gl, this.width, this.height)
 				];
+				clear();
 			},
 			shader: function (inputs, shaderSource) {
 				var mode = inputs.blendMode || 'normal';
@@ -303,9 +325,12 @@
 				return shaderSource;
 			},
 			resize: function () {
-				if (frameBuffers) {
-					frameBuffers[0].resize(this.width, this.height);
-					frameBuffers[1].resize(this.width, this.height);
+				if (frameBuffers && (this.width !== width || this.height !== height)) {
+					width = this.width;
+					height = this.height;
+					frameBuffers[0].resize(width, height);
+					frameBuffers[1].resize(width, height);
+					clear();
 				}
 			},
 			draw: function (shader, model, uniforms, frameBuffer, draw) {
@@ -319,6 +344,7 @@
 				this.texture = fb.texture;
 
 				if (this.inputs.clear) {
+					clear();
 					draw(this.baseShader, model, uniforms, fb.frameBuffer, null);
 					return;
 				}
@@ -345,6 +371,10 @@
 			clear: {
 				type: 'boolean',
 				defaultValue: false
+			},
+			startColor: {
+				type: 'color',
+				defaultValue: [0, 0, 0, 0]
 			},
 			opacity: {
 				type: 'number',
