@@ -21,7 +21,7 @@
 		commonShader: true,
 		shader: function (inputs, shaderSource) {
 			/*
-			Shader borrowed from BBC R&D, with permission
+			Shader borrowed from Paul Golds @ BBC R&D, with permission
 			*/
 			shaderSource.fragment = [
 				'precision mediump float;',
