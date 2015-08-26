@@ -88,7 +88,7 @@
 		dstAlpha: 0x0303 //ONE_MINUS_SRC_ALPHA
 	},
 
-	shaderNameRegex = /^[\t ]*#define[\t ]+SHADER_NAME/i,
+	shaderNameRegex = /^[\t ]*#define[\t ]+SHADER_NAME\s+([^$\n\r]+)/i,
 
 	baseVertexShader,
 	baseFragmentShader,
@@ -866,6 +866,7 @@
 			programError = '',
 			shaderError,
 			i, l,
+			shaderNameRegexMatch,
 			obj;
 
 		function compileShader(source, fragment) {
@@ -984,7 +985,15 @@
 			gl.deleteProgram(program);
 			gl.deleteShader(vertexShader);
 			gl.deleteShader(fragmentShader);
-			throw new Error('Could not initialise shader: ' + programError);
+
+			shaderNameRegexMatch = shaderNameRegex.exec(vertexShaderSource) ||
+				shaderNameRegex.exec(fragmentShaderSource);
+
+			if (shaderNameRegexMatch) {
+				programError = 'Shader = ' + shaderNameRegexMatch[1] + '\n' + programError;
+			}
+
+			throw new Error('Could not initialize shader:\n' + programError);
 		}
 
 		gl.useProgram(program);
@@ -1369,7 +1378,7 @@
 		forcing all dependent nodes to render
 		*/
 		function renderDaemon(now) {
-			var i, node, media,
+			var i, node,
 				keepRunning = false;
 
 			rafId = 0;
@@ -1386,7 +1395,6 @@
 				for (i = 0; i < sources.length; i++) {
 					node = sources[i];
 
-					media = node.source;
 					if (node.dirty ||
 							node.checkDirty && node.checkDirty()) {
 						node.dirty = false;
