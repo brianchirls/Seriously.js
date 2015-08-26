@@ -88,6 +88,16 @@
 		dstAlpha: 0x0303 //ONE_MINUS_SRC_ALPHA
 	},
 
+	shaderDebugConstants = [
+		'MAX_COMBINED_TEXTURE_IMAGE_UNITS',
+		'MAX_FRAGMENT_UNIFORM_VECTORS',
+		'MAX_TEXTURE_IMAGE_UNITS',
+		'MAX_VARYING_VECTORS',
+		'MAX_VERTEX_ATTRIBS',
+		'MAX_VERTEX_TEXTURE_IMAGE_UNITS',
+		'MAX_VERTEX_UNIFORM_VECTORS'
+	],
+
 	shaderNameRegex = /^[\t ]*#define[\t ]+SHADER_NAME\s+([^$\n\r]+)/i,
 
 	baseVertexShader,
@@ -992,6 +1002,10 @@
 			if (shaderNameRegexMatch) {
 				programError = 'Shader = ' + shaderNameRegexMatch[1] + '\n' + programError;
 			}
+
+			shaderDebugConstants.forEach(function (c) {
+				programError += '\n' + c + ': ' + gl.getParameter(gl[c]);
+			});
 
 			throw new Error('Could not initialize shader:\n' + programError);
 		}
