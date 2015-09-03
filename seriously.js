@@ -328,6 +328,7 @@
 	function getElement(input, tags) {
 		var element,
 			tag;
+
 		if (typeof input === 'string') {
 			//element = document.getElementById(input) || document.getElementsByTagName(input)[0];
 			element = document.querySelector(input);
@@ -402,6 +403,31 @@
 			method.apply(console, arguments);
 		};
 	}
+
+	// like instanceof, but it will work on elements that come from different windows (e.g. iframes)
+	function instanceOfElement(element, proto) {
+		var result;
+		if (!element || typeof element !== 'object') {
+			return false;
+		}
+
+		if (!proto) {
+			proto = 'Element';
+		} else if (typeof proto !== 'string') {
+			return element instanceof proto;
+		}
+
+		if (element instanceof window[proto]) {
+			return true;
+		}
+
+		if (!element.ownerDocument || !element.ownerDocument.defaultView) {
+			return false;
+		}
+
+		return element instanceof element.ownerDocument.defaultView[proto];
+	}
+
 
 	//http://www.w3.org/TR/css3-color/#hsl-color
 	function hslToRgb(h, s, l, a, out) {
@@ -1877,7 +1903,7 @@
 					//todo: color? date/time?
 				}
 
-				if (input instanceof HTMLInputElement || input instanceof HTMLSelectElement) {
+				if (instanceOfElement(input, 'HTMLInputElement') || instanceOfElement(input, 'HTMLSelectElement')) {
 					value = input.value;
 
 					if (lookup && lookup.element !== input) {
@@ -3200,7 +3226,7 @@
 			}
 
 			//todo: could probably stand to re-work and re-indent this whole block now that we have plugins
-			if (!plugin && source instanceof HTMLElement) {
+			if (!plugin && instanceOfElement(source)) {
 				if (source.tagName === 'CANVAS') {
 					this.width = source.width;
 					this.height = source.height;
@@ -3712,11 +3738,11 @@
 			if (target instanceof WebGLFramebuffer) {
 				frameBuffer = target;
 
-				if (opts instanceof HTMLCanvasElement) {
+				if (instanceOfElement(opts, 'HTMLCanvasElement')) {
 					target = opts;
 				} else if (opts instanceof WebGLRenderingContext) {
 					target = opts.canvas;
-				} else if (opts.canvas instanceof HTMLCanvasElement) {
+				} else if (instanceOfElement(opts.canvas, 'HTMLCanvasElement')) {
 					target = opts.canvas;
 				} else if (opts.context instanceof WebGLRenderingContext) {
 					target = opts.context.canvas;
@@ -3726,7 +3752,7 @@
 				}
 			}
 
-			if (target instanceof HTMLElement && target.tagName === 'CANVAS') {
+			if (instanceOfElement(target, 'HTMLCanvasElement')) {
 				width = target.width;
 				height = target.height;
 
@@ -3900,7 +3926,7 @@
 
 		TargetNode.prototype.resize = function () {
 			//if target is a canvas, reset size to canvas size
-			if (this.target instanceof HTMLCanvasElement) {
+			if (instanceOfElement(this.target, 'HTMLCanvasElement')) {
 				if (this.width !== this.target.width || this.height !== this.target.height) {
 					this.target.width = this.width;
 					this.target.height = this.height;
@@ -4102,7 +4128,7 @@
 					}
 				}
 
-				if (input instanceof HTMLInputElement || input instanceof HTMLSelectElement) {
+				if (instanceOfElement(input, 'HTMLInputElement') || instanceOfElement(input, 'HTMLSelectElement')) {
 					value = input.value;
 
 					if (lookup && lookup.element !== input) {
@@ -4768,7 +4794,7 @@
 		Initialize Seriously object based on options
 		*/
 
-		if (options instanceof HTMLCanvasElement) {
+		if (instanceOfElement(options, 'HTMLCanvasElement')) {
 			options = {
 				canvas: options
 			};
@@ -5724,7 +5750,7 @@
 			me.setDirty();
 		}
 
-		if (video instanceof window.HTMLVideoElement) {
+		if (instanceOfElement(video, 'HTMLVideoElement')) {
 			if (video.readyState) {
 				initializeVideo();
 			} else {

@@ -1035,6 +1035,55 @@
 		target.source = reformat;
 	});
 
+	asyncTest('Source elements in iframe (#102)', 3, function () {
+		var iframe;
+
+		iframe = document.createElement('iframe');
+		iframe.style.display = 'none';
+		iframe.addEventListener('load', function () {
+			var win = this.contentWindow,
+				doc = this.contentDocument,
+				seriously,
+				video,
+				canvas,
+				img,
+				source;
+
+			doc.body.innerHTML = [
+				'<video id="source-video"></video>',
+				'<canvas id="source-canvas"></canvas>',
+				'<img id="source-image"/>'
+			].join('');
+			video = doc.getElementById('source-video');
+			canvas = doc.getElementById('source-canvas');
+			img = doc.getElementById('source-image');
+
+			seriously = new Seriously();
+
+			try {
+				source = seriously.source(video);
+			} catch (e1) {}
+			ok(seriously.isSource(source) && source.original === video,
+				'Successfully created source node for video in same-origin iframe');
+
+			try {
+				source = seriously.source(canvas);
+			} catch (e2) {}
+			ok(seriously.isSource(source) && source.original === canvas,
+				'Successfully created source node for canvas in same-origin iframe');
+
+			try {
+				source = seriously.source(img);
+			} catch (e3) {}
+			ok(seriously.isSource(source) && source.original === img,
+				'Successfully created source node for image in same-origin iframe');
+
+			seriously.destroy();
+			start();
+		});
+		document.body.appendChild(iframe);
+	});
+
 	module('Inputs');
 	/*
 	 * all different types
@@ -2369,6 +2418,36 @@
 		seriously1.destroy();
 		seriously2.destroy();
 		Seriously.logger.warn = nop;
+	});
+
+	asyncTest('Target canvas element in iframe (#102)', 1, function () {
+		var iframe;
+
+		iframe = document.createElement('iframe');
+		iframe.style.display = 'none';
+		iframe.addEventListener('load', function () {
+			var win = this.contentWindow,
+				doc = this.contentDocument,
+				seriously,
+				canvas,
+				target;
+
+			doc.body.innerHTML = '<canvas id="source-canvas"></canvas>';
+			canvas = doc.getElementById('source-canvas');
+
+			seriously = new Seriously();
+
+			try {
+				target = seriously.target(canvas);
+			} catch (e) {
+			}
+			ok(seriously.isTarget(target) && target.original === canvas,
+				'Successfully created target node for canvas in same-origin iframe');
+
+			seriously.destroy();
+			start();
+		});
+		document.body.appendChild(iframe);
 	});
 
 	module('Alias');
