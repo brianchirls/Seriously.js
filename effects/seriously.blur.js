@@ -69,16 +69,9 @@ http://v002.info/plugins/v002-blurs/
 			},
 			commonShader: true,
 			shader: function (inputs, shaderSource) {
-				var gl = this.gl,
-					/*
-					Some devices or browsers (e.g. IE11 preview) don't support enough
-					varying vectors, so we need to fallback to a less efficient method
-					*/
-					maxVaryings = gl.getParameter(gl.MAX_VARYING_VECTORS),
-					defineVaryings = (maxVaryings >= 10 ? '#define USE_VARYINGS' : '');
+				var gl = this.gl;
 
 				shaderSource.vertex = [
-					defineVaryings,
 					'precision mediump float;',
 
 					'attribute vec4 position;',
@@ -91,25 +84,10 @@ http://v002.info/plugins/v002-blurs/
 					'uniform float amount;',
 					'uniform float inputScale;',
 
-					'const vec2 zero = vec2(0.0, 0.0);',
+					'const vec2 zero = vec2(0.0);',
 
 					'varying vec2 vTexCoord;',
-
-					'#ifdef USE_VARYINGS',
-					'vec2 one;',
-					'vec2 amount1;',
-					'varying vec2 vTexCoord1;',
-					'varying vec2 vTexCoord2;',
-					'varying vec2 vTexCoord3;',
-					'varying vec2 vTexCoord4;',
-					'varying vec2 vTexCoord5;',
-					'varying vec2 vTexCoord6;',
-					'varying vec2 vTexCoord7;',
-					'varying vec2 vTexCoord8;',
-					'#else',
-					'varying vec2 one;',
-					'varying vec2 amount1;',
-					'#endif',
+					'varying vec4 vTexCoords[4];',
 
 					'void main(void) {',
 					// first convert to screen space
@@ -122,57 +100,29 @@ http://v002.info/plugins/v002-blurs/
 					'	gl_Position.z = screenPosition.z * 2.0 / (resolution.x / resolution.y);',
 					'	vTexCoord = texCoord;',
 
-					'	one = vec2(1.0, 1.0) * inputScale;',
+					'	vec2 one = vec2(1.0) * inputScale;',
 					'	if (inputScale < 1.0) {',
 					'		one -= 1.0 / resolution;',
 					'	}',
 
 					'	vTexCoord = max(zero, min(one, texCoord.st * inputScale));',
-					'	amount1 = direction * (inputScale * amount * 5.0 / resolution);',
+					'	vec2 amount = direction * (inputScale * amount * 5.0 / resolution);',
 
-					'#ifdef USE_VARYINGS',
-					'	vec2 amount2 = amount1 * 3.0;',
-					'	vec2 amount3 = amount1 * 6.0;',
-					'	vec2 amount4 = amount1 * 9.0;',
-					'	vec2 amount5 = -amount1;',
-					'	vec2 amount6 = amount5 * 3.0;',
-					'	vec2 amount7 = amount5 * 6.0;',
-					'	vec2 amount8 = amount5 * 9.0;',
-					'	vTexCoord1 = max(zero, min(one, vTexCoord + amount1));',
-					'	vTexCoord2 = max(zero, min(one, vTexCoord + amount2));',
-					'	vTexCoord3 = max(zero, min(one, vTexCoord + amount3));',
-					'	vTexCoord4 = max(zero, min(one, vTexCoord + amount4));',
-					'	vTexCoord5 = max(zero, min(one, vTexCoord + amount5));',
-					'	vTexCoord6 = max(zero, min(one, vTexCoord + amount6));',
-					'	vTexCoord7 = max(zero, min(one, vTexCoord + amount7));',
-					'	vTexCoord8 = max(zero, min(one, vTexCoord + amount8));',
-					'#endif',
+					'	for (int i = 0; i < 4; i++) {',
+					'		float s = pow(3.0, float(i));',
+					'		vTexCoords[i].xy = max(zero, min(one, vTexCoord + amount * s));',
+					'		vTexCoords[i].zw = max(zero, min(one, vTexCoord - amount * s));',
+					'	}',
 					'}'
 				].join('\n');
 				shaderSource.fragment = [
-					defineVaryings,
-
 					'precision mediump float;\n',
-
-					'varying vec2 vTexCoord;',
 
 					'uniform sampler2D source;',
 					'uniform float blendGamma;',
 
-					'#ifdef USE_VARYINGS',
-					'varying vec2 vTexCoord1;',
-					'varying vec2 vTexCoord2;',
-					'varying vec2 vTexCoord3;',
-					'varying vec2 vTexCoord4;',
-					'varying vec2 vTexCoord5;',
-					'varying vec2 vTexCoord6;',
-					'varying vec2 vTexCoord7;',
-					'varying vec2 vTexCoord8;',
-					'#else',
-					'varying vec2 amount1;',
-					'varying vec2 one;',
-					'const vec2 zero = vec2(0.0, 0.0);',
-					'#endif',
+					'varying vec2 vTexCoord;',
+					'varying vec4 vTexCoords[4];',
 
 					'vec3 exp;',
 
@@ -184,27 +134,14 @@ http://v002.info/plugins/v002-blurs/
 
 					'void main(void) {',
 
-					'exp = vec3(blendGamma);',
+					'	exp = vec3(blendGamma);',
 
-					'#ifndef USE_VARYINGS',
-					'	vec2 vTexCoord1 = max(zero, min(one, vTexCoord + amount1));',
-					'	vec2 vTexCoord2 = max(zero, min(one, vTexCoord + amount1 * 3.0));',
-					'	vec2 vTexCoord3 = max(zero, min(one, vTexCoord + amount1 * 6.0));',
-					'	vec2 vTexCoord4 = max(zero, min(one, vTexCoord + amount1 * 9.0));',
-					'	vec2 vTexCoord5 = max(zero, min(one, vTexCoord - amount1));',
-					'	vec2 vTexCoord6 = max(zero, min(one, vTexCoord - amount1 * 3.0));',
-					'	vec2 vTexCoord7 = max(zero, min(one, vTexCoord - amount1 * 6.0));',
-					'	vec2 vTexCoord8 = max(zero, min(one, vTexCoord - amount1 * 9.0));',
-					'#endif',
 					'	gl_FragColor = sample(source, vTexCoord) / 9.0;',
-					'	gl_FragColor += sample(source, vTexCoord1) / 9.0;',
-					'	gl_FragColor += sample(source, vTexCoord2) / 9.0;',
-					'	gl_FragColor += sample(source, vTexCoord3) / 9.0;',
-					'	gl_FragColor += sample(source, vTexCoord4) / 9.0;',
-					'	gl_FragColor += sample(source, vTexCoord5) / 9.0;',
-					'	gl_FragColor += sample(source, vTexCoord6) / 9.0;',
-					'	gl_FragColor += sample(source, vTexCoord7) / 9.0;',
-					'	gl_FragColor += sample(source, vTexCoord8) / 9.0;',
+
+					'	for (int i = 0; i < 4; i++) {',
+					'		gl_FragColor += sample(source, vTexCoords[i].xy) / 9.0;',
+					'		gl_FragColor += sample(source, vTexCoords[i].zw) / 9.0;',
+					'	}',
 
 					'	gl_FragColor.rgb = pow(gl_FragColor.rgb, 1.0 / exp);',
 
