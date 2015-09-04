@@ -407,30 +407,29 @@
 		};
 	}
 
-	// like instanceof, but it will work on elements that come from different windows (e.g. iframes)
-	function instanceOfElement(element, proto) {
-		var result;
-		if (!element || typeof element !== 'object') {
-			return false;
-		}
+	/*
+	Like instanceof, but it will work on elements that come from different windows (e.g. iframes)
 
+	We do not use this for constructors defined in this script.
+	*/
+	function isInstance(obj, proto) {
 		if (!proto) {
-			proto = 'Element';
-		} else if (typeof proto !== 'string') {
-			return element instanceof proto;
+			proto = 'HTMLElement';
 		}
 
-		if (element instanceof window[proto]) {
+		if (obj instanceof window[proto]) {
 			return true;
 		}
 
-		if (!element.ownerDocument || !element.ownerDocument.defaultView) {
-			return false;
+		while (obj) {
+			obj = Object.getPrototypeOf(obj);
+			if (obj && obj.constructor.name === proto) {
+				return true;
+			}
 		}
 
-		return element instanceof element.ownerDocument.defaultView[proto];
+		return false;
 	}
-
 
 	//http://www.w3.org/TR/css3-color/#hsl-color
 	function hslToRgb(h, s, l, a, out) {
@@ -1256,7 +1255,7 @@
 				//todo: if too many webglcontextlost events fired in too short a time, abort
 				//todo: consider allowing "manual" control of restoring context
 
-				if (target instanceof WebGLFramebuffer) {
+				if (isInstance(target, 'WebGLFramebuffer')) {
 					Seriously.logger.error('Unable to restore target built on WebGLFramebuffer');
 					return;
 				}
@@ -1541,7 +1540,7 @@
 					value = uniforms[name];
 					shaderUniform = shader.uniforms[name];
 					if (shaderUniform) {
-						if (value instanceof WebGLTexture) {
+						if (isInstance(value, 'WebGLTexture')) {
 							nodeGl.activeTexture(nodeGl.TEXTURE0 + numTextures);
 							nodeGl.bindTexture(nodeGl.TEXTURE_2D, value);
 							shaderUniform.set(numTextures);
@@ -1741,7 +1740,7 @@
 			//todo: figure out formats and types
 			if (dest === undefined) {
 				dest = new Uint8Array(width * height * 4);
-			} else if (!(dest instanceof Uint8Array)) {
+			} else if (!(isInstance(dest, 'Uint8Array'))) {
 				throw new Error('Incompatible array type');
 			}
 
@@ -1906,7 +1905,7 @@
 					//todo: color? date/time?
 				}
 
-				if (instanceOfElement(input, 'HTMLInputElement') || instanceOfElement(input, 'HTMLSelectElement')) {
+				if (isInstance(input, 'HTMLInputElement') || isInstance(input, 'HTMLSelectElement')) {
 					value = input.value;
 
 					if (lookup && lookup.element !== input) {
@@ -3229,7 +3228,7 @@
 			}
 
 			//todo: could probably stand to re-work and re-indent this whole block now that we have plugins
-			if (!plugin && instanceOfElement(source)) {
+			if (!plugin && isInstance(source)) {
 				if (source.tagName === 'CANVAS') {
 					this.width = source.width;
 					this.height = source.height;
@@ -3264,7 +3263,7 @@
 					this.hook = 'image';
 					this.compare = compareSource;
 				}
-			} else if (!plugin && source instanceof WebGLTexture) {
+			} else if (!plugin && isInstance(source, 'WebGLTexture')) {
 				if (gl && !gl.isTexture(source)) {
 					throw new Error('Not a valid WebGL texture.');
 				}
@@ -3738,16 +3737,16 @@
 
 			this.renderToTexture = opts.renderToTexture;
 
-			if (target instanceof WebGLFramebuffer) {
+			if (isInstance(target, 'WebGLFramebuffer')) {
 				frameBuffer = target;
 
-				if (instanceOfElement(opts, 'HTMLCanvasElement')) {
+				if (isInstance(opts, 'HTMLCanvasElement')) {
 					target = opts;
-				} else if (opts instanceof WebGLRenderingContext) {
+				} else if (isInstance(opts, 'WebGLRenderingContext')) {
 					target = opts.canvas;
-				} else if (instanceOfElement(opts.canvas, 'HTMLCanvasElement')) {
+				} else if (isInstance(opts.canvas, 'HTMLCanvasElement')) {
 					target = opts.canvas;
-				} else if (opts.context instanceof WebGLRenderingContext) {
+				} else if (isInstance(opts.context, 'WebGLRenderingContext')) {
 					target = opts.context.canvas;
 				} else {
 					//todo: search all canvases for matching contexts?
@@ -3755,7 +3754,7 @@
 				}
 			}
 
-			if (instanceOfElement(target, 'HTMLCanvasElement')) {
+			if (isInstance(target, 'HTMLCanvasElement')) {
 				width = target.width;
 				height = target.height;
 
@@ -3929,7 +3928,7 @@
 
 		TargetNode.prototype.resize = function () {
 			//if target is a canvas, reset size to canvas size
-			if (instanceOfElement(this.target, 'HTMLCanvasElement')) {
+			if (isInstance(this.target, 'HTMLCanvasElement')) {
 				if (this.width !== this.target.width || this.height !== this.target.height) {
 					this.target.width = this.width;
 					this.target.height = this.height;
@@ -4131,7 +4130,7 @@
 					}
 				}
 
-				if (instanceOfElement(input, 'HTMLInputElement') || instanceOfElement(input, 'HTMLSelectElement')) {
+				if (isInstance(input, 'HTMLInputElement') || isInstance(input, 'HTMLSelectElement')) {
 					value = input.value;
 
 					if (lookup && lookup.element !== input) {
@@ -4710,7 +4709,7 @@
 
 			if (dest === undefined) {
 				dest = new Uint8Array(width * height * 4);
-			} else if (!(dest instanceof Uint8Array)) {
+			} else if (!(isInstance(dest, 'Uint8Array'))) {
 				throw new Error('Incompatible array type');
 			}
 
@@ -4797,7 +4796,7 @@
 		Initialize Seriously object based on options
 		*/
 
-		if (instanceOfElement(options, 'HTMLCanvasElement')) {
+		if (isInstance(options, 'HTMLCanvasElement')) {
 			options = {
 				canvas: options
 			};
@@ -5753,7 +5752,7 @@
 			me.setDirty();
 		}
 
-		if (instanceOfElement(video, 'HTMLVideoElement')) {
+		if (isInstance(video, 'HTMLVideoElement')) {
 			if (video.readyState) {
 				initializeVideo();
 			} else {
