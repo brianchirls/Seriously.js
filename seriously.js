@@ -31,7 +31,7 @@
 	*/
 
 	testContext,
-	colorElement,
+	colorCtx,
 	incompatibility,
 	seriousEffects = {},
 	seriousTransforms = {},
@@ -77,6 +77,9 @@
 		aqua: [0, 1, 1, 1],
 		orange: [1, 165 / 255, 0, 1]
 	},
+
+	colorRegex = /^(rgb|hsl)a?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(,\s*(\d+(\.\d*)?)\s*)?\)/i,
+	hexColorRegex = /^#(([0-9a-fA-F]{3,8}))/,
 
 	vectorFields = ['x', 'y', 'z', 'w'],
 	colorFields = ['r', 'g', 'b', 'a'],
@@ -5381,35 +5384,39 @@
 	//todo: validators should not allocate new objects/arrays if input is valid
 	Seriously.inputValidators = {
 		color: function (value, input, defaultValue, oldValue) {
-			var s, a, i, computed, bg;
+			var s,
+				a,
+				match,
+				i;
 
 			a = oldValue || [];
 
 			if (typeof value === 'string') {
 				//todo: support percentages, decimals
-				s = (/^(rgb|hsl)a?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(,\s*(\d+(\.\d*)?)\s*)?\)/i).exec(value);
-				if (s && s.length) {
-					if (s.length < 3) {
+				match = colorRegex.exec(value);
+				if (match && match.length) {
+					if (match.length < 3) {
 						a[0] = a[1] = a[2] = a[3] = 0;
 						return a;
 					}
 
 					a[3] = 1;
 					for (i = 0; i < 3; i++) {
-						a[i] = parseFloat(s[i+2]) / 255;
+						a[i] = parseFloat(match[i + 2]) / 255;
 					}
-					if (!isNaN(s[6])) {
-						a[3] = parseFloat(s[6]);
+					if (!isNaN(match[6])) {
+						a[3] = parseFloat(match[6]);
 					}
-					if (s[1].toLowerCase() === 'hsl') {
+					if (match[1].toLowerCase() === 'hsl') {
 						return hslToRgb(a[0], a[1], a[2], a[3], a);
 					}
+
 					return a;
 				}
 
-				s = (/^#(([0-9a-fA-F]{3,8}))/).exec(value);
-				if (s && s.length) {
-					s = s[1];
+				match = hexColorRegex.exec(value);
+				if (match && match.length) {
+					s = match[1];
 					if (s.length === 3) {
 						a[0] = parseInt(s[0], 16) / 15;
 						a[1] = parseInt(s[1], 16) / 15;
@@ -5436,25 +5443,21 @@
 					return a;
 				}
 
-				s = colorNames[value.toLowerCase()];
-				if (s) {
+				match = colorNames[value.toLowerCase()];
+				if (match) {
 					for (i = 0; i < 4; i++) {
-						a[i] = s[i];
+						a[i] = match[i];
 					}
 					return a;
 				}
 
-				if (!colorElement) {
-					colorElement = document.createElement('a');
+				if (!colorCtx) {
+					colorCtx = document.createElement('canvas').getContext('2d');
 				}
-				colorElement.style.backgroundColor = '';
-				colorElement.style.backgroundColor = value;
-				computed = window.getComputedStyle(colorElement);
-				bg = computed.getPropertyValue('background-color') ||
-					computed.getPropertyValue('backgroundColor') ||
-					colorElement.style.backgroundColor;
-				if (bg && bg !== value) {
-					return Seriously.inputValidators.color(bg, input, oldValue);
+				colorCtx.fillStyle = value;
+				s = colorCtx.fillStyle;
+				if (s && s !== '#000000') {
+					return Seriously.inputValidators.color(s, input, defaultValue, oldValue);
 				}
 
 				a[0] = a[1] = a[2] = a[3] = 0;
