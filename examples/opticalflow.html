@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Seriously.js Optical Flow Example</title>
+	<style type="text/css">
+	#canvas {
+		max-width: 100%;
+	}
+	</style>
+</head>
+<body>
+	<canvas id="canvas" width="1280" height="720"></canvas>
+	<script src="../seriously.js"></script>
+	<script src="../sources/seriously.camera.js"></script>
+	<script src="../effects/seriously.opticalflow.js"></script>
+	<script>
+	(function() {
+		//main code goes here
+
+		// declare our variables
+		var seriously, // the main object that holds the entire composition
+			camera, // wrapper object for source video
+			opticalflow, // mirror detection effect
+			target, // a wrapper object for our target canvas
+			reformat;
+
+		if (Seriously.incompatible('camera')) {
+			document.body.appendChild(document.createTextNode('Sorry, your browser does not support getUserMedia'));
+			document.querySelector('canvas').style.display = 'none';
+			return;
+		}
+
+		// construct our seriously object
+		seriously = new Seriously();
+
+		camera = seriously.source('camera'/*, {
+			todo: refactor camera plugin for updated getUserMediaConstraints
+			video: {
+				width: 1280,
+				height: 720
+			}
+		}*/);
+		target = seriously.target('#canvas');
+		opticalflow = seriously.effect('opticalflow');
+		reformat = seriously.transform('reformat');
+		reformat.width = 1280;
+		reformat.height = 720;
+		reformat.mode = 'cover';
+
+		// connect all our nodes in the right order
+		reformat.source = camera;
+		opticalflow.source = reformat;
+		target.source = opticalflow;
+
+		seriously.go();
+	}());
+	</script>
+</body>
+</html>
