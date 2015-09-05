@@ -421,6 +421,10 @@
 			return true;
 		}
 
+		if (!obj || typeof obj !== 'object') {
+			return false;
+		}
+
 		while (obj) {
 			obj = Object.getPrototypeOf(obj);
 			if (obj && obj.constructor.name === proto) {
@@ -718,6 +722,10 @@
 
 				if (isNaN(input.step)) {
 					input.step = 0;
+				}
+
+				if (isNaN(input.mod)) {
+					input.mod = 0;
 				}
 
 				if (input.type === 'enum') {
@@ -2102,6 +2110,7 @@
 						result.min = input.min;
 						result.max = input.max;
 						result.step = input.step;
+						result.mod = input.mod;
 					} else if (input.type === 'enum') {
 						//make a copy
 						result.options = extend({}, input.options);
@@ -4310,6 +4319,7 @@
 						result.min = input.min;
 						result.max = input.max;
 						result.step = input.step;
+						result.mod = input.mod;
 					} else if (input.type === 'enum') {
 						//make a copy
 						result.options = extend({}, input.options);
@@ -5503,11 +5513,15 @@
 			return a;
 		},
 		number: function (value, input, defaultValue) {
+			value = parseFloat(value);
+
 			if (isNaN(value)) {
 				return defaultValue || 0;
 			}
 
-			value = parseFloat(value);
+			if (input.mod) {
+				value = value - input.mod * Math.floor(value / input.mod);
+			}
 
 			if (value < input.min) {
 				return input.min;
@@ -5626,6 +5640,7 @@
 							step: input.step,
 							min: input.min,
 							max: input.max,
+							mod: input.mod,
 							minCount: input.minCount,
 							maxCount: input.maxCount,
 							dimensions: input.dimensions,

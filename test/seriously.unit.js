@@ -456,7 +456,7 @@
 		Seriously.removePlugin('removeme');
 	});
 
-	test('Effect Info', 24, function () {
+	test('Effect Info', 25, function () {
 		var inputs,
 			seriously,
 			effect;
@@ -468,6 +468,7 @@
 					min: -4,
 					max: 100,
 					step: 2,
+					mod: 360,
 					defaultValue: 8,
 					description: 'this is a number',
 					title: 'Number'
@@ -503,6 +504,7 @@
 		equal(inputs.number.min, -4, 'Number minimum reported');
 		equal(inputs.number.max, 100, 'Number maximum reported');
 		equal(inputs.number.step, 2, 'Number step reported');
+		equal(inputs.number.mod, 360, 'Number mod reported');
 		equal(inputs.number.defaultValue, 8, 'Number default value reported');
 		equal(inputs.number.title, 'Number', 'Node title reported');
 		equal(inputs.number.description, 'this is a number', 'Node description reported');
@@ -1089,7 +1091,7 @@
 	 * all different types
 	 * test html elements as inputs (with overwriting)
 	 */
-	test('Number', 6, function () {
+	test('Number', 9, function () {
 		var s, e, val, input;
 
 		Seriously.plugin('testNumberInput', {
@@ -1106,6 +1108,10 @@
 				step: {
 					type: 'number',
 					step: 7
+				},
+				mod: {
+					type: 'number',
+					mod: 7
 				}
 			}
 		});
@@ -1128,6 +1134,18 @@
 		e.step = 82;
 		val = e.step;
 		equal(val, 84, 'Step rounds up');
+
+		e.mod = 5;
+		val = e.mod;
+		equal(val, 5, 'Mod within range returns original');
+
+		e.mod = 27;
+		val = e.mod;
+		equal(val, 27 % 7, 'Set number above mod');
+
+		e.mod = -5;
+		val = e.mod;
+		equal(val, 2, 'Negative number with mod');
 
 		e.number = 'not a number';
 		val = e.number;
