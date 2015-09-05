@@ -194,11 +194,8 @@
 			target.source = transform3d;
 
 			s.go(function () {
-				if (active && active.effect.timer !== undefined) {
-					active.effect.timer = Date.now();
-				}
 				if (active && active.effect.time !== undefined) {
-					active.effect.time = Date.now();
+					active.effect.time = Date.now() / 1000;
 				}
 			});
 

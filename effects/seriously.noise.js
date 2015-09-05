@@ -77,7 +77,7 @@
 				type: 'number',
 				uniform: 'time',
 				defaultValue: 0,
-				step: 1
+				mod: 65536
 			}
 		},
 		title: 'Noise',

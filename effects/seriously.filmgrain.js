@@ -135,7 +135,8 @@ Modified to preserve alpha
 			},
 			time: {
 				type: 'number',
-				uniform: 'time'
+				uniform: 'time',
+				mod: 65536
 			},
 			amount: {
 				type: 'number',

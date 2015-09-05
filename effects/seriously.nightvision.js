@@ -59,7 +59,8 @@
 			time: {
 				type: 'number',
 				uniform: 'time',
-				defaultValue: 0
+				defaultValue: 0,
+				mod: 65536
 			},
 			luminanceThreshold: {
 				type: 'number',
