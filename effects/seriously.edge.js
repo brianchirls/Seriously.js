@@ -14,7 +14,7 @@
 		}
 		factory(root.Seriously);
 	}
-}(this, function (Seriously) {
+}(window, function (Seriously) {
 	'use strict';
 
 	//	Adapted from http://rastergrid.com/blog/2011/01/frei-chen-edge-detector/
@@ -67,9 +67,9 @@
 			this.uniforms.pixelHeight = 1 / this.height;
 
 			if (this.inputs.mode === 'sobel') {
-				this.uniforms['G[0]'] = sobelMatrixConstants;
+				this.uniforms.G = sobelMatrixConstants;
 			} else {
-				this.uniforms['G[0]'] = freiChenMatrixConstants;
+				this.uniforms.G = freiChenMatrixConstants;
 			}
 		},
 		shader: function (inputs, shaderSource) {
@@ -157,9 +157,9 @@
 				],
 				update: function () {
 					if (this.inputs.mode === 'sobel') {
-						this.uniforms['G[0]'] = sobelMatrixConstants;
+						this.uniforms.G = sobelMatrixConstants;
 					} else {
-						this.uniforms['G[0]'] = freiChenMatrixConstants;
+						this.uniforms.G = freiChenMatrixConstants;
 					}
 				}
 			}

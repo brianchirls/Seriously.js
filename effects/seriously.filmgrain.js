@@ -25,7 +25,7 @@ Modified to preserve alpha
 		}
 		factory(root.Seriously);
 	}
-}(this, function (Seriously) {
+}(window, function (Seriously) {
 	'use strict';
 
 	Seriously.plugin('filmgrain', {
@@ -135,7 +135,8 @@ Modified to preserve alpha
 			},
 			time: {
 				type: 'number',
-				uniform: 'time'
+				uniform: 'time',
+				mod: 65536
 			},
 			amount: {
 				type: 'number',

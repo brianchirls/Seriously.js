@@ -31,9 +31,11 @@ Full documentation is in progress at the [wiki](https://github.com/brianchirls/S
 - Checkerboard Generator
 - Chroma Key
 - Color Complements
-- Color Generator
 - [Color Cube](http://www.youtube.com/watch?v=rfQ8rKGTVlg&t=24m30s)
+- Color Generator
+- Color Look-Up Table
 - Color Select
+- Color Temperature
 - Crop
 - [Daltonize](http://www.daltonize.org/p/about.html)
 - Directional Blur
@@ -59,6 +61,7 @@ Full documentation is in progress at the [wiki](https://github.com/brianchirls/S
 - Luma Key
 - Mirror
 - Night Vision
+- Optical Flow
 - Panorama
 - Pixelate
 - Polar Coordinates

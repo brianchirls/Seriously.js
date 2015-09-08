@@ -14,7 +14,7 @@
 		}
 		factory(root.Seriously);
 	}
-}(this, function (Seriously) {
+}(window, function (Seriously) {
 	'use strict';
 
 	//based on tutorial: http://www.geeks3d.com/20091009/shader-library-night-vision-post-processing-filter-glsl/
@@ -29,7 +29,7 @@
 					'varying vec2 vTexCoord;',
 
 					'uniform sampler2D source;',
-					'uniform float timer;',
+					'uniform float time;',
 					'uniform float luminanceThreshold;',
 					'uniform float amplification;',
 					'uniform vec3 nightVisionColor;',
@@ -38,9 +38,9 @@
 
 					'void main(void) {',
 					'	vec3 noise = vec3(' +
-							'makeNoise(vTexCoord.x, vTexCoord.y, timer), ' +
-							'makeNoise(vTexCoord.x, vTexCoord.y, timer * 200.0 + 1.0), ' +
-							'makeNoise(vTexCoord.x, vTexCoord.y, timer * 100.0 + 3.0)' +
+							'makeNoise(vTexCoord.x, vTexCoord.y, time), ' +
+							'makeNoise(vTexCoord.x, vTexCoord.y, time * 200.0 + 1.0), ' +
+							'makeNoise(vTexCoord.x, vTexCoord.y, time * 100.0 + 3.0)' +
 						');',
 					'	vec4 pixel = texture2D(source, vTexCoord + noise.xy * 0.0025);',
 					'	float luminance = dot(vec3(0.299, 0.587, 0.114), pixel.rgb);',
@@ -56,10 +56,11 @@
 				uniform: 'source',
 				shaderDirty: false
 			},
-			timer: {
+			time: {
 				type: 'number',
-				uniform: 'timer',
-				defaultValue: 0
+				uniform: 'time',
+				defaultValue: 0,
+				mod: 65536
 			},
 			luminanceThreshold: {
 				type: 'number',

@@ -52,11 +52,7 @@
 				target, // a wrapper object for our target canvas
 				reformat,
 
-				lastRender = 0,
 				oscillating = false,
-				direction = 1,
-				amount,
-				x,
 
 				control = document.getElementById('amount'),
 				canvas = document.getElementById('canvas'),
@@ -96,21 +92,15 @@
 
 			seriously.go(function (now) {
 				// callback runs before render
+				var amount;
 
 				rS('rAF').tick();
 				rS('FPS').frame();
 
 				if (oscillating) {
-					if (lastRender) {
-						if (amount <= 0.01 || amount >= 0.99) {
-							direction *= -1;
-						}
-						x += direction * (now - lastRender) * Math.PI / 1000;
-						amount = (1 - Math.cos(x)) / 2;
-						control.value = amount;
-						blur.amount = amount;
-					}
-					lastRender = now;
+					amount = (1 - Math.cos(now * Math.PI / 1000)) / 2;
+					control.value = amount;
+					blur.amount = amount;
 				}
 			}, function () {
 				// callback runs after render
@@ -120,7 +110,6 @@
 			document.getElementById('button').addEventListener('click', function () {
 				if (oscillating) {
 					oscillating = false;
-					lastRender = 0;
 
 					// set back to manual control
 					blur.amount = control;
@@ -128,13 +117,6 @@
 					this.innerHTML = 'Oscillate: Start';
 				} else {
 					oscillating = true;
-
-					// take over manual control
-					amount = parseFloat(control.value);
-
-					// figure out where in the oscillating cycle we are
-					x = Math.acos(1 - 2 * amount);
-
 					this.innerHTML = 'Oscillate: Stop';
 				}
 			});

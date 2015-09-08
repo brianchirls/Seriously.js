@@ -210,7 +210,8 @@
 				scene.add(light);
 
 				map = THREE.ImageUtils.loadTexture('../images/colorbars.png');
-				map.wrapS = map.wrapT = THREE.RepeatWrapping;
+				map.wrapS = map.wrapT = THREE.ClampToEdgeWrapping;
+				map.minFilter = THREE.LinearFilter;
 				map.anisotropy = 16;
 
 				material = new THREE.MeshLambertMaterial({
@@ -235,7 +236,7 @@
 				object.position.set(200, 0, 200);
 				scene.add(object);
 
-				object = new THREE.Mesh(new THREE.PlaneGeometry(100, 100, 4, 4), material);
+				object = new THREE.Mesh(new THREE.PlaneBufferGeometry(100, 100, 4, 4), material);
 				object.position.set(-400, 0, 0);
 				scene.add(object);
 

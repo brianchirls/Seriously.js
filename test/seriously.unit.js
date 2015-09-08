@@ -456,7 +456,7 @@
 		Seriously.removePlugin('removeme');
 	});
 
-	test('Effect Info', 24, function () {
+	test('Effect Info', 25, function () {
 		var inputs,
 			seriously,
 			effect;
@@ -468,6 +468,7 @@
 					min: -4,
 					max: 100,
 					step: 2,
+					mod: 360,
 					defaultValue: 8,
 					description: 'this is a number',
 					title: 'Number'
@@ -503,6 +504,7 @@
 		equal(inputs.number.min, -4, 'Number minimum reported');
 		equal(inputs.number.max, 100, 'Number maximum reported');
 		equal(inputs.number.step, 2, 'Number step reported');
+		equal(inputs.number.mod, 360, 'Number mod reported');
 		equal(inputs.number.defaultValue, 8, 'Number default value reported');
 		equal(inputs.number.title, 'Number', 'Node title reported');
 		equal(inputs.number.description, 'this is a number', 'Node description reported');
@@ -1035,12 +1037,61 @@
 		target.source = reformat;
 	});
 
+	asyncTest('Source elements in iframe (#102)', 3, function () {
+		var iframe;
+
+		iframe = document.createElement('iframe');
+		iframe.style.display = 'none';
+		iframe.addEventListener('load', function () {
+			var win = this.contentWindow,
+				doc = this.contentDocument,
+				seriously,
+				video,
+				canvas,
+				img,
+				source;
+
+			doc.body.innerHTML = [
+				'<video id="source-video"></video>',
+				'<canvas id="source-canvas"></canvas>',
+				'<img id="source-image"/>'
+			].join('');
+			video = doc.getElementById('source-video');
+			canvas = doc.getElementById('source-canvas');
+			img = doc.getElementById('source-image');
+
+			seriously = new Seriously();
+
+			try {
+				source = seriously.source(video);
+			} catch (e1) {}
+			ok(seriously.isSource(source) && source.original === video,
+				'Successfully created source node for video in same-origin iframe');
+
+			try {
+				source = seriously.source(canvas);
+			} catch (e2) {}
+			ok(seriously.isSource(source) && source.original === canvas,
+				'Successfully created source node for canvas in same-origin iframe');
+
+			try {
+				source = seriously.source(img);
+			} catch (e3) {}
+			ok(seriously.isSource(source) && source.original === img,
+				'Successfully created source node for image in same-origin iframe');
+
+			seriously.destroy();
+			start();
+		});
+		document.body.appendChild(iframe);
+	});
+
 	module('Inputs');
 	/*
 	 * all different types
 	 * test html elements as inputs (with overwriting)
 	 */
-	test('Number', 6, function () {
+	test('Number', 9, function () {
 		var s, e, val, input;
 
 		Seriously.plugin('testNumberInput', {
@@ -1057,6 +1108,10 @@
 				step: {
 					type: 'number',
 					step: 7
+				},
+				mod: {
+					type: 'number',
+					mod: 7
 				}
 			}
 		});
@@ -1079,6 +1134,18 @@
 		e.step = 82;
 		val = e.step;
 		equal(val, 84, 'Step rounds up');
+
+		e.mod = 5;
+		val = e.mod;
+		equal(val, 5, 'Mod within range returns original');
+
+		e.mod = 27;
+		val = e.mod;
+		equal(val, 27 % 7, 'Set number above mod');
+
+		e.mod = -5;
+		val = e.mod;
+		equal(val, 2, 'Negative number with mod');
 
 		e.number = 'not a number';
 		val = e.number;
@@ -2120,6 +2187,7 @@
 			canvas,
 			source,
 			effect,
+			commonEffect,
 			target,
 
 			gl,
@@ -2147,6 +2215,7 @@
 			Seriously.logger.log = nop;
 			seriously.destroy();
 			Seriously.removePlugin('test');
+			Seriously.removePlugin('common-shader');
 			start();
 		}
 
@@ -2215,6 +2284,26 @@
 			}
 		});
 
+		Seriously.plugin('common-shader', {
+			title: 'Test Effect with common shader',
+			commonShader: true,
+			shader: function (inputs, shaderSource) {
+				return shaderSource;
+			},
+			draw: function (shader, model, uniforms, frameBuffer, draw) {
+				try {
+					draw(shader, model, uniforms, frameBuffer);
+				} catch (e) {
+					ok(false, 'Failed to draw effect with common shader');
+				}
+			},
+			inputs: {
+				source: {
+					type: 'image'
+				}
+			}
+		});
+
 		seriously = new Seriously();
 
 		source = seriously.source('#colorbars');
@@ -2222,8 +2311,11 @@
 		effect = seriously.effect('test');
 		effect.source = source;
 
+		commonEffect = seriously.effect('common-shader');
+		commonEffect.source = effect;
+
 		target = seriously.target(canvas);
-		target.source = effect;
+		target.source = commonEffect;
 
 		source.on('webglcontextlost', function () {
 			lostFired = true;
@@ -2250,6 +2342,8 @@
 		target.on('webglcontextrestored', function () {
 			restoredFired = true;
 			ok(!lost && restored, 'webglcontextrestored event fired on target node');
+
+			target.render();
 		});
 
 		seriously.go(function () {
@@ -2342,6 +2436,36 @@
 		seriously1.destroy();
 		seriously2.destroy();
 		Seriously.logger.warn = nop;
+	});
+
+	asyncTest('Target canvas element in iframe (#102)', 1, function () {
+		var iframe;
+
+		iframe = document.createElement('iframe');
+		iframe.style.display = 'none';
+		iframe.addEventListener('load', function () {
+			var win = this.contentWindow,
+				doc = this.contentDocument,
+				seriously,
+				canvas,
+				target;
+
+			doc.body.innerHTML = '<canvas id="source-canvas"></canvas>';
+			canvas = doc.getElementById('source-canvas');
+
+			seriously = new Seriously();
+
+			try {
+				target = seriously.target(canvas);
+			} catch (e) {
+			}
+			ok(seriously.isTarget(target) && target.original === canvas,
+				'Successfully created target node for canvas in same-origin iframe');
+
+			seriously.destroy();
+			start();
+		});
+		document.body.appendChild(iframe);
 	});
 
 	module('Alias');
@@ -2439,7 +2563,7 @@
 
 
 	module('Destroy');
-	test('Destroy things', 20, function() {
+	test('Destroy things', 21, function() {
 		var seriously, source, target, effect, transform, canvas,
 			seriouslyId, sourceId, targetId, effectId, transformId;
 
@@ -2488,6 +2612,7 @@
 		seriously.destroy();
 		ok(seriously.isDestroyed(), 'Destroyed Seriously instance is destroyed');
 		equal(seriously.id, seriouslyId, 'id property retained on destroyed Seriously instance');
+		equal(target.width, undefined, 'Destorying Seriously instance cleans up node objects');
 
 		ok(source.isDestroyed(), 'Destroy Seriously instance destroys source');
 		ok(effect.isDestroyed(), 'Destroy Seriously instance destroys effect');
@@ -2859,12 +2984,14 @@
 				source,
 				pixels,
 				error,
-				incompatible;
+				incompatible,
+				input = [255, 128, 100, 200],
+				expected;
 
 			incompatible = Seriously.incompatible();
 
 			seriously = new Seriously();
-			source = seriously.source([255, 128, 100, 200], {
+			source = seriously.source(input, {
 				width: 1,
 				height: 1
 			});
@@ -2885,8 +3012,17 @@
 			} catch (e) {
 				error = e;
 			}
+
+			expected = input.map(function (value, channel) {
+				if (channel < 3) {
+					return Math.round((255 - value) * input[3] / 255);
+				}
+
+				return value;
+			});
+
 			ok(incompatible ? error : !error, 'readPixels throws error iff incompatible');
-			ok(incompatible || pixels && compare(pixels, [0, 127, 155, 200]), 'Invert effect rendered accurately.');
+			ok(incompatible || pixels && compare(pixels, expected), 'Invert effect rendered accurately.');
 
 			seriously.destroy();
 			Seriously.removePlugin('invert');

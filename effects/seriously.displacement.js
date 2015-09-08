@@ -14,7 +14,7 @@
 		}
 		factory(root.Seriously);
 	}
-}(this, function (Seriously) {
+}(window, function (Seriously) {
 	'use strict';
 
 	var fillModes = {
@@ -22,11 +22,22 @@
 		clamp: 'pos = min(max(pos, 0.0), 1.0);',
 		ignore: 'pos = texCoordSource;',
 		color: 'gl_FragColor = color;\n\treturn;'
+	},
+	channelVectors = {
+		none: [0, 0, 0, 0],
+		red: [1, 0, 0, 0],
+		green: [0, 1, 0, 0],
+		blue: [0, 0, 1, 0],
+		alpha: [0, 0, 0, 1],
+		luma: [0.2125, 0.7154, 0.0721, 0],
+		lightness: [1 / 3, 1 / 3, 1 / 3, 0]
 	};
 
 	Seriously.plugin('displacement', function () {
 		this.uniforms.resMap = [1, 1];
 		this.uniforms.resSource = [1, 1];
+		this.uniforms.xVector = channelVectors.red;
+		this.uniforms.yVector = channelVectors.green;
 
 		return {
 			shader: function (inputs, shaderSource) {
@@ -71,10 +82,13 @@
 					'uniform float offset;',
 					'uniform vec2 mapScale;',
 					'uniform vec4 color;',
+					'uniform vec4 xVector;',
+					'uniform vec4 yVector;',
 
 					'void main(void) {',
 					'	vec4 mapPixel = texture2D(map, texCoordMap);',
-					'	vec2 pos = texCoordSource + (mapPixel.xy - offset) * mapScale * amount;',
+					'	vec2 mapVector = vec2(dot(mapPixel, xVector), dot(mapPixel, yVector));',
+					'	vec2 pos = texCoordSource + (mapVector.xy - offset) * mapScale * amount;',
 
 					'	if (pos.x < 0.0 || pos.x > 1.0 || pos.y < 0.0 || pos.y > 1.0) {',
 					'		' + fillMode,
@@ -123,6 +137,26 @@
 			map: {
 				type: 'image',
 				uniform: 'map'
+			},
+			xChannel: {
+				type: 'enum',
+				defaultValue: 'red',
+				options: [
+					'red', 'green', 'blue', 'alpha', 'luma', 'lightness', 'none'
+				],
+				update: function (val) {
+					this.uniforms.xVector = channelVectors[val];
+				}
+			},
+			yChannel: {
+				type: 'enum',
+				defaultValue: 'green',
+				options: [
+					'red', 'green', 'blue', 'alpha', 'luma', 'lightness', 'none'
+				],
+				update: function (val) {
+					this.uniforms.yVector = channelVectors[val];
+				}
 			},
 			fillMode: {
 				type: 'enum',

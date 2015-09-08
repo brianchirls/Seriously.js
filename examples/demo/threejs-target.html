@@ -31,6 +31,7 @@
 	<script src="../../sources/seriously.three.js"></script>
 	<script src="../../effects/seriously.simplex.js"></script>
 	<script src="../../effects/seriously.tvglitch.js"></script>
+	<script src="../../effects/seriously.checkerboard.js"></script>
 	<script src="../../targets/seriously.three.js"></script>
 	<script>
 		(function () {
@@ -43,6 +44,7 @@
 				glitch,
 				noiseTarget,
 				glitchTarget,
+				checkerTarget,
 
 				// three.js scene
 				scene,
@@ -50,6 +52,7 @@
 				renderer,
 				noiseTexture,
 				glitchTexture,
+				checkerTexture,
 
 				pixelRatio = window.devicePixelRatio || 1,
 				outputWidth,
@@ -89,7 +92,6 @@
 					ambient,
 					map,
 					object,
-					material,
 					points,
 					i;
 
@@ -129,25 +131,33 @@
 				glitchTexture.wrapS = noiseTexture.wrapT = THREE.RepeatWrapping;
 				glitchTexture.anisotropy = 16;
 
-				material = new THREE.MeshLambertMaterial({
-					ambient: 0xffffff,
-					map: noiseTexture,
-					side: THREE.DoubleSide
-				});
+				checkerTexture = new THREE.WebGLRenderTarget(
+					512,
+					512,
+					{
+						minFilter: THREE.LinearFilter,
+						magFilter: THREE.NearestFilter,
+						format: THREE.RGBAFormat
+					}
+				);
+				checkerTexture.wrapS = checkerTexture.wrapT = THREE.RepeatWrapping;
+				checkerTexture.anisotropy = 16;
 
+				//simplex noise box
 				object = new THREE.Mesh(
 					new THREE.BoxGeometry(200, 200, 200, 4, 4, 4),
 					new THREE.MeshLambertMaterial({
 						ambient: 0xffffff,
 						map: noiseTexture,
-						side: THREE.DoubleSide
+						transparent: true
 					})
 				);
 				object.position.set(200, 0, 0);
 				scene.add(object);
 
+				//tv glitch plane
 				object = new THREE.Mesh(
-					new THREE.PlaneGeometry(300, 300),
+					new THREE.PlaneBufferGeometry(300, 300),
 					new THREE.MeshLambertMaterial({
 						ambient: 0xffffff,
 						map: glitchTexture,
@@ -155,6 +165,19 @@
 					})
 				);
 				object.position.set(-200, 0, 0);
+				scene.add(object);
+
+				//checkerboard plane
+				object = new THREE.Mesh(
+					new THREE.PlaneBufferGeometry(800, 800),
+					new THREE.MeshLambertMaterial({
+						ambient: 0xffffff,
+						map: checkerTexture,
+						side: THREE.DoubleSide
+					})
+				);
+				object.position.set(0, -150, 0);
+				object.rotateX(Math.PI / 2);
 				scene.add(object);
 
 				renderer = new THREE.WebGLRenderer({
@@ -166,11 +189,13 @@
 				*/
 				renderer.setRenderTarget(noiseTexture);
 				renderer.setRenderTarget(glitchTexture);
+				renderer.setRenderTarget(checkerTexture);
 			}
 
 			// set up composition
 			function initSeriouslyComps() {
-				var reformat;
+				var reformat,
+					checkerboard;
 
 				seriously = new Seriously();
 
@@ -178,6 +203,7 @@
 				simplex.width = 512;
 				simplex.height = 512;
 				simplex.white = 'blue';
+				simplex.black = 'rgba(0, 0, 0, 0.5)';
 				simplex.noiseScale = 2;
 				timedEffects.push(simplex);
 
@@ -195,12 +221,23 @@
 				glitch = seriously.effect('tvglitch');
 				glitch.verticalSync = 0;
 				glitch.source = reformat;
-				timedEffects.push(glitch)
+				timedEffects.push(glitch);
 
 				glitchTarget = seriously.target(glitchTexture, {
 					canvas: canvas
 				});
 				glitchTarget.source = glitch;
+
+				checkerboard = seriously.effect('checkerboard');
+				checkerboard.width = 512;
+				checkerboard.height = 512;
+				checkerboard.size = [8, 8];
+				checkerboard.color1 = '#330000';
+				checkerboard.color2 = '#666';
+				checkerTarget = seriously.target(checkerTexture, {
+					canvas: canvas
+				});
+				checkerTarget.source = checkerboard;
 			}
 
 			window.onresize = resize;

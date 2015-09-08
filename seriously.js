@@ -20,7 +20,7 @@
 		// Browser globals
 		root.Seriously = factory(root);
 	}
-}(this, function (window) {
+}(window, function (window) {
 	'use strict';
 
 	var document = window.document,
@@ -31,7 +31,7 @@
 	*/
 
 	testContext,
-	colorElement,
+	colorCtx,
 	incompatibility,
 	seriousEffects = {},
 	seriousTransforms = {},
@@ -78,8 +78,33 @@
 		orange: [1, 165 / 255, 0, 1]
 	},
 
+	colorRegex = /^(rgb|hsl)a?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(,\s*(\d+(\.\d*)?)\s*)?\)/i,
+	hexColorRegex = /^#(([0-9a-fA-F]{3,8}))/,
+
 	vectorFields = ['x', 'y', 'z', 'w'],
 	colorFields = ['r', 'g', 'b', 'a'],
+
+	outputRenderOptions = {
+		srcRGB: 0x0302, //SRC_ALPHA
+		dstRGB: 0x0303, //ONE_MINUS_SRC_ALPHA
+		srcAlpha: 0x01, //ONE
+		dstAlpha: 0x0303 //ONE_MINUS_SRC_ALPHA
+	},
+
+	shaderDebugConstants = [
+		'MAX_COMBINED_TEXTURE_IMAGE_UNITS',
+		'MAX_FRAGMENT_UNIFORM_VECTORS',
+		'MAX_TEXTURE_IMAGE_UNITS',
+		'MAX_VARYING_VECTORS',
+		'MAX_VERTEX_ATTRIBS',
+		'MAX_VERTEX_TEXTURE_IMAGE_UNITS',
+		'MAX_VERTEX_UNIFORM_VECTORS'
+	],
+
+	shaderNameRegex = /^[\t ]*#define[\t ]+SHADER_NAME\s+([^$\n\r]+)/i,
+
+	baseVertexShader,
+	baseFragmentShader,
 
 	/*
 		utility functions
@@ -290,7 +315,7 @@
 		'id',
 		'incompatible',
 		'isDestroyed',
-		'isEffect',,
+		'isEffect',
 		'isNode',
 		'isSource',
 		'isTarget',
@@ -306,6 +331,7 @@
 	function getElement(input, tags) {
 		var element,
 			tag;
+
 		if (typeof input === 'string') {
 			//element = document.getElementById(input) || document.getElementsByTagName(input)[0];
 			element = document.querySelector(input);
@@ -379,6 +405,34 @@
 		return function () {
 			method.apply(console, arguments);
 		};
+	}
+
+	/*
+	Like instanceof, but it will work on elements that come from different windows (e.g. iframes)
+
+	We do not use this for constructors defined in this script.
+	*/
+	function isInstance(obj, proto) {
+		if (!proto) {
+			proto = 'HTMLElement';
+		}
+
+		if (obj instanceof window[proto]) {
+			return true;
+		}
+
+		if (!obj || typeof obj !== 'object') {
+			return false;
+		}
+
+		while (obj) {
+			obj = Object.getPrototypeOf(obj);
+			if (obj && obj.constructor.name === proto) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	//http://www.w3.org/TR/css3-color/#hsl-color
@@ -670,6 +724,10 @@
 					input.step = 0;
 				}
 
+				if (isNaN(input.mod)) {
+					input.mod = 0;
+				}
+
 				if (input.type === 'enum') {
 					/*
 					Normalize options to make validation easy
@@ -854,6 +912,7 @@
 			programError = '',
 			shaderError,
 			i, l,
+			shaderNameRegexMatch,
 			obj;
 
 		function compileShader(source, fragment) {
@@ -972,7 +1031,19 @@
 			gl.deleteProgram(program);
 			gl.deleteShader(vertexShader);
 			gl.deleteShader(fragmentShader);
-			throw new Error('Could not initialise shader: ' + programError);
+
+			shaderNameRegexMatch = shaderNameRegex.exec(vertexShaderSource) ||
+				shaderNameRegex.exec(fragmentShaderSource);
+
+			if (shaderNameRegexMatch) {
+				programError = 'Shader = ' + shaderNameRegexMatch[1] + '\n' + programError;
+			}
+
+			shaderDebugConstants.forEach(function (c) {
+				programError += '\n' + c + ': ' + gl.getParameter(gl[c]);
+			});
+
+			throw new Error('Could not initialize shader:\n' + programError);
 		}
 
 		gl.useProgram(program);
@@ -985,7 +1056,7 @@
 				info: gl.getActiveUniform(program, i)
 			};
 
-			obj.name = obj.info.name;
+			obj.name = obj.info.name.replace(/\[0\]$/, '');
 			obj.loc = gl.getUniformLocation(program, obj.name);
 			obj.set = makeShaderSetter(obj.info, obj.loc);
 			obj.get = makeShaderGetter(obj.loc);
@@ -1070,7 +1141,6 @@
 			rectangleModel,
 			commonShaders = {},
 			baseShader,
-			baseVertexShader, baseFragmentShader,
 			Node, SourceNode, EffectNode, TransformNode, TargetNode,
 			Effect, Source, Transform, Target,
 			auto = false,
@@ -1152,7 +1222,10 @@
 
 			rectangleModel = buildRectangleModel(gl);
 
-			baseShader = new ShaderProgram(gl, baseVertexShader, baseFragmentShader);
+			baseShader = new ShaderProgram(
+				gl,
+				'#define SHADER_NAME seriously.base\n' + baseVertexShader, '#define SHADER_NAME seriously.base\n' + baseFragmentShader
+			);
 
 			for (i = 0; i < effects.length; i++) {
 				node = effects[i];
@@ -1190,14 +1263,14 @@
 				//todo: if too many webglcontextlost events fired in too short a time, abort
 				//todo: consider allowing "manual" control of restoring context
 
-				if (target instanceof WebGLFramebuffer) {
+				if (isInstance(target, 'WebGLFramebuffer')) {
 					Seriously.logger.error('Unable to restore target built on WebGLFramebuffer');
 					return;
 				}
 
 				context = getWebGlContext(target, {
 					alpha: true,
-					premultipliedAlpha: false,
+					premultipliedAlpha: true,
 					preserveDrawingBuffer: true,
 					stencil: true,
 					debugContext: primaryTarget.debugContext
@@ -1275,6 +1348,9 @@
 				node.texture = null;
 				if (node.shader && node.shader.destroy) {
 					node.shader.destroy();
+					if (node.effect.commonShader) {
+						delete commonShaders[node.hook];
+					}
 				}
 				node.shaderDirty = true;
 				node.shader = null;
@@ -1352,7 +1428,7 @@
 		forcing all dependent nodes to render
 		*/
 		function renderDaemon(now) {
-			var i, node, media,
+			var i, node,
 				keepRunning = false;
 
 			rafId = 0;
@@ -1369,7 +1445,6 @@
 				for (i = 0; i < sources.length; i++) {
 					node = sources[i];
 
-					media = node.source;
 					if (node.dirty ||
 							node.checkDirty && node.checkDirty()) {
 						node.dirty = false;
@@ -1473,7 +1548,7 @@
 					value = uniforms[name];
 					shaderUniform = shader.uniforms[name];
 					if (shaderUniform) {
-						if (value instanceof WebGLTexture) {
+						if (isInstance(value, 'WebGLTexture')) {
 							nodeGl.activeTexture(nodeGl.TEXTURE0 + numTextures);
 							nodeGl.bindTexture(nodeGl.TEXTURE_2D, value);
 							shaderUniform.set(numTextures);
@@ -1673,7 +1748,7 @@
 			//todo: figure out formats and types
 			if (dest === undefined) {
 				dest = new Uint8Array(width * height * 4);
-			} else if (!dest instanceof Uint8Array) {
+			} else if (!(isInstance(dest, 'Uint8Array'))) {
 				throw new Error('Incompatible array type');
 			}
 
@@ -1838,7 +1913,7 @@
 					//todo: color? date/time?
 				}
 
-				if (input instanceof HTMLInputElement || input instanceof HTMLSelectElement) {
+				if (isInstance(input, 'HTMLInputElement') || isInstance(input, 'HTMLSelectElement')) {
 					value = input.value;
 
 					if (lookup && lookup.element !== input) {
@@ -2035,6 +2110,7 @@
 						result.min = input.min;
 						result.max = input.max;
 						result.step = input.step;
+						result.mod = input.mod;
 					} else if (input.type === 'enum') {
 						//make a copy
 						result.options = extend({}, input.options);
@@ -2190,7 +2266,8 @@
 			}
 		};
 
-		extend(EffectNode, Node);
+		EffectNode.prototype = Object.create(Node.prototype);
+		EffectNode.prototype.constructor = EffectNode;
 
 		EffectNode.prototype.initialize = function () {
 			if (!this.initialized) {
@@ -2310,7 +2387,19 @@
 		};
 
 		EffectNode.prototype.buildShader = function () {
-			var shader, effect = this.effect;
+			var shader,
+				effect = this.effect,
+				me = this;
+
+			function addShaderName(shaderSrc) {
+				if (shaderNameRegex.test(shaderSrc)) {
+					return shaderSrc;
+				}
+
+				return '#define SHADER_NAME seriously.' + me.hook + '\n' +
+					shaderSrc;
+			}
+
 			if (this.shaderDirty) {
 				if (effect.commonShader && commonShaders[this.hook]) {
 					if (!this.shader) {
@@ -2329,7 +2418,11 @@
 					if (shader instanceof ShaderProgram) {
 						this.shader = shader;
 					} else if (shader && shader.vertex && shader.fragment) {
-						this.shader = new ShaderProgram(gl, shader.vertex, shader.fragment);
+						this.shader = new ShaderProgram(
+							gl,
+							addShaderName(shader.vertex),
+							addShaderName(shader.fragment)
+						);
 					} else {
 						this.shader = baseShader;
 					}
@@ -3144,7 +3237,7 @@
 			}
 
 			//todo: could probably stand to re-work and re-indent this whole block now that we have plugins
-			if (!plugin && source instanceof HTMLElement) {
+			if (!plugin && isInstance(source)) {
 				if (source.tagName === 'CANVAS') {
 					this.width = source.width;
 					this.height = source.height;
@@ -3179,7 +3272,7 @@
 					this.hook = 'image';
 					this.compare = compareSource;
 				}
-			} else if (!plugin && source instanceof WebGLTexture) {
+			} else if (!plugin && isInstance(source, 'WebGLTexture')) {
 				if (gl && !gl.isTexture(source)) {
 					throw new Error('Not a valid WebGL texture.');
 				}
@@ -3261,7 +3354,8 @@
 			}
 		};
 
-		extend(SourceNode, Node);
+		SourceNode.prototype = Object.create(Node.prototype);
+		SourceNode.prototype.constructor = SourceNode;
 
 		SourceNode.prototype.initialize = function () {
 			var texture;
@@ -3640,7 +3734,7 @@
 			}
 
 			opts = options || {};
-			flip = opts.flip === undefined ? true : opts.flip
+			flip = opts.flip === undefined ? true : opts.flip;
 			width = parseInt(opts.width, 10);
 			height = parseInt(opts.height, 10);
 			debugContext = opts.debugContext;
@@ -3652,16 +3746,16 @@
 
 			this.renderToTexture = opts.renderToTexture;
 
-			if (target instanceof WebGLFramebuffer) {
+			if (isInstance(target, 'WebGLFramebuffer')) {
 				frameBuffer = target;
 
-				if (opts instanceof HTMLCanvasElement) {
+				if (isInstance(opts, 'HTMLCanvasElement')) {
 					target = opts;
-				} else if (opts instanceof WebGLRenderingContext) {
+				} else if (isInstance(opts, 'WebGLRenderingContext')) {
 					target = opts.canvas;
-				} else if (opts.canvas instanceof HTMLCanvasElement) {
+				} else if (isInstance(opts.canvas, 'HTMLCanvasElement')) {
 					target = opts.canvas;
-				} else if (opts.context instanceof WebGLRenderingContext) {
+				} else if (isInstance(opts.context, 'WebGLRenderingContext')) {
 					target = opts.context.canvas;
 				} else {
 					//todo: search all canvases for matching contexts?
@@ -3669,7 +3763,7 @@
 				}
 			}
 
-			if (target instanceof HTMLElement && target.tagName === 'CANVAS') {
+			if (isInstance(target, 'HTMLCanvasElement')) {
 				width = target.width;
 				height = target.height;
 
@@ -3678,7 +3772,7 @@
 					triedWebGl = true;
 					context = getWebGlContext(target, {
 						alpha: true,
-						premultipliedAlpha: false,
+						premultipliedAlpha: true,
 						preserveDrawingBuffer: true,
 						stencil: true,
 						debugContext: debugContext
@@ -3801,7 +3895,8 @@
 			targets.push(this);
 		};
 
-		extend(TargetNode, Node);
+		TargetNode.prototype = Object.create(Node.prototype);
+		TargetNode.prototype.constructor = TargetNode;
 
 		TargetNode.prototype.setSource = function (source) {
 			var newSource;
@@ -3842,7 +3937,7 @@
 
 		TargetNode.prototype.resize = function () {
 			//if target is a canvas, reset size to canvas size
-			if (this.target instanceof HTMLCanvasElement) {
+			if (isInstance(this.target, 'HTMLCanvasElement')) {
 				if (this.width !== this.target.width || this.height !== this.target.height) {
 					this.target.width = this.width;
 					this.target.height = this.height;
@@ -3916,7 +4011,7 @@
 					this.transformDirty = false;
 				}
 
-				draw(baseShader, rectangleModel, this.uniforms, this.frameBuffer.frameBuffer, this);
+				draw(baseShader, rectangleModel, this.uniforms, this.frameBuffer.frameBuffer, this, outputRenderOptions);
 
 				this.emit('render');
 				this.dirty = false;
@@ -3965,7 +4060,7 @@
 				}
 
 				this.uniforms.source = this.texture;
-				draw(this.shader, this.model, this.uniforms, null, this);
+				draw(this.shader, this.model, this.uniforms, null, this, outputRenderOptions);
 
 				this.dirty = false;
 			}
@@ -4044,7 +4139,7 @@
 					}
 				}
 
-				if (input instanceof HTMLInputElement || input instanceof HTMLSelectElement) {
+				if (isInstance(input, 'HTMLInputElement') || isInstance(input, 'HTMLSelectElement')) {
 					value = input.value;
 
 					if (lookup && lookup.element !== input) {
@@ -4181,7 +4276,7 @@
 			// attach methods
 			for (key in me.methods) {
 				if (me.methods.hasOwnProperty(key)) {
-					this[key] = makeMethod(me.methods[key].bind(me));
+					this[key] = makeMethod(me.methods[key]);
 				}
 			}
 
@@ -4224,6 +4319,7 @@
 						result.min = input.min;
 						result.max = input.max;
 						result.step = input.step;
+						result.mod = input.mod;
 					} else if (input.type === 'enum') {
 						//make a copy
 						result.options = extend({}, input.options);
@@ -4379,6 +4475,9 @@
 
 			allTransformsByHook[hook].push(this);
 		};
+
+		TransformNode.prototype = Object.create(Node.prototype);
+		TransformNode.prototype.constructor = TransformNode;
 
 		TransformNode.prototype.setDirty = function () {
 			this.renderDirty = true;
@@ -4620,7 +4719,7 @@
 
 			if (dest === undefined) {
 				dest = new Uint8Array(width * height * 4);
-			} else if (!dest instanceof Uint8Array) {
+			} else if (!(isInstance(dest, 'Uint8Array'))) {
 				throw new Error('Incompatible array type');
 			}
 
@@ -4707,7 +4806,7 @@
 		Initialize Seriously object based on options
 		*/
 
-		if (options instanceof HTMLCanvasElement) {
+		if (isInstance(options, 'HTMLCanvasElement')) {
 			options = {
 				canvas: options
 			};
@@ -4761,7 +4860,6 @@
 		this.target = function (hook, target, options) {
 			var targetNode,
 				element,
-				hook,
 				i;
 
 			if (hook && typeof hook === 'string' && !seriousTargets[hook]) {
@@ -4877,8 +4975,8 @@
 				descriptor;
 
 			while (nodes.length) {
-				node = nodes.shift();
-				node.destroy();
+				node = nodes[0];
+				node.pub.destroy();
 			}
 
 			for (i in this) {
@@ -4893,8 +4991,6 @@
 				}
 			}
 
-			baseFragmentShader = null;
-			baseVertexShader = null;
 			seriously = null;
 
 			//todo: do we really need to allocate new arrays here?
@@ -4993,48 +5089,6 @@
 		});
 
 		//todo: load, save, find
-
-		baseVertexShader = [
-			'precision mediump float;',
-
-			'attribute vec4 position;',
-			'attribute vec2 texCoord;',
-
-			'uniform vec2 resolution;',
-			'uniform mat4 transform;',
-
-			'varying vec2 vTexCoord;',
-
-			'void main(void) {',
-			// first convert to screen space
-			'	vec4 screenPosition = vec4(position.xy * resolution / 2.0, position.z, position.w);',
-			'	screenPosition = transform * screenPosition;',
-
-			// convert back to OpenGL coords
-			'	gl_Position.xy = screenPosition.xy * 2.0 / resolution;',
-			'	gl_Position.z = screenPosition.z * 2.0 / (resolution.x / resolution.y);',
-			'	gl_Position.w = screenPosition.w;',
-			'	vTexCoord = texCoord;',
-			'}\n'
-		].join('\n');
-
-		baseFragmentShader = [
-			'precision mediump float;',
-
-			'varying vec2 vTexCoord;',
-
-			'uniform sampler2D source;',
-
-			'void main(void) {',
-			/*
-			'	if (any(lessThan(vTexCoord, vec2(0.0))) || any(greaterThanEqual(vTexCoord, vec2(1.0)))) {',
-			'		gl_FragColor = vec4(0.0);',
-			'	} else {',
-			*/
-			'		gl_FragColor = texture2D(source, vTexCoord);',
-			//'	}',
-			'}'
-		].join('\n');
 
 		this.defaults(options.defaults);
 	}
@@ -5339,35 +5393,39 @@
 	//todo: validators should not allocate new objects/arrays if input is valid
 	Seriously.inputValidators = {
 		color: function (value, input, defaultValue, oldValue) {
-			var s, a, i, computed, bg;
+			var s,
+				a,
+				match,
+				i;
 
 			a = oldValue || [];
 
 			if (typeof value === 'string') {
 				//todo: support percentages, decimals
-				s = (/^(rgb|hsl)a?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(,\s*(\d+(\.\d*)?)\s*)?\)/i).exec(value);
-				if (s && s.length) {
-					if (s.length < 3) {
+				match = colorRegex.exec(value);
+				if (match && match.length) {
+					if (match.length < 3) {
 						a[0] = a[1] = a[2] = a[3] = 0;
 						return a;
 					}
 
 					a[3] = 1;
 					for (i = 0; i < 3; i++) {
-						a[i] = parseFloat(s[i+2]) / 255;
+						a[i] = parseFloat(match[i + 2]) / 255;
 					}
-					if (!isNaN(s[6])) {
-						a[3] = parseFloat(s[6]);
+					if (!isNaN(match[6])) {
+						a[3] = parseFloat(match[6]);
 					}
-					if (s[1].toLowerCase() === 'hsl') {
+					if (match[1].toLowerCase() === 'hsl') {
 						return hslToRgb(a[0], a[1], a[2], a[3], a);
 					}
+
 					return a;
 				}
 
-				s = (/^#(([0-9a-fA-F]{3,8}))/).exec(value);
-				if (s && s.length) {
-					s = s[1];
+				match = hexColorRegex.exec(value);
+				if (match && match.length) {
+					s = match[1];
 					if (s.length === 3) {
 						a[0] = parseInt(s[0], 16) / 15;
 						a[1] = parseInt(s[1], 16) / 15;
@@ -5394,25 +5452,21 @@
 					return a;
 				}
 
-				s = colorNames[value.toLowerCase()];
-				if (s) {
+				match = colorNames[value.toLowerCase()];
+				if (match) {
 					for (i = 0; i < 4; i++) {
-						a[i] = s[i];
+						a[i] = match[i];
 					}
 					return a;
 				}
 
-				if (!colorElement) {
-					colorElement = document.createElement('a');
+				if (!colorCtx) {
+					colorCtx = document.createElement('canvas').getContext('2d');
 				}
-				colorElement.style.backgroundColor = '';
-				colorElement.style.backgroundColor = value;
-				computed = window.getComputedStyle(colorElement);
-				bg = computed.getPropertyValue('background-color') ||
-					computed.getPropertyValue('backgroundColor') ||
-					colorElement.style.backgroundColor;
-				if (bg && bg !== value) {
-					return Seriously.inputValidators.color(bg, input, oldValue);
+				colorCtx.fillStyle = value;
+				s = colorCtx.fillStyle;
+				if (s && s !== '#000000') {
+					return Seriously.inputValidators.color(s, input, defaultValue, oldValue);
 				}
 
 				a[0] = a[1] = a[2] = a[3] = 0;
@@ -5459,11 +5513,15 @@
 			return a;
 		},
 		number: function (value, input, defaultValue) {
+			value = parseFloat(value);
+
 			if (isNaN(value)) {
 				return defaultValue || 0;
 			}
 
-			value = parseFloat(value);
+			if (input.mod) {
+				value = value - input.mod * Math.floor(value / input.mod);
+			}
 
 			if (value < input.min) {
 				return input.min;
@@ -5582,6 +5640,7 @@
 							step: input.step,
 							min: input.min,
 							max: input.max,
+							mod: input.mod,
 							minCount: input.minCount,
 							maxCount: input.maxCount,
 							dimensions: input.dimensions,
@@ -5662,7 +5721,6 @@
 
 	Seriously.source('video', function (video, options, force) {
 		var me = this,
-			video,
 			key,
 			opts,
 
@@ -5709,7 +5767,7 @@
 			me.setDirty();
 		}
 
-		if (video instanceof window.HTMLVideoElement) {
+		if (isInstance(video, 'HTMLVideoElement')) {
 			if (video.readyState) {
 				initializeVideo();
 			} else {
@@ -6436,8 +6494,49 @@
 	todo: additional transform node types
 	- perspective
 	- matrix
-	- crop? - maybe not - probably would just scale.
 	*/
+
+	baseVertexShader = [
+		'precision mediump float;',
+
+		'attribute vec4 position;',
+		'attribute vec2 texCoord;',
+
+		'uniform vec2 resolution;',
+		'uniform mat4 transform;',
+
+		'varying vec2 vTexCoord;',
+
+		'void main(void) {',
+		// first convert to screen space
+		'	vec4 screenPosition = vec4(position.xy * resolution / 2.0, position.z, position.w);',
+		'	screenPosition = transform * screenPosition;',
+
+		// convert back to OpenGL coords
+		'	gl_Position.xy = screenPosition.xy * 2.0 / resolution;',
+		'	gl_Position.z = screenPosition.z * 2.0 / (resolution.x / resolution.y);',
+		'	gl_Position.w = screenPosition.w;',
+		'	vTexCoord = texCoord;',
+		'}\n'
+	].join('\n');
+
+	baseFragmentShader = [
+		'precision mediump float;',
+
+		'varying vec2 vTexCoord;',
+
+		'uniform sampler2D source;',
+
+		'void main(void) {',
+		/*
+		'	if (any(lessThan(vTexCoord, vec2(0.0))) || any(greaterThanEqual(vTexCoord, vec2(1.0)))) {',
+		'		gl_FragColor = vec4(0.0);',
+		'	} else {',
+		*/
+		'		gl_FragColor = texture2D(source, vTexCoord);',
+		//'	}',
+		'}'
+	].join('\n');
 
 	/*
 	 * simplex noise shaders
