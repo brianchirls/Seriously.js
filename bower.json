@@ -1,0 +1,26 @@
+{
+  "name": "Seriously.js",
+  "main": "Seriously.js",
+  "version": "0.1",
+  "homepage": "http://seriouslyjs.org/",
+  "authors": [
+    "brian at chirls dot com"
+  ],
+  "description": "Seriously.js is a real-time, node-based video compositor for the web. Inspired by professional software such as After Effects and Nuke, Seriously.js renders high-quality video effects, but allows them to be dynamic and interactive.",
+  "moduleType": [
+    "amd"
+  ],
+  "keywords": [
+    "video",
+    "compositor",
+    "webgl"
+  ],
+  "license": "MIT",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ]
+}
