@@ -104,6 +104,21 @@ or images that are served from the same domain, unless they are served
 with [CORS headers](http://hacks.mozilla.org/2011/11/using-cors-to-load-webgl-textures-from-cross-domain-images/).
 Firefox, Chrome and Opera support CORS for video, but Safari and Internet Explorer do not, and videos served with CORS are rare. So for now, it is best to host your own video files.
 
+##Building for deployment
+
+```
+gulp build
+```
+
+or for custom builds
+
+```
+gulp build --inc "invert hue-saturation" 
+gulp build --exc "sketch"
+```
+
+
+
 ## Contributing
 
 Bug fixes, new features, effects and examples are welcome and appreciated. Please follow the [Contributing Guidelines](https://github.com/brianchirls/Seriously.js/wiki/Contributing).

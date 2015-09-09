@@ -1,0 +1,45 @@
+{
+    "name": "Seriously.js",
+    "version": "0.1.0",
+    "main" : "serously.js",
+    "author": "Brian Chirls  <brian@chirls.com>",
+    "description": "Seriously.js is a real-time, node-based video compositor for the web. Inspired by professional software such as After Effects and Nuke, Seriously.js renders high-quality video effects, but allows them to be dynamic and interactive.",
+    "engines" :{
+        "node" : "^0.12.2",
+        "npm" : "^2.6.0"
+    },
+
+    "devDependencies": {
+        "gulp" : "3.9.0",
+        "gulp-util" : "^3.0.6",
+        "gulp-rimraf" : "^0.1.1",
+        "gulp-requirejs" : "0.1.3",
+        "gulp-concat" : "^2.6.0",
+        "gulp-uglify" : "^1.4.0",
+        "gulp-gzip" : "^1.2.0",
+        "event-stream" : "^3.3.1",
+        "gulp-if" : "1.2.5",
+        "yargs" : "^3.4.0", 
+        "gulp-jshint" : "^1.11.2", 
+        "node-qunit-phantomjs" : "x"
+    },
+
+    "dependencies": {
+        
+     },
+
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/brianchirls/Seriously.js"
+    },
+
+    "bugs": {
+        "url": "https://github.com/brianchirls/Seriously.js/issues"
+    },
+
+    "scripts": {
+       
+    }
+}
+
+
