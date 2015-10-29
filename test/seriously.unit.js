@@ -3134,4 +3134,68 @@
 			start();
 		});
 	});
+
+	asyncTest('Channels', 5, function () {
+		require([
+			'seriously',
+			'effects/seriously.channels',
+			'sources/seriously.array'
+		], function (Seriously) {
+			var seriously,
+				effect,
+				target,
+				canvas,
+				pixels,
+				error,
+				incompatible,
+				array = [
+					255, 255, 255, 255,
+					255, 0, 0, 255,
+					0, 255, 0, 128,
+					0, 0, 255, 0
+				],
+				arraySource,
+				img,
+				imgSource,
+				expected;
+
+			incompatible = Seriously.incompatible();
+
+			seriously = new Seriously();
+			arraySource = seriously.source(array, {
+				width: 2,
+				height: 2
+			});
+
+			canvas = document.createElement('canvas');
+			canvas.width = canvas.height = 1;
+			target = seriously.target(canvas);
+
+			img = document.createElement('img');
+			img.src = 'media/tiny.png';
+			imgSource = seriously.source(img);
+
+			effect = seriously.effect('channels');
+			ok(effect, 'Channels effect successfully created');
+
+			effect.alphaSource = arraySource;
+			ok(true, 'Set alphaSource without having a main "source" input set (issue #109)');
+
+			effect.source = imgSource;
+			equal(effect.redSource, imgSource, 'Unset channel sources fall back to main "source" input');
+
+			effect.source = arraySource;
+			equal(effect.source, arraySource, 'Set main "source" a second time (issue #109)');
+			equal(effect.redSource, imgSource, 'Unset channel sources remain set to original main "source" even after it changes.');
+
+			target.source = effect;
+
+			//todo: render and readPixels to test accurate render results
+
+			seriously.destroy();
+			Seriously.removePlugin('channels');
+
+			start();
+		});
+	});
 }());
