@@ -29,6 +29,7 @@
 
 				'uniform sampler2D source;',
 				'uniform sampler2D colorCube;',
+				'uniform float size;',
 				'varying vec2 vTexCoord;',
 
 				'vec3 sampleAs3DTexture(sampler2D tex, vec3 coord, float size) {',
@@ -48,7 +49,7 @@
 
 				'void main(void) {',
 				'	vec4 originalColor = texture2D(source, vTexCoord);',
-				'	vec3 color = sampleAs3DTexture(colorCube, originalColor.rgb, 8.0);',
+				'	vec3 color = sampleAs3DTexture(colorCube, originalColor.rgb, size);',
 				'	gl_FragColor = vec4(color, originalColor.a);',
 				'}'
 			].join('\n');
@@ -63,6 +64,13 @@
 			cube: {
 				type: 'image',
 				uniform: 'colorCube'
+			},
+			size: {
+				type: 'number',
+				uniform: 'size',
+				defaultValue: 8,
+				min: 1,
+				max: 256
 			}
 		},
 		title: 'Color Cube',
