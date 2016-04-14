@@ -21,37 +21,39 @@
 		
 		if(typeof options !== 'object') options = {};
 		
-		var u,
-			slicePositions,
-			updateSlices = function(){
-				u.slicesA = slicePositions.slice(0,4);
-				u.slicesB = slicePositions.slice(4);
+		var setSlicePositions = function(positions){
+				var u = options.effect.uniforms;
+				u.slicesA[0] = positions[0];
+				u.slicesA[1] = positions[1];
+				u.slicesA[2] = positions[2];
+				u.slicesA[3] = positions[3];
+				u.slicesB[0] = positions[4];
+				u.slicesB[1] = positions[5];
+				u.slicesB[2] = positions[6];
+				u.slicesB[3] = positions[7];
 			},
 			reset = function(){
-				slicePositions=[];
-				for(var i=0; i<8; i++){ slicePositions[i] = i/7; }
-				updateSlices();
+				var p = [];
+				for(var i=0; i<8; i++){ p[i] = i/7; }
+				setSlicePositions(p);
 			},
 			randomise = function(){
-				slicePositions=[];
-				for(var i=0; i<8; i++){ slicePositions[i] = i/7 + Math.random()*1/8; }
-				updateSlices();
+				var p=[];
+				for(var i=0; i<8; i++){ p[i] = i/7 + Math.random()*1/8; }
+				setSlicePositions(p);
 			};
-		
+			
 		return {
 			initialize: function (initialize, gl) {
 				initialize();
-				u = this.uniforms;
-				
+				options.effect = this;
 				options.reset = reset;
 				options.randomise = randomise;	
-				
-				slicePositions=[];
-				for(var i=0; i<8; i++){ slicePositions.push(.0); }
+				options.setSlicePositions = setSlicePositions;
 			},
 			resize: function () {
 				this.uniforms.invHeight = 1.0 / this.height;
-			},				
+			},
 			commonShader: true,
 			shader: function (inputs, shaderSource) {
 				
@@ -59,7 +61,6 @@
 					
 					'precision mediump float;',
 					
-					'const float noiseAmt = .04;', // just add a low level of noise. make configurable if you want...
 					
 					'varying vec2 vTexCoord;',
 					
@@ -69,6 +70,7 @@
 					'uniform vec4 slicesB;',
 					
 					'uniform float seed;', 
+					'uniform float noiseAmt;', // = .04;',
 					'uniform float invHeight;',
 					'uniform float ySpread;',
 					
@@ -132,8 +134,7 @@
 			}
 		};
 	},
-	{	// meta
-		inPlace: true,
+	{	// metadata
 		inputs: {
 			source: {
 				type: 'image',
@@ -158,6 +159,13 @@
 				uniform: 'slicesB',
 				defaultValue: [4/7, 5/7, 6/7, 1.0]
 			},
+			noiseAmount : {
+				type: 'number',
+				uniform: 'noiseAmt',
+				min: 0,
+				max: 1,
+				defaultValue: 0.05
+			},
 			seed: {
 				type: 'number',
 				uniform: 'seed',
@@ -166,6 +174,7 @@
 				defaultValue: 1 + Math.random() * 1023
 			}
 		},
+		inPlace: true,
 		title: 'Slicer',
 		description: 'Slicer Effect'
 	});

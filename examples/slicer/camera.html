@@ -37,12 +37,16 @@
 		<span>Todo: add slice position animation</span>
 		
 		<div>
+			<label for="noiseAmount">Noise Amount</label>
+			<input type="range" id="noiseAmount" min="0" max="1" step="0.001" value="0.05" style="width:512px" />
+		</div>
+		<div>
 			<label for="ySpread">Y Spread</label>
 			<input type="range" id="ySpread" min="0" max="128" step="0.1" value="16" style="width:512px" />
 		</div>
 		<div>
 			<label for="blur-amount">Blur</label>
-			<input type="range" id="blur-amount" min="0" max="1" step="0.001" value=".25" style="width:512px" />
+			<input type="range" id="blur-amount" min="0" max="1" step="0.001" value=".1" style="width:512px" />
 		</div>
 	</div>
 	
@@ -52,13 +56,12 @@
 	<script src="../../effects/seriously.blur.js"></script>
 	<script>
 	(function() {
-		//main code goes here
 
 		// declare our variables
 		var srsly, // the main object that holds the entire composition
 			source, // wrapper object for source video
 			slicer, // slicer effect
-			slicerOptions,
+			slicerControl,
 			blur, // optional, add some blur to the output
 			target; // a wrapper object for our target canvas
 
@@ -68,13 +71,11 @@
 			return;
 		}
 		
-		slicerOptions={};
 		// construct our seriously object
 		srsly = new Seriously();
-
 		source = srsly.source('camera');
 		target = srsly.target('#target');
-		slicer = srsly.effect('slicer', slicerOptions);
+		slicer = srsly.effect('slicer', slicerControl={});
 		blur = srsly.effect('blur');
 		
 		// connect the nodes 
@@ -84,14 +85,11 @@
 		
 		// 
 		// optional. some built-in utils - reset slices so they are evenly distributed, or randomise them.
-		document.getElementById('reset').addEventListener('click',function(){
-			slicerOptions.reset();
-		});
-		document.getElementById('randomise').addEventListener('click',function(){
-			slicerOptions.randomise();
-		});
+		document.getElementById('reset').addEventListener('click', slicerControl.reset);
+		document.getElementById('randomise').addEventListener('click',slicerControl.randomise);
 		
 		slicer.ySpread= '#ySpread';
+		slicer.noiseAmount= '#noiseAmount';
 		blur.amount = '#blur-amount';
 
 		srsly.go(

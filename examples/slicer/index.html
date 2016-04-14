@@ -38,6 +38,10 @@
 		<span>Todo: add slice position animation</span>
 		
 		<div>
+			<label for="noiseAmount">Noise Amount</label>
+			<input type="range" id="noiseAmount" min="0" max="1" step="0.001" value="0.05" style="width:512px" />
+		</div>
+		<div>
 			<label for="ySpread">Y Spread</label>
 			<input type="range" id="ySpread" min="0" max="128" step="0.1" value="16" style="width:512px" />
 		</div>
@@ -50,9 +54,7 @@
 		
 	<script src="../../lib/require.js"></script>
 	<script>
-		require.config({
-			baseUrl: '../../'
-		});
+		require.config({ baseUrl: '../../' });
 
 		require([
 			'seriously',
@@ -62,36 +64,43 @@
 		
 			var seriously, 
 				target,
-				slicer, slicerOptions,
+				slicer, slicerControl,
 				blur;
 
 			seriously = new Seriously();
 			target = seriously.target('#canvas');
 
-			slicerOptions={};
-			slicer = seriously.effect('slicer', slicerOptions);
-			
-			
+			// make the slicer and assign some controls
+			slicer = seriously.effect('slicer', slicerControl = {});
+			slicer.noiseAmount= '#noiseAmount';
 			slicer.ySpread= '#ySpread';
 			
 			blur = seriously.effect('blur');
 			blur.amount = '#blur-amount';
-
+			
+			// connect the nodes together
 			slicer.source = '#image';
 			blur.source = slicer;
 			target.source = blur;
 			
-			// optional. some built-in utils - reset slices so they are evenly distributed, or randomise them.
-			document.getElementById('reset').addEventListener('click',function(){
-				slicerOptions.reset();
-			});
-			document.getElementById('randomise').addEventListener('click',function(){
-				slicerOptions.randomise();
-			});
+			document.getElementById('reset').addEventListener('click', slicerControl.reset);
+			document.getElementById('randomise').addEventListener('click', slicerControl.randomise);
+			
+			/*
+			 * 	Using slicerControl is optional. Has some utils for setting/controlling the slice positions. 
+			 *	You could just use the sliceA and sliceB uniforms exposed on the slicer object instead.
+			 *	
+			 *	reset()
+			 *	randomise()
+			 *	setSlicePositions(an8ElementArrayOfFloats)
+			*/
 			
 			seriously.go(
 				function(){ // before render
 					slicer.seed = Math.random() * 1024;
+				},
+				function(){ // after render
+					
 				}
 			);
 		});
