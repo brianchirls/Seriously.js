@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Seriously.js Slicer Example</title>
+	<meta name="viewport" content="width=device-width, user-scalable=no">
+	<style type="text/css">
+		img{
+			display:none;
+		}
+		body {
+			margin: 0;
+		}
+		#canvas {
+			position: relative;
+			top: 0;
+			left: 0;
+			width: 1024px;
+			display:block;
+		}
+		button {
+			padding:4px;
+			margin-bottom:8px;
+		}
+		.controls{
+			margin:16px;
+		}
+	</style>
+</head>
+<body>
+	<img src="../images/field.jpg" id="image"/>
+	<canvas id="canvas" width="1024" height="628"></canvas>	
+	
+	<div class="controls">
+		Slice positions &#160;
+		<button id="reset">Reset</button>&#160;
+		<button id="randomise">Randomise</button>&#160;
+		<button disabled id="animate">Animate</button>&#160;
+		<span>Todo: add slice position animation</span>
+		
+		<div>
+			<label for="ySpread">Y Spread</label>
+			<input type="range" id="ySpread" min="0" max="128" step="0.1" value="16" style="width:512px" />
+		</div>
+		<div>
+			<label for="blur-amount">Blur</label>
+			<input type="range" id="blur-amount" min="0" max="1" step="0.001" value=".25" style="width:512px" />
+		</div>
+	</div>
+		
+		
+	<script src="../../lib/require.js"></script>
+	<script>
+		require.config({
+			baseUrl: '../../'
+		});
+
+		require([
+			'seriously',
+			'effects/seriously.slicer',
+			'effects/seriously.blur'
+		], function (Seriously) {
+		
+			var seriously, 
+				target,
+				slicer, slicerOptions,
+				blur;
+
+			seriously = new Seriously();
+			target = seriously.target('#canvas');
+
+			slicerOptions={};
+			slicer = seriously.effect('slicer', slicerOptions);
+			
+			
+			slicer.ySpread= '#ySpread';
+			
+			blur = seriously.effect('blur');
+			blur.amount = '#blur-amount';
+
+			slicer.source = '#image';
+			blur.source = slicer;
+			target.source = blur;
+			
+			// optional. some built-in utils - reset slices so they are evenly distributed, or randomise them.
+			document.getElementById('reset').addEventListener('click',function(){
+				slicerOptions.reset();
+			});
+			document.getElementById('randomise').addEventListener('click',function(){
+				slicerOptions.randomise();
+			});
+			
+			seriously.go(
+				function(){ // before render
+					slicer.seed = Math.random() * 1024;
+				}
+			);
+		});
+	</script>	
+</body>
+</html>
