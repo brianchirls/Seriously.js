@@ -33,20 +33,25 @@
 		Slice positions &#160;
 		<button id="reset">Reset</button>&#160;
 		<button id="randomise">Randomise</button>&#160;
-		<button disabled id="animate">Animate</button>&#160;
-		<span>Todo: add slice position animation</span>
-		
+		<span>
+			<input type="checkbox" id="animation-toggle" name="animation-toggle" value="" />
+			<label for="animation-toggle">Animated</label>
+		</span>
+		<div id="animation-speed" style="opacity:0.5">
+			<label for="animation-speed">Animation Speed</label>
+			<input disabled type="range" name="animation-speed" min="0.001" max="0.02" step="0.0001" value=".003" style="width:512px" />
+		</div>
 		<div>
 			<label for="noiseAmount">Noise Amount</label>
-			<input type="range" id="noiseAmount" min="0" max="1" step="0.001" value="0.05" style="width:512px" />
+			<input type="range" name="noiseAmount" id="noiseAmount" min="0" max="1" step="0.001" value="0.05" style="width:512px" />
 		</div>
 		<div>
 			<label for="ySpread">Y Spread</label>
-			<input type="range" id="ySpread" min="0" max="128" step="0.1" value="16" style="width:512px" />
+			<input type="range" name="ySpread" id="ySpread" min="0" max="128" step="0.1" value="16" style="width:512px" />
 		</div>
 		<div>
 			<label for="blur-amount">Blur</label>
-			<input type="range" id="blur-amount" min="0" max="1" step="0.001" value=".1" style="width:512px" />
+			<input type="range" name="blur-amount" id="blur-amount" min="0" max="1" step="0.001" value=".1" style="width:512px" />
 		</div>
 	</div>
 	
@@ -57,11 +62,11 @@
 	<script>
 	(function() {
 
-		// declare our variables
-		var srsly, // the main object that holds the entire composition
+		var seriously, // the main object that holds the entire composition
 			source, // wrapper object for source video
 			slicer, // slicer effect
-			slicerControl,
+			slicerControl={}, sliceAnimator, lastTime=0,
+			animationSpeedSlider, animationSpeedSliderChange,
 			blur, // optional, add some blur to the output
 			target; // a wrapper object for our target canvas
 
@@ -72,34 +77,109 @@
 		}
 		
 		// construct our seriously object
-		srsly = new Seriously();
-		source = srsly.source('camera');
-		target = srsly.target('#target');
-		slicer = srsly.effect('slicer', slicerControl={});
-		blur = srsly.effect('blur');
+		seriously = new Seriously();
+		source = seriously.source('camera');
+		target = seriously.target('#target');
+		slicer = seriously.effect('slicer', slicerControl);
+		blur = seriously.effect('blur');
 		
 		// connect the nodes 
 		slicer.source = source;
 		blur.source = slicer;
 		target.source = blur;
 		
-		// 
-		// optional. some built-in utils - reset slices so they are evenly distributed, or randomise them.
-		document.getElementById('reset').addEventListener('click', slicerControl.reset);
-		document.getElementById('randomise').addEventListener('click',slicerControl.randomise);
-		
-		slicer.ySpread= '#ySpread';
-		slicer.noiseAmount= '#noiseAmount';
+		// bind ui controls for slicer uniforms
+		slicer.ySpread = '#ySpread';
+		slicer.noiseAmount = '#noiseAmount';
 		blur.amount = '#blur-amount';
-
-		srsly.go(
+		
+		/*
+		 * 	Using slicerControl is optional. Has some utils for setting/controlling the slice positions. 
+		 *	You could just use the vec4 sliceA and sliceB uniforms exposed on the slicer object instead.
+		 *	
+		 *	reset() // resets all slices to be evenly spread from left to right
+		 *	randomise() // randomise slice x positions
+		 *	setSlicePositions(an8ElementArrayOfFloats) // set the 8 slice positions manually - positions are normalised, use increasing values between 0 and 1
+		 *	getSlicePositions(targetArray) // sets the target array with the current slice positions, from 0 to 7
+		*/		
+		animationSpeedSlider=document.getElementsByName('animation-speed')[0];
+		animationSpeedSliderChange = function(){
+			var val = parseFloat(animationSpeedSlider.value);
+			sliceAnimator.sliceTransitionSpeed = val;
+			sliceAnimator.newSlicesSelectTime = 4000 - val*140000;
+		};
+		animationSpeedSlider.addEventListener('change',animationSpeedSliderChange);
+		animationSpeedSlider.addEventListener('input',animationSpeedSliderChange);
+		
+		document.getElementById('reset').addEventListener('click', function(){
+			slicerControl.reset();
+			sliceAnimator.reset();
+		});
+		document.getElementById('randomise').addEventListener('click', function(){
+			slicerControl.randomise();
+			sliceAnimator.reset();
+		});
+		document.getElementById('animation-toggle').addEventListener('click',function(){
+			var state = this.checked;
+			document.getElementById('animation-speed').style.opacity= state ? 1 : .5;;
+			document.getElementsByName('animation-speed')[0].disabled=!state;
+			if(state) sliceAnimator.reset();
+			sliceAnimator.enabled = state;
+			animationSpeedSliderChange();
+		});
+		
+		// a quick example animating the slice positions over time
+		sliceAnimator = {
+			enabled: false,
+			newSliceTimer: 1e6,
+			newSlicesSelectTime: 5000, // millis
+			sliceTransitionSpeed: .003,
+			
+			currentSlices: new Float32Array([0,1/7,2/7,3/7,4/7,5/7,6/7,1]),
+			targetSlices: new Float32Array([.5,.5,.5,.5,.5,.5,.5,.5]),
+			
+			reset:function(){ // set the current values here to the values in the shader
+				slicerControl.getSlicePositions(this.currentSlices);
+				this.pickNewTargets();
+			},
+			updateSlices: function(dt){
+				var t = this;
+				var targets=t.targetSlices;
+				var current=t.currentSlices;
+				
+				t.newSliceTimer += dt;
+				if (t.newSliceTimer >= t.newSlicesSelectTime) t.pickNewTargets();
+				
+				// move slices toward targets...
+				var c;
+				for (var i=0; i<8; i++) {
+					var c = current[i];
+					current[i] += (targets[i] - c) * t.sliceTransitionSpeed;    
+				}
+				
+				slicerControl.setSlicePositions(t.currentSlices);
+			},
+			pickNewTargets: function(){
+				this.newSliceTimer = 0;
+				var count = Math.round(4 + (Math.random() * 3));
+				var stripWidth = 1.0 / count;
+				for (var i=0; i<8; i++) this.targetSlices[i] = (i * stripWidth) + (Math.random() * stripWidth);
+			}
+		};
+		
+		seriously.go(
 			function(){
 				// before render
+				var now = performance.now();
+				var dt = now - lastTime;
+				lastTime = now;
+				
 				slicer.seed = 1.0 + Math.random() * 1024;
+				
+				if(sliceAnimator.enabled) sliceAnimator.updateSlices(dt);
 			}
 		);
 	}());
 	</script>
-	
 </body>
 </html>

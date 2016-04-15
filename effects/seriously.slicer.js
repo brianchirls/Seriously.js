@@ -21,16 +21,19 @@
 		
 		if(typeof options !== 'object') options = {};
 		
-		var setSlicePositions = function(positions){
+		var getSlicePositions = function(target){
 				var u = options.effect.uniforms;
-				u.slicesA[0] = positions[0];
-				u.slicesA[1] = positions[1];
-				u.slicesA[2] = positions[2];
-				u.slicesA[3] = positions[3];
-				u.slicesB[0] = positions[4];
-				u.slicesB[1] = positions[5];
-				u.slicesB[2] = positions[6];
-				u.slicesB[3] = positions[7];
+				for(var i=0;i<4;i++){
+					target[i] = u.slicesA[i];
+					target[i+4] = u.slicesB[i];
+				}
+			},
+			setSlicePositions = function(positions){
+				var u = options.effect.uniforms;
+				for(var i=0;i<4;i++){
+					u.slicesA[i] = positions[i];
+					u.slicesB[i] = positions[i+4];
+				}
 			},
 			reset = function(){
 				var p = [];
@@ -49,6 +52,7 @@
 				options.effect = this;
 				options.reset = reset;
 				options.randomise = randomise;	
+				options.getSlicePositions = getSlicePositions;
 				options.setSlicePositions = setSlicePositions;
 			},
 			resize: function () {
