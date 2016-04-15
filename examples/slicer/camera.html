@@ -66,7 +66,7 @@
 		var seriously, // the main object that holds the entire composition
 			source, // wrapper object for source video
 			slicer, // slicer effect
-			slicerControl={}, sliceAnimator, lastTime=0,
+			slicerControl = {}, sliceAnimator, lastTime=0,
 			animationSpeedSlider, animationSpeedSliderChange,
 			blur, // optional, add some blur to the output
 			target; // a wrapper object for our target canvas
@@ -171,9 +171,10 @@
 			}
 		};
 		
+		// start everything going
 		seriously.go(
 			function(){
-				// before render
+				// before each render
 				var now = performance.now(),
 					dt = now - lastTime;
 				

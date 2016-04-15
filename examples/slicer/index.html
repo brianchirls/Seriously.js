@@ -70,10 +70,9 @@
 			
 			var seriously, 
 				target,
-				slicer, slicerControl={}, lastTime=0,
+				slicer, slicerControl = {}, sliceAnimator, lastTime=0,
 				animationSpeedSlider, animationSpeedSliderChange,
 				blur;
-				
 
 			seriously = new Seriously();
 			target = seriously.target('#canvas');
@@ -133,7 +132,7 @@
 			});
 		
 			// a quick example animating the slice positions over time
-			var sliceAnimator = {
+			sliceAnimator = {
 				enabled: false,
 				newSliceTimer: 1e6,
 				newSlicesSelectTime: 5000, // millis
@@ -142,7 +141,7 @@
 				currentSlices: new Float32Array([0,1/7,2/7,3/7,4/7,5/7,6/7,1]),
 				targetSlices: new Float32Array([0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5]),
 				
-				reset:function(){ // set the current values here to the values in the shader
+				reset:function(){
 					slicerControl.getSlicePositions(this.currentSlices);
 					this.pickNewTargets();
 				},
@@ -175,19 +174,20 @@
 				}
 			};
 		
+			// start everything going
 			seriously.go(
 				function(){
-					// before render
+					// before each render
 					var now = performance.now(),
 						dt = now - lastTime;
-						
+					
 					slicer.seed = 1.0 + Math.random() * 1024;
 					
-					if(sliceAnimator.enabled) {
+					if(sliceAnimator.enabled){
 						sliceAnimator.updateSlices(dt);
 					}
 					
-					lastTime = now;					
+					lastTime = now;
 				}
 			);
 		}
