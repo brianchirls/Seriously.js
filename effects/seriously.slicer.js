@@ -19,30 +19,36 @@
 
 	Seriously.plugin('slicer',  function (options) {
 		
-		if(typeof options !== 'object') options = {};
+		if(typeof options !== 'object') {
+			options = {};
+		}
 		
 		var getSlicePositions = function(target){
 				var u = options.effect.uniforms;
-				for(var i=0;i<4;i++){
+				for(var i=0; i < 4; i++){
 					target[i] = u.slicesA[i];
-					target[i+4] = u.slicesB[i];
+					target[i + 4] = u.slicesB[i];
 				}
 			},
 			setSlicePositions = function(positions){
 				var u = options.effect.uniforms;
-				for(var i=0;i<4;i++){
+				for(var i=0;i < 4;i++){
 					u.slicesA[i] = positions[i];
-					u.slicesB[i] = positions[i+4];
+					u.slicesB[i] = positions[i + 4];
 				}
 			},
 			reset = function(){
 				var p = [];
-				for(var i=0; i<8; i++){ p[i] = i/7; }
+				for(var i=0; i < 8; i++){ 
+					p[i] = i/7;
+				}
 				setSlicePositions(p);
 			},
 			randomise = function(){
 				var p=[];
-				for(var i=0; i<8; i++){ p[i] = i/7 + Math.random()*1/8; }
+				for(var i=0; i < 8; i++){ 
+					p[i] = i/7 + Math.random() * 1/8;
+				}
 				setSlicePositions(p);
 			};
 			
@@ -155,7 +161,7 @@
 				type: 'vector',
 				dimensions: 4,
 				uniform: 'slicesA',
-				defaultValue: [.0, 1/7, 2/7, 3/7]
+				defaultValue: [0.0, 1/7, 2/7, 3/7]
 			},
 			slicesB: {
 				type: 'vector',

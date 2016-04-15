@@ -66,12 +66,14 @@
 			'effects/seriously.slicer',
 			'effects/seriously.blur'
 		], function (Seriously) {
-		
+			'use strict';
+			
 			var seriously, 
 				target,
 				slicer, slicerControl={}, lastTime=0,
 				animationSpeedSlider, animationSpeedSliderChange,
 				blur;
+				
 
 			seriously = new Seriously();
 			target = seriously.target('#canvas');
@@ -123,7 +125,7 @@
 			});
 			document.getElementById('animation-toggle').addEventListener('click',function(){
 				var state = this.checked;
-				document.getElementById('animation-speed').style.opacity= state ? 1 : .5;;
+				document.getElementById('animation-speed').style.opacity= state ? 1 : 0.5;
 				document.getElementsByName('animation-speed')[0].disabled=!state;
 				if(state) sliceAnimator.reset();
 				sliceAnimator.enabled = state;
@@ -135,27 +137,29 @@
 				enabled: false,
 				newSliceTimer: 1e6,
 				newSlicesSelectTime: 5000, // millis
-				sliceTransitionSpeed: .0002,
+				sliceTransitionSpeed: 0.0002,
 				
 				currentSlices: new Float32Array([0,1/7,2/7,3/7,4/7,5/7,6/7,1]),
-				targetSlices: new Float32Array([.5,.5,.5,.5,.5,.5,.5,.5]),
+				targetSlices: new Float32Array([0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5]),
 				
 				reset:function(){ // set the current values here to the values in the shader
 					slicerControl.getSlicePositions(this.currentSlices);
 					this.pickNewTargets();
 				},
 				updateSlices: function(dt){
-					var t = this;
-					var targets=t.targetSlices;
-					var current=t.currentSlices;
+					var t = this,
+						targets = t.targetSlices,
+						current = t.currentSlices,
+						c;
 					
 					t.newSliceTimer += dt;
-					if (t.newSliceTimer >= t.newSlicesSelectTime) t.pickNewTargets();
+					if (t.newSliceTimer >= t.newSlicesSelectTime) {
+						t.pickNewTargets();
+					}
 					
 					// move slices toward targets...
-					var c;
 					for (var i=0; i<8; i++) {
-						var c = current[i];
+						c = current[i];
 						current[i] += (targets[i] - c) * t.sliceTransitionSpeed;    
 					}
 					
@@ -165,20 +169,25 @@
 					this.newSliceTimer = 0;
 					var count = Math.round(6 + (Math.random() * 2));
 					var stripWidth = 1.0 / count;
-					for (var i=0; i<8; i++) this.targetSlices[i] = (i * stripWidth) + (Math.random() * stripWidth);
+					for (var i=0; i<8; i++) {
+						this.targetSlices[i] = (i * stripWidth) + (Math.random() * stripWidth);
+					}
 				}
 			};
 		
 			seriously.go(
 				function(){
 					// before render
-					var now = performance.now();
-					var dt = now - lastTime;
-					lastTime = now;
-					
+					var now = performance.now(),
+						dt = now - lastTime;
+						
 					slicer.seed = 1.0 + Math.random() * 1024;
 					
-					if(sliceAnimator.enabled) sliceAnimator.updateSlices(dt);
+					if(sliceAnimator.enabled) {
+						sliceAnimator.updateSlices(dt);
+					}
+					
+					lastTime = now;					
 				}
 			);
 		}
