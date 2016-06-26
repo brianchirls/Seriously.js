@@ -420,12 +420,11 @@
 								//colorPicker
 								var color = document.createElement('input');
 								color.type = 'color';
-								color.addEventListener('change', function(elem){
-											var screen = elem;
+								color.addEventListener('change', function(screen){
 											return function(e){
 												screen.value = e.target.value;
 												screen.dispatchEvent(new Event('change'));
-											}
+											};
 										}(element));
 								cell.appendChild(color);
 
