@@ -417,6 +417,18 @@
 							} else if (input.type === 'color') {
 								element = document.createElement('input');
 
+								//colorPicker
+								var color = document.createElement('input');
+								color.type = 'color';
+								color.addEventListener('change', function(elem){
+											var screen = elem;
+											return function(e){
+												screen.value = e.target.value;
+												screen.dispatchEvent(new Event('change'));
+											}
+										}(element));
+								cell.appendChild(color);
+
 								//element.addEventListener('click', function(e) {
 								//	e = e || window.event;
 								//	colorPicker(e);
