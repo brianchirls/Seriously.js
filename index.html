@@ -425,15 +425,15 @@
 								element.value = arrayToHex(input.defaultValue);
 							} else if (input.type === 'enum') {
 								element = document.createElement('select');
-								for (j = 0; j < input.options.length; j++) {
+								for (singleOption in input.options) {
 									option = document.createElement('option');
-									if (input.options[j].length) {
-										option.value = input.options[j][0];
-										option.appendChild(document.createTextNode(input.options[j][1]));
-									} else {
-										option.value = input.options[j];
-										option.appendChild(document.createTextNode(input.options[j]));
-									}
+									//if (singleOption.length) {
+									//	option.value = singleOption[0];
+									//	option.appendChild(document.createTextNode(singleOption[1]));
+									//} else {
+										option.value = singleOption;
+										option.appendChild(document.createTextNode(singleOption));
+									//}
 									element.appendChild(option);
 								}
 								element.value = input.defaultValue;
