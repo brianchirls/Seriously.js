@@ -427,13 +427,13 @@
 								element = document.createElement('select');
 								for (singleOption in input.options) {
 									option = document.createElement('option');
-									//if (singleOption.length) {
-									//	option.value = singleOption[0];
-									//	option.appendChild(document.createTextNode(singleOption[1]));
-									//} else {
+									if (input.options[singleOption]) {
+										option.value = singleOption;
+										option.appendChild(document.createTextNode(input.options[singleOption]));
+									} else {
 										option.value = singleOption;
 										option.appendChild(document.createTextNode(singleOption));
-									//}
+									}
 									element.appendChild(option);
 								}
 								element.value = input.defaultValue;
