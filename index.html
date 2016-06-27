@@ -425,7 +425,7 @@
 								element.value = arrayToHex(input.defaultValue);
 							} else if (input.type === 'enum') {
 								element = document.createElement('select');
-								for (singleOption in input.options) {
+								for (var singleOption in input.options) {
 									option = document.createElement('option');
 									if (input.options[singleOption]) {
 										option.value = singleOption;
