@@ -427,14 +427,16 @@
 							} else if (input.type === 'enum') {
 								element = document.createElement('select');
 								for (singleEnumOption in input.options) {
-									option = document.createElement('option');
-									option.value = singleEnumOption;
-									if (input.options[singleEnumOption]) {
-										option.appendChild(document.createTextNode(input.options[singleEnumOption]));
-									} else {
-										option.appendChild(document.createTextNode(singleEnumOption));
+									if(input.options.hasOwnProperty(singleEnumOption)) {
+										option = document.createElement('option');
+										option.value = singleEnumOption;
+										if (input.options[singleEnumOption]) {
+											option.appendChild(document.createTextNode(input.options[singleEnumOption]));
+										} else {
+											option.appendChild(document.createTextNode(singleEnumOption));
+										}
+										element.appendChild(option);
 									}
-									element.appendChild(option);
 								}
 								element.value = input.defaultValue;
 							} else if (input.type === 'boolean') {
