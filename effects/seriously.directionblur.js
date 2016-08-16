@@ -64,6 +64,8 @@ http://v002.info/plugins/v002-blurs/
 					return;
 				}
 
+				baseShader = this.baseShader;
+
 				fbs = [
 					new Seriously.util.FrameBuffer(gl, this.width, this.height),
 					new Seriously.util.FrameBuffer(gl, this.width, this.height)
@@ -72,8 +74,6 @@ http://v002.info/plugins/v002-blurs/
 			commonShader: true,
 			shader: function (inputs, shaderSource) {
 				var gl = this.gl;
-
-				baseShader = this.baseShader;
 
 				shaderSource.vertex = [
 					'precision mediump float;',
