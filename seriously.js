@@ -3133,6 +3133,7 @@
 			};
 
 			this.update = function () {
+				me.update();
 				me.setDirty();
 			};
 
@@ -3246,6 +3247,11 @@
 					matchedType = true;
 					this.hook = 'canvas';
 					this.compare = compareSource;
+					this.update = function () {
+						this.width = source.width;
+						this.height = source.height;
+						this.resize();
+					};
 				} else if (source.tagName === 'IMG') {
 					this.width = source.naturalWidth || 1;
 					this.height = source.naturalHeight || 1;
@@ -3405,6 +3411,8 @@
 				this.targets.splice(i, 1);
 			}
 		};
+
+		SourceNode.prototype.update = nop;
 
 		SourceNode.prototype.resize = function () {
 			var i,
