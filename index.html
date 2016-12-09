@@ -342,6 +342,7 @@
 					inputs,
 					obj,
 					effectType,
+					singleEnumOption,
 					name = this.value;
 
 				if (name && !effectObjects[name]) {
@@ -425,16 +426,17 @@
 								element.value = arrayToHex(input.defaultValue);
 							} else if (input.type === 'enum') {
 								element = document.createElement('select');
-								for (j = 0; j < input.options.length; j++) {
-									option = document.createElement('option');
-									if (input.options[j].length) {
-										option.value = input.options[j][0];
-										option.appendChild(document.createTextNode(input.options[j][1]));
-									} else {
-										option.value = input.options[j];
-										option.appendChild(document.createTextNode(input.options[j]));
+								for (singleEnumOption in input.options) {
+									if(input.options.hasOwnProperty(singleEnumOption)) {
+										option = document.createElement('option');
+										option.value = singleEnumOption;
+										if (input.options[singleEnumOption]) {
+											option.appendChild(document.createTextNode(input.options[singleEnumOption]));
+										} else {
+											option.appendChild(document.createTextNode(singleEnumOption));
+										}
+										element.appendChild(option);
 									}
-									element.appendChild(option);
 								}
 								element.value = input.defaultValue;
 							} else if (input.type === 'boolean') {
