@@ -74,6 +74,7 @@
 				'uniform float clipBlack;',
 				'uniform float clipWhite;',
 				'uniform bool mask;',
+				'uniform float clipPrecision;',
 
 				'varying float screenSat;',
 				'varying vec3 screenPrimary;',
@@ -101,7 +102,7 @@
 				*/
 				'	float alpha = max(0.0, 1.0 - pixelSat / screenSat);',
 				'	alpha = smoothstep(clipBlack, clipWhite, alpha);',
-				'	vec4 semiTransparentPixel = vec4((sourcePixel.rgb - (1.0 - alpha) * screen.rgb * screenWeight) / max(0.00001, alpha), alpha);',
+				'	vec4 semiTransparentPixel = vec4((sourcePixel.rgb - (1.0 - alpha) * screen.rgb * screenWeight) / max(clipPrecision, alpha), alpha);',
 
 				'	vec4 pixel = mix(semiTransparentPixel, sourcePixel, solid);',
 
@@ -170,6 +171,13 @@
 				defaultValue: false,
 				uniform: 'mask',
 				shaderDirty: true
+			},
+			precision: {
+				type: 'float',
+				uniform: 'clipPrecision',
+				defaultValue: 0.00001,
+				min: 0.00001,
+				max: 1.0
 			}
 		},
 		title: 'Chroma Key',
