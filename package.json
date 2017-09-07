@@ -1,0 +1,40 @@
+{
+  "name": "seriously",
+  "version": "0.1.0",
+  "description": "A real-time, node-based video effects compositor for the web built with HTML5, Javascript and WebGL",
+  "main": "seriously.js",
+  "directories": {
+    "example": "examples",
+    "lib": "lib",
+    "test": "test"
+  },
+  "scripts": {
+    "test": "test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/brianchirls/Seriously.js.git"
+  },
+  "keywords": [
+    "webgl",
+    "canvas",
+    "compositing",
+    "javascript",
+    "html5",
+    "video",
+    "real-time",
+    "node-based"
+  ],
+  "author": "Brian Chirls",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/brianchirls/Seriously.js/issues"
+  },
+  "homepage": "https://github.com/brianchirls/Seriously.js#readme",
+  "dependencies": {},
+  "devDependencies": {
+    "rollup": "^0.49.2",
+    "rollup-plugin-filesize": "^1.4.2",
+    "rollup-plugin-progress": "^0.4.0"
+  }
+}

@@ -2975,7 +2975,7 @@
 		require([
 			'seriously',
 			'effects/seriously.invert',
-			'sources/seriously.array'
+			'src/sources/array'
 		], function (Seriously) {
 			var seriously,
 				effect,
@@ -3035,7 +3035,7 @@
 		require([
 			'seriously',
 			'effects/seriously.chroma',
-			'sources/seriously.array'
+			'src/sources/array'
 		], function (Seriously) {
 			var seriously,
 				effect,
@@ -3139,7 +3139,7 @@
 		require([
 			'seriously',
 			'effects/seriously.channels',
-			'sources/seriously.array'
+			'src/sources/array'
 		], function (Seriously) {
 			var seriously,
 				effect,

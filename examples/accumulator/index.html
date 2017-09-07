@@ -70,7 +70,7 @@
 				<option value="darkercolor">Darker Color</option>
 			</select>
 		</div>
-		<div><label for="amount">Opacity</label><input type="range" id="opacity" min="0" max="1" step="0.001" value="1"/></div>
+		<div><label for="opacity">Opacity</label><input type="range" id="opacity" min="0" max="1" step="0.001" value="1"/></div>
 	</div>
 	<script src="../../lib/require.js"></script>
 	<script>
@@ -80,7 +80,7 @@
 
 		require([
 			'seriously',
-			'effects/seriously.accumulator'
+			'src/effects/seriously.accumulator'
 		], function (Seriously) {
 			// declare our variables
 			var seriously, // the main object that holds the entire composition
