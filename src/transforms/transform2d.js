@@ -28,7 +28,7 @@ Seriously.transform('2d', function (options) {
 	//todo: invert?
 
 	function recompute() {
-		var matrix = me.matrix,
+		let matrix = me.matrix,
 			angle,
 			s, c,
 			m00,

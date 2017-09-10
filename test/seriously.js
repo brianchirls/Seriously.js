@@ -1,5 +1,3 @@
-/*jslint devel: true, bitwise: true, browser: true, white: true, nomen: true, plusplus: true, maxerr: 50, indent: 4, todo: true */
-/*global Float32Array, Uint8Array, Uint16Array, WebGLTexture, HTMLInputElement, HTMLSelectElement, HTMLElement, WebGLFramebuffer, HTMLCanvasElement, WebGLRenderingContext, define, module, exports */
 (function (global, factory) {
 	typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
 	typeof define === 'function' && define.amd ? define('seriously', factory) :
@@ -2808,7 +2806,6 @@ EffectNode.prototype.matte = function (poly) {
 
 		nv = n;
 		count = 2 * nv;
-		m = 0;
 		v = nv - 1;
 		while (nv > 2) {
 			if ((count--) <= 0) {
@@ -2843,7 +2840,6 @@ EffectNode.prototype.matte = function (poly) {
 					indices.push(points[b]);
 					indices.push(points[a]);
 				}
-				m++;
 				for (s = v, t = v + 1; t < nv; s++, t++) {
 					V[s] = V[t];
 				}
@@ -3903,7 +3899,6 @@ function TargetNode(seriously, hook, target, options) {
 
 		//try to get a webgl context.
 		if (!gl || gl.canvas !== target && opts.allowSecondaryWebGL) {
-			triedWebGl = true;
 			context = getWebGlContext(target, {
 				alpha: true,
 				premultipliedAlpha: true,
@@ -4230,11 +4225,11 @@ let maxSeriouslyId = 0;
 let colorCtx;
 let incompatibility;
 
-function Seriously$1(options) {
+function Seriously$2(options) {
 
 	//if called without 'new', make a new object and return that
-	if (window === this || !(this instanceof Seriously$1) || this.id !== undefined) {
-		return new Seriously$1(options);
+	if (window === this || !(this instanceof Seriously$2) || this.id !== undefined) {
+		return new Seriously$2(options);
 	}
 
 	//initialize object, private properties
@@ -5069,7 +5064,7 @@ function Seriously$1(options) {
 	this.incompatible = function (hook) {
 		var key,
 			plugin,
-			failure = Seriously$1.incompatible(hook);
+			failure = Seriously$2.incompatible(hook);
 
 		if (failure) {
 			return failure;
@@ -5147,7 +5142,7 @@ function Seriously$1(options) {
 }
 
 //trace back all sources to make sure we're not making a cyclical connection
-Seriously$1.traceSources = function traceSources (node, original) {
+Seriously$2.traceSources = function traceSources (node, original) {
 	let i,
 		source,
 		nodeSources;
@@ -5175,7 +5170,7 @@ Seriously$1.traceSources = function traceSources (node, original) {
 	return false;
 };
 
-Seriously$1.incompatible = function (hook) {
+Seriously$2.incompatible = function (hook) {
 	let canvas, gl, plugin;
 
 	if (incompatibility === undefined) {
@@ -5215,11 +5210,11 @@ Seriously$1.incompatible = function (hook) {
 	return false;
 };
 
-Seriously$1.plugin = function (hook, definition, meta) {
+Seriously$2.plugin = function (hook, definition, meta) {
 	let effect;
 
 	if (seriousEffects[hook]) {
-		Seriously$1.logger.warn('Effect [' + hook + '] already loaded');
+		Seriously$2.logger.warn('Effect [' + hook + '] already loaded');
 		return;
 	}
 
@@ -5259,7 +5254,7 @@ Seriously$1.plugin = function (hook, definition, meta) {
 	return effect;
 };
 
-Seriously$1.removePlugin = function (hook) {
+Seriously$2.removePlugin = function (hook) {
 	let all, effect, plugin;
 
 	if (!hook) {
@@ -5286,11 +5281,11 @@ Seriously$1.removePlugin = function (hook) {
 	return this;
 };
 
-Seriously$1.source = function (hook, definition, meta) {
+Seriously$2.source = function (hook, definition, meta) {
 	let source;
 
 	if (seriousSources[hook]) {
-		Seriously$1.logger.warn('Source [' + hook + '] already loaded');
+		Seriously$2.logger.warn('Source [' + hook + '] already loaded');
 		return;
 	}
 
@@ -5319,7 +5314,7 @@ Seriously$1.source = function (hook, definition, meta) {
 	return source;
 };
 
-Seriously$1.removeSource = function (hook) {
+Seriously$2.removeSource = function (hook) {
 	let all, source, plugin;
 
 	if (!hook) {
@@ -5346,11 +5341,11 @@ Seriously$1.removeSource = function (hook) {
 	return this;
 };
 
-Seriously$1.transform = function (hook, definition, meta) {
+Seriously$2.transform = function (hook, definition, meta) {
 	let transform;
 
 	if (seriousTransforms[hook]) {
-		Seriously$1.logger.warn('Transform [' + hook + '] already loaded');
+		Seriously$2.logger.warn('Transform [' + hook + '] already loaded');
 		return;
 	}
 
@@ -5385,7 +5380,7 @@ Seriously$1.transform = function (hook, definition, meta) {
 	return transform;
 };
 
-Seriously$1.removeTransform = function (hook) {
+Seriously$2.removeTransform = function (hook) {
 	let all, transform, plugin;
 
 	if (!hook) {
@@ -5412,11 +5407,11 @@ Seriously$1.removeTransform = function (hook) {
 	return this;
 };
 
-Seriously$1.target = function (hook, definition, meta) {
+Seriously$2.target = function (hook, definition, meta) {
 	let target;
 
 	if (seriousTargets[hook]) {
-		Seriously$1.logger.warn('Target [' + hook + '] already loaded');
+		Seriously$2.logger.warn('Target [' + hook + '] already loaded');
 		return;
 	}
 
@@ -5445,7 +5440,7 @@ Seriously$1.target = function (hook, definition, meta) {
 	return target;
 };
 
-Seriously$1.removeTarget = function (hook) {
+Seriously$2.removeTarget = function (hook) {
 	let all, target, plugin;
 
 	if (!hook) {
@@ -5472,7 +5467,7 @@ Seriously$1.removeTarget = function (hook) {
 	return this;
 };
 
-Seriously$1.sourcePlugin = function (node, hook, source, options, force) {
+Seriously$2.sourcePlugin = function (node, hook, source, options, force) {
 	let p = seriousSources[hook];
 	if (p && p.definition) {
 		p = p.definition.call(node, source, options, force);
@@ -5485,11 +5480,11 @@ Seriously$1.sourcePlugin = function (node, hook, source, options, force) {
 	return p;
 };
 
-Seriously$1.getTarget = function (hook) {
+Seriously$2.getTarget = function (hook) {
 	return seriousTargets[hook];
 };
 
-Seriously$1.forEachSource = function (fn) {
+Seriously$2.forEachSource = function (fn) {
 	for (let key in seriousSources) {
 		if (seriousSources.hasOwnProperty(key) && seriousSources[key]) {
 			if (fn(key, seriousSources[key]) === false) {
@@ -5499,7 +5494,7 @@ Seriously$1.forEachSource = function (fn) {
 	}
 };
 
-Seriously$1.forEachTarget = function (fn) {
+Seriously$2.forEachTarget = function (fn) {
 	for (let key in seriousTargets) {
 		if (seriousTargets.hasOwnProperty(key) && seriousTargets[key]) {
 			if (fn(key, seriousSources[key]) === false) {
@@ -5510,7 +5505,7 @@ Seriously$1.forEachTarget = function (fn) {
 };
 
 //todo: validators should not allocate new objects/arrays if input is valid
-Seriously$1.inputValidators = {
+Seriously$2.inputValidators = {
 	color: function (value, input, defaultValue, oldValue) {
 		var s,
 			a,
@@ -5585,7 +5580,7 @@ Seriously$1.inputValidators = {
 			colorCtx.fillStyle = value;
 			s = colorCtx.fillStyle;
 			if (s && s !== '#000000') {
-				return Seriously$1.inputValidators.color(s, input, defaultValue, oldValue);
+				return Seriously$2.inputValidators.color(s, input, defaultValue, oldValue);
 			}
 
 			a[0] = a[1] = a[2] = a[3] = 0;
@@ -5731,7 +5726,7 @@ Seriously$1.inputValidators = {
 	//todo: date/time
 };
 
-Seriously$1.prototype.effects = Seriously$1.effects = function () {
+Seriously$2.prototype.effects = Seriously$2.effects = function () {
 	let name,
 		effect,
 		manifest,
@@ -5775,11 +5770,11 @@ Seriously$1.prototype.effects = Seriously$1.effects = function () {
 	return effects;
 };
 
-Seriously$1.prototype.getTarget = function (hook) {
+Seriously$2.prototype.getTarget = function (hook) {
 	return seriousTargets[hook];
 };
 
-Seriously$1.prototype.hasTarget = function (hook) {
+Seriously$2.prototype.hasTarget = function (hook) {
 	return !!seriousTargets[hook];
 };
 
@@ -5793,16 +5788,16 @@ if (window.Seriously) {
 					i !== 'plugin' &&
 					typeof window.Seriously[i] === 'object') {
 
-					Seriously$1.plugin(i, window.Seriously[i]);
+					Seriously$2.plugin(i, window.Seriously[i]);
 				}
 			}
 		}());
 	}
 }
 
-Seriously$1.logger = logger;
+Seriously$2.logger = logger;
 
-Seriously$1.util = {
+Seriously$2.util = {
 	mat4: mat4,
 	checkSource: function (source) {
 		return checkSource(source, incompatibility);
@@ -5829,6 +5824,503 @@ Seriously$1.util = {
 	}
 };
 
-return Seriously$1;
+const mat4$1 = Seriously$2.util.mat4;
+
+/*
+ *	Default transform - 2D
+ *	Affine transforms
+ *	- translate
+ *	- rotate (degrees)
+ *	- scale
+ *	- skew
+ */
+Seriously$2.transform('2d', function (options) {
+	let me = this,
+		degrees = !(options && options.radians),
+
+		centerX = 0,
+		centerY = 0,
+		scaleX = 1,
+		scaleY = 1,
+		translateX = 0,
+		translateY = 0,
+		rotation = 0,
+		skewX = 0,
+		skewY = 0;
+
+	//todo: skew order
+	//todo: invert?
+
+	function recompute() {
+		let matrix = me.matrix,
+			angle,
+			s, c,
+			m00,
+			m01,
+			m02,
+			m03,
+			m10,
+			m11,
+			m12,
+			m13;
+
+		function translate(x, y) {
+			matrix[12] = matrix[0] * x + matrix[4] * y + matrix[12];
+			matrix[13] = matrix[1] * x + matrix[5] * y + matrix[13];
+			matrix[14] = matrix[2] * x + matrix[6] * y + matrix[14];
+			matrix[15] = matrix[3] * x + matrix[7] * y + matrix[15];
+		}
+
+		if (!translateX &&
+			!translateY &&
+			!rotation &&
+			!skewX &&
+			!skewY &&
+			scaleX === 1 &&
+			scaleY === 1
+		) {
+			me.transformed = false;
+			return;
+		}
+
+		//calculate transformation matrix
+		mat4$1.identity(matrix);
+
+		translate(translateX + centerX, translateY + centerY);
+
+		//skew
+		if (skewX) {
+			matrix[4] = skewX / me.width;
+		}
+		if (skewY) {
+			matrix[1] = skewY / me.height;
+		}
+
+		if (rotation) {
+			m00 = matrix[0];
+			m01 = matrix[1];
+			m02 = matrix[2];
+			m03 = matrix[3];
+			m10 = matrix[4];
+			m11 = matrix[5];
+			m12 = matrix[6];
+			m13 = matrix[7];
+
+			//rotate
+			angle = -(degrees ? rotation * Math.PI / 180 : rotation);
+			//...rotate
+			s = Math.sin(angle);
+			c = Math.cos(angle);
+			matrix[0] = m00 * c + m10 * s;
+			matrix[1] = m01 * c + m11 * s;
+			matrix[2] = m02 * c + m12 * s;
+			matrix[3] = m03 * c + m13 * s;
+			matrix[4] = m10 * c - m00 * s;
+			matrix[5] = m11 * c - m01 * s;
+			matrix[6] = m12 * c - m02 * s;
+			matrix[7] = m13 * c - m03 * s;
+		}
+
+		//scale
+		if (scaleX !== 1) {
+			matrix[0] *= scaleX;
+			matrix[1] *= scaleX;
+			matrix[2] *= scaleX;
+			matrix[3] *= scaleX;
+		}
+		if (scaleY !== 1) {
+			matrix[4] *= scaleY;
+			matrix[5] *= scaleY;
+			matrix[6] *= scaleY;
+			matrix[7] *= scaleY;
+		}
+
+		translate(-centerX, -centerY);
+
+		me.transformed = true;
+	}
+
+	return {
+		inputs: {
+			reset: {
+				method: function () {
+					centerX = 0;
+					centerY = 0;
+					scaleX = 1;
+					scaleY = 1;
+					translateX = 0;
+					translateY = 0;
+					rotation = 0;
+					skewX = 0;
+					skewY = 0;
+
+					if (me.transformed) {
+						me.transformed = false;
+						return true;
+					}
+
+					return false;
+				}
+			},
+			translate: {
+				method: function (x, y) {
+					if (isNaN(x)) {
+						x = translateX;
+					}
+
+					if (isNaN(y)) {
+						y = translateY;
+					}
+
+					if (x === translateX && y === translateY) {
+						return false;
+					}
+
+					translateX = x;
+					translateY = y;
+
+					recompute();
+					return true;
+				},
+				type: [
+					'number',
+					'number'
+				]
+			},
+			translateX: {
+				get: function () {
+					return translateX;
+				},
+				set: function (x) {
+					if (x === translateX) {
+						return false;
+					}
+
+					translateX = x;
+
+					recompute();
+					return true;
+				},
+				type: 'number'
+			},
+			translateY: {
+				get: function () {
+					return translateY;
+				},
+				set: function (y) {
+					if (y === translateY) {
+						return false;
+					}
+
+					translateY = y;
+
+					recompute();
+					return true;
+				},
+				type: 'number'
+			},
+			rotation: {
+				get: function () {
+					return rotation;
+				},
+				set: function (angle) {
+					if (angle === rotation) {
+						return false;
+					}
+
+					//todo: fmod 360deg or Math.PI * 2 radians
+					rotation = parseFloat(angle);
+
+					recompute();
+					return true;
+				},
+				type: 'number'
+			},
+			center: {
+				method: function (x, y) {
+					if (isNaN(x)) {
+						x = centerX;
+					}
+
+					if (isNaN(y)) {
+						y = centerY;
+					}
+
+					if (x === centerX && y === centerY) {
+						return false;
+					}
+
+					centerX = x;
+					centerY = y;
+
+					recompute();
+					return true;
+				},
+				type: [
+					'number',
+					'number'
+				]
+			},
+			centerX: {
+				get: function () {
+					return centerX;
+				},
+				set: function (x) {
+					if (x === centerX) {
+						return false;
+					}
+
+					centerX = x;
+
+					recompute();
+					return true;
+				},
+				type: 'number'
+			},
+			centerY: {
+				get: function () {
+					return centerY;
+				},
+				set: function (y) {
+					if (y === centerY) {
+						return false;
+					}
+
+					centerY = y;
+
+					recompute();
+					return true;
+				},
+				type: 'number'
+			},
+			skew: {
+				method: function (x, y) {
+					if (isNaN(x)) {
+						x = skewX;
+					}
+
+					if (isNaN(y)) {
+						y = skewY;
+					}
+
+					if (x === skewX && y === skewY) {
+						return false;
+					}
+
+					skewX = x;
+					skewY = y;
+
+					recompute();
+					return true;
+				},
+				type: [
+					'number',
+					'number'
+				]
+			},
+			skewX: {
+				get: function () {
+					return skewX;
+				},
+				set: function (x) {
+					if (x === skewX) {
+						return false;
+					}
+
+					skewX = x;
+
+					recompute();
+					return true;
+				},
+				type: 'number'
+			},
+			skewY: {
+				get: function () {
+					return skewY;
+				},
+				set: function (y) {
+					if (y === skewY) {
+						return false;
+					}
+
+					skewY = y;
+
+					recompute();
+					return true;
+				},
+				type: 'number'
+			},
+			scale: {
+				method: function (x, y) {
+					var newX, newY;
+
+					if (isNaN(x)) {
+						newX = scaleX;
+					} else {
+						newX = x;
+					}
+
+					/*
+                        if only one value is specified, set both x and y to the same scale
+                        */
+					if (isNaN(y)) {
+						if (isNaN(x)) {
+							return false;
+						}
+
+						newY = newX;
+					} else {
+						newY = y;
+					}
+
+					if (newX === scaleX && newY === scaleY) {
+						return false;
+					}
+
+					scaleX = newX;
+					scaleY = newY;
+
+					recompute();
+					return true;
+				},
+				type: [
+					'number',
+					'number'
+				]
+			},
+			scaleX: {
+				get: function () {
+					return scaleX;
+				},
+				set: function (x) {
+					if (x === scaleX) {
+						return false;
+					}
+
+					scaleX = x;
+
+					recompute();
+					return true;
+				},
+				type: 'number'
+			},
+			scaleY: {
+				get: function () {
+					return scaleY;
+				},
+				set: function (y) {
+					if (y === scaleY) {
+						return false;
+					}
+
+					scaleY = y;
+
+					recompute();
+					return true;
+				},
+				type: 'number'
+			}
+		}
+	};
+}, {
+	title: '2D Transform',
+	description: 'Translate, Rotate, Scale, Skew'
+});
+
+Seriously$2.source('array', function (source, options, force) {
+	var width,
+		height,
+		typedArray;
+
+	if (options && (Array.isArray(source) ||
+			(source && source.BYTES_PER_ELEMENT && 'length' in source))) {
+
+		width = options.width;
+		height = options.height;
+
+		if (!width || !height) {
+			if (force) {
+				throw 'Height and width must be provided with an Array';
+			}
+			return;
+		}
+
+		if (width * height * 4 !== source.length) {
+			if (force) {
+				throw 'Array length must be height x width x 4.';
+			}
+			return;
+		}
+
+		this.width = width;
+		this.height = height;
+
+		//use opposite default for flip
+		if (options.flip === undefined) {
+			this.flip = false;
+		}
+
+		if (!(source instanceof Uint8Array)) {
+			typedArray = new Uint8Array(source.length);
+		}
+
+		return {
+			render: function (gl) {
+				var i;
+				if (this.dirty) {
+					//pixel array can be updated, but we need to load from the typed array
+					//todo: see if there's a faster copy method
+					if (typedArray) {
+						for (i = 0; i < typedArray.length; i++) {
+							typedArray[i] = source[i];
+						}
+					}
+
+					gl.bindTexture(gl.TEXTURE_2D, this.texture);
+					gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, this.flip);
+					gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, this.width, this.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, typedArray || source);
+
+					this.lastRenderTime = Date.now() / 1000;
+
+					return true;
+				}
+			}
+		};
+	}
+}, {
+	title: 'Array',
+	description: 'Array or Uint8Array'
+});
+
+Seriously$2.source('imagedata', function (source) {
+	if (source instanceof Object && source.data &&
+		source.width && source.height &&
+		source.width * source.height * 4 === source.data.length
+	) {
+
+		//Because of this bug, Firefox doesn't recognize ImageData, so we have to duck type
+		//https://bugzilla.mozilla.org/show_bug.cgi?id=637077
+
+		this.width = source.width;
+		this.height = source.height;
+
+		return {
+			render: function (gl) {
+				if (this.dirty) {
+					gl.bindTexture(gl.TEXTURE_2D, this.texture);
+					gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, this.flip);
+					gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source);
+					this.lastRenderTime = Date.now() / 1000;
+					return true;
+				}
+			}
+		};
+	}
+}, {
+	title: 'ImageData',
+	description: '2D Canvas ImageData'
+});
+
+return Seriously$2;
 
 })));

@@ -1176,7 +1176,7 @@ EffectNode.prototype.destroy = function () {
 	Node.prototype.destroy.call(this);
 
 	for (key in this) {
-		if (this.hasOwnProperty(key) && key !== 'id') {
+		if (this.hasOwnProperty(key) && key !== 'id' && key !== 'isDestroyed') {
 			delete this[key];
 		}
 	}

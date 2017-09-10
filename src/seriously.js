@@ -468,7 +468,7 @@ function Seriously(options) {
 			throw new Error('Unknown effect: ' + hook);
 		}
 
-		let effectNode = new EffectNode(this, hook, allEffectsByHook[hook], options);
+		let effectNode = new EffectNode(this, hook, seriousEffects[hook], options);
 		return effectNode.pub;
 	};
 

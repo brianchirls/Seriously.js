@@ -9,7 +9,9 @@
     "test": "test"
   },
   "scripts": {
-    "test": "test"
+    "test": "test",
+	"build": "rollup -c",
+	"buildtest": "rollup -c rollup.test.config.js"
   },
   "repository": {
     "type": "git",

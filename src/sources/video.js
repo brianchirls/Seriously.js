@@ -1,5 +1,5 @@
 import Seriously from '../seriously';
-import {isInstance} from '../utilities/dom';
+import { isInstance } from '../utilities/dom';
 
 const document = window.document;
 
