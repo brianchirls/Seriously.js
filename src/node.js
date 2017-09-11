@@ -6,8 +6,6 @@ function Node (seriously) {
 	this.width = 1;
 	this.height = 1;
 
-	this.gl = seriously.gl;
-
 	this.uniforms = {
 		resolution: [this.width, this.height],
 		transform: null
@@ -17,6 +15,7 @@ function Node (seriously) {
 	this.isDestroyed = false;
 
 	this.seriously = seriously;
+	this.gl = seriously.gl;
 
 	this.listeners = {};
 
@@ -67,13 +66,15 @@ Node.prototype.setDirty = function () {
 };
 
 Node.prototype.initFrameBuffer = function (useFloat) {
-	if (this.gl) {
-		this.frameBuffer = new FrameBuffer(this.gl, this.width, this.height, useFloat);
+	if (this.seriously.gl) {
+		this.frameBuffer = new FrameBuffer(this.seriously.gl, this.width, this.height, useFloat);
 	}
 };
 
 Node.prototype.readPixels = function (x, y, width, height, dest) {
-	if (!this.gl) {
+	const gl = this.seriously.gl;
+
+	if (!this.seriously.gl) {
 		//todo: is this the best approach?
 		throw new Error('Cannot read pixels until a canvas is connected');
 	}
@@ -95,8 +96,8 @@ Node.prototype.readPixels = function (x, y, width, height, dest) {
 		throw new Error('Incompatible array type');
 	}
 
-	this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.frameBuffer.frameBuffer);
-	this.gl.readPixels(x, y, width, height, this.gl.RGBA, this.gl.UNSIGNED_BYTE, dest);
+	gl.bindFramebuffer(gl.FRAMEBUFFER, this.frameBuffer.frameBuffer);
+	gl.readPixels(x, y, width, height, gl.RGBA, gl.UNSIGNED_BYTE, dest);
 
 	return dest;
 };
@@ -222,7 +223,6 @@ Node.prototype.destroy = function () {
 	//remove from main nodes index
 	this.seriously.removeNode(this);
 
-	delete this.gl;
 	delete this.seriously;
 
 	this.isDestroyed = true;

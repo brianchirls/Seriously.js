@@ -171,11 +171,11 @@ function TargetNode(seriously, hook, target, options) {
 			}
 			if (plugin.gl && !that.gl) {
 				that.gl = plugin.gl;
-				if (!gl) {
+				if (!seriously.gl) {
 					seriously.attachContext(plugin.gl);
 				}
 			}
-			if (that.gl === gl) {
+			if (that.gl === seriously.gl) {
 				that.model = seriously.rectangleModel;
 				that.shader = seriously.baseShader;
 			}
@@ -186,7 +186,7 @@ function TargetNode(seriously, hook, target, options) {
 	Node.call(this, seriously);
 
 	// set in Node constructor
-	gl = this.gl;
+	gl = seriously.gl;
 
 	if (hook && typeof hook !== 'string' || !target && target !== 0) {
 		if (!options || typeof options !== 'object') {
@@ -273,7 +273,7 @@ function TargetNode(seriously, hook, target, options) {
 			}
 		} else {
 			//set up alternative drawing method using ArrayBufferView
-			gl = context;
+			this.gl = context;
 
 			//this.pixels = new Uint8Array(width * height * 4);
 			//todo: probably need another framebuffer for renderToTexture?
@@ -281,16 +281,16 @@ function TargetNode(seriously, hook, target, options) {
 			this.frameBuffer = {
 				frameBuffer: frameBuffer || null
 			};
-			this.shader = new ShaderProgram(gl, baseVertexShader, baseFragmentShader);
-			this.model = buildRectangleModel(gl);
+			this.shader = new ShaderProgram(this.gl, baseVertexShader, baseFragmentShader);
+			this.model = buildRectangleModel(this.gl);
 			this.pixels = null;
 
-			this.texture = gl.createTexture();
-			gl.bindTexture(gl.TEXTURE_2D, this.texture);
-			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+			this.texture = this.gl.createTexture();
+			this.gl.bindTexture(gl.TEXTURE_2D, this.texture);
+			this.gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+			this.gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+			this.gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+			this.gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 
 			this.render = this.renderSecondaryWebGL;
 		}
@@ -416,7 +416,7 @@ TargetNode.prototype.stop = function () {
 };
 
 TargetNode.prototype.render = function () {
-	if (this.gl && this.plugin && this.plugin.render) {
+	if (this.seriously.gl && this.plugin && this.plugin.render) {
 		this.plugin.render.call(this, this.seriously.draw, this.seriously.baseShader, this.seriously.rectangleModel);
 	}
 };
@@ -426,7 +426,7 @@ TargetNode.prototype.renderWebGL = function () {
 
 	this.resize();
 
-	if (this.gl && this.dirty && this.ready) {
+	if (this.seriously.gl && this.dirty && this.ready) {
 		if (!this.source) {
 			return;
 		}
@@ -482,7 +482,7 @@ TargetNode.prototype.renderSecondaryWebGL = function () {
 
 		this.source.readPixels(0, 0, sourceWidth, sourceHeight, this.pixels);
 
-		gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, sourceWidth, sourceHeight, 0, gl.RGBA, gl.UNSIGNED_BYTE, this.pixels);
+		this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, sourceWidth, sourceHeight, 0, this.gl.RGBA, this.gl.UNSIGNED_BYTE, this.pixels);
 
 		if (sourceWidth === this.width && sourceHeight === this.height) {
 			this.uniforms.transform = identity;

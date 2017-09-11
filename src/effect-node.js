@@ -1,9 +1,10 @@
 import { baseVertexShader, baseFragmentShader, identity, shaderNameRegex, reservedNames } from './constants'
-import { extend, validateInputSpecs } from './utilities/logic';
+import { extend } from './utilities/logic';
 import { isInstance, getElement } from './utilities/dom';
 import { colorArrayToHex } from './utilities/math';
 import { makeGlModel } from './utilities/webgl';
 import Node from './node';
+import ShaderProgram from './helpers/shaderprogram';
 
 const nop = function () {};
 
@@ -309,7 +310,8 @@ function EffectNode (seriously, hook, effect, options) {
             */
 		extend(this.effect, this.effectRef.definition.call(this, options));
 	}
-	validateInputSpecs(this.effect);
+
+	Seriously.validateInputSpecs(this.effect);
 
 	this.uniforms.transform = identity;
 	this.inputs = {};
@@ -349,7 +351,7 @@ function EffectNode (seriously, hook, effect, options) {
 		}
 	}
 
-	if (this.gl) {
+	if (this.seriously.gl) {
 		this.initialize();
 		if (this.effect.commonShader) {
 			/*
@@ -390,7 +392,7 @@ EffectNode.prototype.initialize = function () {
 		if (typeof this.effect.initialize === 'function') {
 			this.effect.initialize.call(this, function () {
 				this.initFrameBuffer(true);
-			}.bind(this), this.gl);
+			}.bind(this), this.seriously.gl);
 		} else {
 			this.initFrameBuffer(true);
 		}
@@ -525,7 +527,7 @@ EffectNode.prototype.buildShader = function () {
 				this.shader = shader;
 			} else if (shader && shader.vertex && shader.fragment) {
 				this.shader = new ShaderProgram(
-					this.gl,
+					this.seriously.gl,
 					addShaderName(shader.vertex),
 					addShaderName(shader.fragment)
 				);
@@ -558,7 +560,7 @@ EffectNode.prototype.render = function () {
 		that.seriously.draw(shader, model, uniforms, frameBuffer, node || that, options);
 	}
 
-	if (!this.gl) {
+	if (!this.seriously.gl) {
 		return;
 	}
 

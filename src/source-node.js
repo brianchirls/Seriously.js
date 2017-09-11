@@ -110,7 +110,7 @@ function SourceNode(seriously, hook, source, options) {
 	Node.call(this, seriously);
 
 	// set inside Node constructor
-	gl = this.gl;
+	gl = this.seriously.gl;
 
 	if (hook && typeof hook !== 'string' || !source && source !== 0) {
 		if (!options || typeof options !== 'object') {
@@ -281,8 +281,10 @@ SourceNode.prototype.initialize = function () {
 };
 
 SourceNode.prototype.initFrameBuffer = function (useFloat) {
-	if (this.gl) {
-		this.frameBuffer = new FrameBuffer(this.gl, this.width, this.height, {
+	const gl = this.seriously.gl;
+
+	if (gl) {
+		this.frameBuffer = new FrameBuffer(gl, this.width, this.height, {
 			texture: this.texture,
 			useFloat: useFloat
 		});
@@ -352,9 +354,10 @@ SourceNode.prototype.setReady = function () {
 };
 
 SourceNode.prototype.render = function () {
+	const gl = this.seriously.gl;
 	let media = this.source;
 
-	if (!this.gl || !media && media !== 0 || !this.ready) {
+	if (!gl || !media && media !== 0 || !this.ready) {
 		return;
 	}
 
@@ -368,7 +371,7 @@ SourceNode.prototype.render = function () {
 
 	if (this.plugin && this.plugin.render &&
 		(this.dirty || this.checkDirty && this.checkDirty()) &&
-		this.plugin.render.call(this, this.gl, this.seriously.draw, this.seriously.rectangleModel, this.seriously.baseShader)) {
+		this.plugin.render.call(this, gl, this.seriously.draw, this.seriously.rectangleModel, this.seriously.baseShader)) {
 
 		this.dirty = false;
 		this.emit('render');
@@ -376,8 +379,8 @@ SourceNode.prototype.render = function () {
 };
 
 SourceNode.prototype.renderImageCanvas = function () {
-	let gl = this.gl,
-		media = this.source;
+	const gl = this.seriously.gl;
+	let media = this.source;
 
 	if (!gl || !media || !this.ready) {
 		return;
@@ -419,8 +422,8 @@ SourceNode.prototype.destroy = function () {
 		this.plugin.destroy.call(this);
 	}
 
-	if (this.gl && this.texture) {
-		this.gl.deleteTexture(this.texture);
+	if (this.seriously.gl && this.texture) {
+		this.seriously.gl.deleteTexture(this.texture);
 	}
 
 	//targets

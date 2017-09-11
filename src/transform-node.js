@@ -1,5 +1,5 @@
 import { identity, reservedNames } from './constants'
-import { extend, validateInputSpecs } from './utilities/logic';
+import { extend } from './utilities/logic';
 import { colorArrayToHex, mat4 } from './utilities/math';
 import { isInstance, getElement } from './utilities/dom';
 import FrameBuffer from './helpers/framebuffer';
@@ -332,7 +332,7 @@ function TransformNode (seriously, hook, transform, options) {
 		}
 	}
 
-	validateInputSpecs(this.plugin);
+	Seriously.validateInputSpecs(this.plugin);
 
 	// set default value for all inputs (no defaults for methods)
 	defaults = seriously.defaults(hook);
@@ -415,7 +415,7 @@ TransformNode.prototype.setSource = function (source) {
 		return;
 	}
 
-	if (traceSources(newSource, this)) {
+	if (this.seriously.constructor.traceSources(newSource, this)) {
 		throw new Error('Attempt to make cyclical connection.');
 	}
 
@@ -539,6 +539,8 @@ TransformNode.prototype.alias = function (inputName, aliasName) {
 };
 
 TransformNode.prototype.render = function (renderTransform) {
+	const gl = this.seriously.gl;
+
 	if (!this.source) {
 		if (this.transformDirty) {
 			mat4.copy(this.cumulativeMatrix, this.matrix);
@@ -596,7 +598,8 @@ TransformNode.prototype.render = function (renderTransform) {
 };
 
 TransformNode.prototype.readPixels = function (x, y, width, height, dest) {
-	const nodeGl = this.gl || this.seriously.gl;
+	const gl = this.seriously.gl,
+		nodeGl = this.gl || gl;
 
 	if (!nodeGl) {
 		//todo: is this the best approach?
@@ -612,8 +615,8 @@ TransformNode.prototype.readPixels = function (x, y, width, height, dest) {
 		throw new Error('Incompatible array type');
 	}
 
-	nodeGl.bindFramebuffer(nodeGl.FRAMEBUFFER, this.frameBuffer.frameBuffer);
-	nodeGl.readPixels(x, y, width, height, nodeGl.RGBA, nodeGl.UNSIGNED_BYTE, dest);
+	nodeGl.bindFramebuffer(gl.FRAMEBUFFER, this.frameBuffer.frameBuffer);
+	nodeGl.readPixels(x, y, width, height, gl.RGBA, gl.UNSIGNED_BYTE, dest);
 
 	return dest;
 };

@@ -84,6 +84,7 @@ const reservedNames = [
 		'defaults',
 		'destroy',
 		'effect',
+		'draw',
 		'go',
 		'id',
 		'incompatible',
@@ -93,12 +94,29 @@ const reservedNames = [
 		'isSource',
 		'isTarget',
 		'isTransform',
+		'initDaemon',
+		'addAlias',
 		'removeAlias',
 		'render',
 		'source',
 		'stop',
+		'addNode',
+		'removeNode',
 		'target',
-		'transform'
+		'transform',
+		'getNodeId',
+		'findInputNode',
+		'addSourceNode',
+		'removeSourceNode',
+		'addEffectNode',
+		'removeEffectNode',
+		'addTransformNode',
+		'removeTransformNode',
+		'addTargetNode',
+		'removeTargetNode',
+		'commonShaders',
+		'auto',
+		'attachContext'
 	];
 const baseVertexShader = [
 		'precision mediump float;',
@@ -184,114 +202,6 @@ function extend(dest, src) {
 function isArrayLike(obj) {
 	return Array.isArray(obj) ||
 		(obj && obj.BYTES_PER_ELEMENT && 'length' in obj);
-}
-
-function validateInputSpecs(plugin) {
-	let input,
-		options,
-		name;
-
-	function normalizeEnumOption(option, i) {
-		let key,
-			name;
-
-		if (isArrayLike(option)) {
-			key = option[0];
-			name = option[1] || key;
-		} else {
-			key = option;
-		}
-
-		if (typeof key === 'string') {
-			key = key.toLowerCase();
-		} else if (typeof key === 'number') {
-			key = String(key);
-		} else if (!key) {
-			key = '';
-		}
-
-		options[key] = name;
-
-		if (!i) {
-			input.firstValue = key;
-		}
-	}
-
-	function passThrough(value) {
-		return value;
-	}
-
-	for (name in plugin.inputs) {
-		if (plugin.inputs.hasOwnProperty(name)) {
-			if (plugin.reserved.indexOf(name) >= 0 || Object.prototype[name]) {
-				throw new Error('Reserved input name: ' + name);
-			}
-
-			input = plugin.inputs[name];
-			input.name = name;
-
-			if (isNaN(input.min)) {
-				input.min = -Infinity;
-			}
-
-			if (isNaN(input.max)) {
-				input.max = Infinity;
-			}
-
-			if (isNaN(input.minCount)) {
-				input.minCount = -Infinity;
-			}
-
-			if (isNaN(input.maxCount)) {
-				input.maxCount = Infinity;
-			}
-
-			if (isNaN(input.step)) {
-				input.step = 0;
-			}
-
-			if (isNaN(input.mod)) {
-				input.mod = 0;
-			}
-
-			if (input.type === 'enum') {
-				/*
-                Normalize options to make validation easy
-                - all items will have both a key and a name
-                - all keys will be lowercase strings
-                */
-				if (input.options && isArrayLike(input.options) && input.options.length) {
-					options = {};
-					input.options.forEach(normalizeEnumOption);
-					input.options = options;
-				}
-			}
-
-			if (input.type === 'vector') {
-				if (input.dimensions < 2) {
-					input.dimensions = 2;
-				} else if (input.dimensions > 4) {
-					input.dimensions = 4;
-				} else if (!input.dimensions || isNaN(input.dimensions)) {
-					input.dimensions = 4;
-				} else {
-					input.dimensions = Math.round(input.dimensions);
-				}
-			} else {
-				input.dimensions = 1;
-			}
-
-			input.shaderDirty = !!input.shaderDirty;
-
-			if (typeof input.validate !== 'function') {
-				input.validate = Seriously.inputValidators[input.type] || passThrough;
-			}
-
-			if (!plugin.defaultImageInput && input.type === 'image') {
-				plugin.defaultImageInput = name;
-			}
-		}
-	}
 }
 
 /*!
@@ -970,7 +880,7 @@ FrameBuffer.prototype.destroy = function () {
  *  @class ShaderProgram
  */
 
-function ShaderProgram$1(gl, vertexShaderSource, fragmentShaderSource) {
+function ShaderProgram(gl, vertexShaderSource, fragmentShaderSource) {
 	let program,
 		vertexShader,
 		fragmentShader,
@@ -1170,7 +1080,7 @@ function ShaderProgram$1(gl, vertexShaderSource, fragmentShaderSource) {
 	};
 }
 
-ShaderProgram$1.prototype.use = function () {
+ShaderProgram.prototype.use = function () {
 	this.gl.useProgram(this.program);
 };
 
@@ -1178,8 +1088,6 @@ function Node (seriously) {
 	this.ready = false;
 	this.width = 1;
 	this.height = 1;
-
-	this.gl = seriously.gl;
 
 	this.uniforms = {
 		resolution: [this.width, this.height],
@@ -1190,6 +1098,7 @@ function Node (seriously) {
 	this.isDestroyed = false;
 
 	this.seriously = seriously;
+	this.gl = seriously.gl;
 
 	this.listeners = {};
 
@@ -1240,13 +1149,15 @@ Node.prototype.setDirty = function () {
 };
 
 Node.prototype.initFrameBuffer = function (useFloat) {
-	if (this.gl) {
-		this.frameBuffer = new FrameBuffer(this.gl, this.width, this.height, useFloat);
+	if (this.seriously.gl) {
+		this.frameBuffer = new FrameBuffer(this.seriously.gl, this.width, this.height, useFloat);
 	}
 };
 
 Node.prototype.readPixels = function (x, y, width, height, dest) {
-	if (!this.gl) {
+	const gl = this.seriously.gl;
+
+	if (!this.seriously.gl) {
 		//todo: is this the best approach?
 		throw new Error('Cannot read pixels until a canvas is connected');
 	}
@@ -1268,8 +1179,8 @@ Node.prototype.readPixels = function (x, y, width, height, dest) {
 		throw new Error('Incompatible array type');
 	}
 
-	this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.frameBuffer.frameBuffer);
-	this.gl.readPixels(x, y, width, height, this.gl.RGBA, this.gl.UNSIGNED_BYTE, dest);
+	gl.bindFramebuffer(gl.FRAMEBUFFER, this.frameBuffer.frameBuffer);
+	gl.readPixels(x, y, width, height, gl.RGBA, gl.UNSIGNED_BYTE, dest);
 
 	return dest;
 };
@@ -1395,7 +1306,6 @@ Node.prototype.destroy = function () {
 	//remove from main nodes index
 	this.seriously.removeNode(this);
 
-	delete this.gl;
 	delete this.seriously;
 
 	this.isDestroyed = true;
@@ -1508,7 +1418,7 @@ function SourceNode(seriously, hook, source, options) {
 	Node.call(this, seriously);
 
 	// set inside Node constructor
-	gl = this.gl;
+	gl = this.seriously.gl;
 
 	if (hook && typeof hook !== 'string' || !source && source !== 0) {
 		if (!options || typeof options !== 'object') {
@@ -1679,8 +1589,10 @@ SourceNode.prototype.initialize = function () {
 };
 
 SourceNode.prototype.initFrameBuffer = function (useFloat) {
-	if (this.gl) {
-		this.frameBuffer = new FrameBuffer(this.gl, this.width, this.height, {
+	const gl = this.seriously.gl;
+
+	if (gl) {
+		this.frameBuffer = new FrameBuffer(gl, this.width, this.height, {
 			texture: this.texture,
 			useFloat: useFloat
 		});
@@ -1750,9 +1662,10 @@ SourceNode.prototype.setReady = function () {
 };
 
 SourceNode.prototype.render = function () {
+	const gl = this.seriously.gl;
 	let media = this.source;
 
-	if (!this.gl || !media && media !== 0 || !this.ready) {
+	if (!gl || !media && media !== 0 || !this.ready) {
 		return;
 	}
 
@@ -1766,7 +1679,7 @@ SourceNode.prototype.render = function () {
 
 	if (this.plugin && this.plugin.render &&
 		(this.dirty || this.checkDirty && this.checkDirty()) &&
-		this.plugin.render.call(this, this.gl, this.seriously.draw, this.seriously.rectangleModel, this.seriously.baseShader)) {
+		this.plugin.render.call(this, gl, this.seriously.draw, this.seriously.rectangleModel, this.seriously.baseShader)) {
 
 		this.dirty = false;
 		this.emit('render');
@@ -1774,8 +1687,8 @@ SourceNode.prototype.render = function () {
 };
 
 SourceNode.prototype.renderImageCanvas = function () {
-	let gl = this.gl,
-		media = this.source;
+	const gl = this.seriously.gl;
+	let media = this.source;
 
 	if (!gl || !media || !this.ready) {
 		return;
@@ -1817,8 +1730,8 @@ SourceNode.prototype.destroy = function () {
 		this.plugin.destroy.call(this);
 	}
 
-	if (this.gl && this.texture) {
-		this.gl.deleteTexture(this.texture);
+	if (this.seriously.gl && this.texture) {
+		this.seriously.gl.deleteTexture(this.texture);
 	}
 
 	//targets
@@ -2145,7 +2058,8 @@ function EffectNode (seriously, hook, effect, options) {
             */
 		extend(this.effect, this.effectRef.definition.call(this, options));
 	}
-	validateInputSpecs(this.effect);
+
+	Seriously.validateInputSpecs(this.effect);
 
 	this.uniforms.transform = identity;
 	this.inputs = {};
@@ -2185,7 +2099,7 @@ function EffectNode (seriously, hook, effect, options) {
 		}
 	}
 
-	if (this.gl) {
+	if (this.seriously.gl) {
 		this.initialize();
 		if (this.effect.commonShader) {
 			/*
@@ -2226,7 +2140,7 @@ EffectNode.prototype.initialize = function () {
 		if (typeof this.effect.initialize === 'function') {
 			this.effect.initialize.call(this, function () {
 				this.initFrameBuffer(true);
-			}.bind(this), this.gl);
+			}.bind(this), this.seriously.gl);
 		} else {
 			this.initFrameBuffer(true);
 		}
@@ -2361,7 +2275,7 @@ EffectNode.prototype.buildShader = function () {
 				this.shader = shader;
 			} else if (shader && shader.vertex && shader.fragment) {
 				this.shader = new ShaderProgram(
-					this.gl,
+					this.seriously.gl,
 					addShaderName(shader.vertex),
 					addShaderName(shader.fragment)
 				);
@@ -2394,7 +2308,7 @@ EffectNode.prototype.render = function () {
 		that.seriously.draw(shader, model, uniforms, frameBuffer, node || that, options);
 	}
 
-	if (!this.gl) {
+	if (!this.seriously.gl) {
 		return;
 	}
 
@@ -3343,7 +3257,7 @@ function TransformNode (seriously, hook, transform, options) {
 		}
 	}
 
-	validateInputSpecs(this.plugin);
+	Seriously.validateInputSpecs(this.plugin);
 
 	// set default value for all inputs (no defaults for methods)
 	defaults = seriously.defaults(hook);
@@ -3426,7 +3340,7 @@ TransformNode.prototype.setSource = function (source) {
 		return;
 	}
 
-	if (traceSources(newSource, this)) {
+	if (this.seriously.constructor.traceSources(newSource, this)) {
 		throw new Error('Attempt to make cyclical connection.');
 	}
 
@@ -3550,6 +3464,8 @@ TransformNode.prototype.alias = function (inputName, aliasName) {
 };
 
 TransformNode.prototype.render = function (renderTransform) {
+	const gl = this.seriously.gl;
+
 	if (!this.source) {
 		if (this.transformDirty) {
 			mat4.copy(this.cumulativeMatrix, this.matrix);
@@ -3607,7 +3523,8 @@ TransformNode.prototype.render = function (renderTransform) {
 };
 
 TransformNode.prototype.readPixels = function (x, y, width, height, dest) {
-	const nodeGl = this.gl || this.seriously.gl;
+	const gl = this.seriously.gl,
+		nodeGl = this.gl || gl;
 
 	if (!nodeGl) {
 		//todo: is this the best approach?
@@ -3623,8 +3540,8 @@ TransformNode.prototype.readPixels = function (x, y, width, height, dest) {
 		throw new Error('Incompatible array type');
 	}
 
-	nodeGl.bindFramebuffer(nodeGl.FRAMEBUFFER, this.frameBuffer.frameBuffer);
-	nodeGl.readPixels(x, y, width, height, nodeGl.RGBA, nodeGl.UNSIGNED_BYTE, dest);
+	nodeGl.bindFramebuffer(gl.FRAMEBUFFER, this.frameBuffer.frameBuffer);
+	nodeGl.readPixels(x, y, width, height, gl.RGBA, gl.UNSIGNED_BYTE, dest);
 
 	return dest;
 };
@@ -3839,11 +3756,11 @@ function TargetNode(seriously, hook, target, options) {
 			}
 			if (plugin.gl && !that.gl) {
 				that.gl = plugin.gl;
-				if (!gl) {
+				if (!seriously.gl) {
 					seriously.attachContext(plugin.gl);
 				}
 			}
-			if (that.gl === gl) {
+			if (that.gl === seriously.gl) {
 				that.model = seriously.rectangleModel;
 				that.shader = seriously.baseShader;
 			}
@@ -3854,7 +3771,7 @@ function TargetNode(seriously, hook, target, options) {
 	Node.call(this, seriously);
 
 	// set in Node constructor
-	gl = this.gl;
+	gl = seriously.gl;
 
 	if (hook && typeof hook !== 'string' || !target && target !== 0) {
 		if (!options || typeof options !== 'object') {
@@ -3940,7 +3857,7 @@ function TargetNode(seriously, hook, target, options) {
 			}
 		} else {
 			//set up alternative drawing method using ArrayBufferView
-			gl = context;
+			this.gl = context;
 
 			//this.pixels = new Uint8Array(width * height * 4);
 			//todo: probably need another framebuffer for renderToTexture?
@@ -3948,16 +3865,16 @@ function TargetNode(seriously, hook, target, options) {
 			this.frameBuffer = {
 				frameBuffer: frameBuffer || null
 			};
-			this.shader = new ShaderProgram$1(gl, baseVertexShader, baseFragmentShader);
-			this.model = buildRectangleModel(gl);
+			this.shader = new ShaderProgram(this.gl, baseVertexShader, baseFragmentShader);
+			this.model = buildRectangleModel(this.gl);
 			this.pixels = null;
 
-			this.texture = gl.createTexture();
-			gl.bindTexture(gl.TEXTURE_2D, this.texture);
-			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+			this.texture = this.gl.createTexture();
+			this.gl.bindTexture(gl.TEXTURE_2D, this.texture);
+			this.gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+			this.gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+			this.gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+			this.gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 
 			this.render = this.renderSecondaryWebGL;
 		}
@@ -4083,7 +4000,7 @@ TargetNode.prototype.stop = function () {
 };
 
 TargetNode.prototype.render = function () {
-	if (this.gl && this.plugin && this.plugin.render) {
+	if (this.seriously.gl && this.plugin && this.plugin.render) {
 		this.plugin.render.call(this, this.seriously.draw, this.seriously.baseShader, this.seriously.rectangleModel);
 	}
 };
@@ -4093,7 +4010,7 @@ TargetNode.prototype.renderWebGL = function () {
 
 	this.resize();
 
-	if (this.gl && this.dirty && this.ready) {
+	if (this.seriously.gl && this.dirty && this.ready) {
 		if (!this.source) {
 			return;
 		}
@@ -4149,7 +4066,7 @@ TargetNode.prototype.renderSecondaryWebGL = function () {
 
 		this.source.readPixels(0, 0, sourceWidth, sourceHeight, this.pixels);
 
-		gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, sourceWidth, sourceHeight, 0, gl.RGBA, gl.UNSIGNED_BYTE, this.pixels);
+		this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, sourceWidth, sourceHeight, 0, this.gl.RGBA, this.gl.UNSIGNED_BYTE, this.pixels);
 
 		if (sourceWidth === this.width && sourceHeight === this.height) {
 			this.uniforms.transform = identity;
@@ -4224,6 +4141,115 @@ const nop  = function () {};
 let maxSeriouslyId = 0;
 let colorCtx;
 let incompatibility;
+
+
+function validateInputSpecs(plugin) {
+	let input,
+		options,
+		name;
+
+	function normalizeEnumOption(option, i) {
+		let key,
+			name;
+
+		if (isArrayLike(option)) {
+			key = option[0];
+			name = option[1] || key;
+		} else {
+			key = option;
+		}
+
+		if (typeof key === 'string') {
+			key = key.toLowerCase();
+		} else if (typeof key === 'number') {
+			key = String(key);
+		} else if (!key) {
+			key = '';
+		}
+
+		options[key] = name;
+
+		if (!i) {
+			input.firstValue = key;
+		}
+	}
+
+	function passThrough(value) {
+		return value;
+	}
+
+	for (name in plugin.inputs) {
+		if (plugin.inputs.hasOwnProperty(name)) {
+			if (plugin.reserved.indexOf(name) >= 0 || Object.prototype[name]) {
+				throw new Error('Reserved input name: ' + name);
+			}
+
+			input = plugin.inputs[name];
+			input.name = name;
+
+			if (isNaN(input.min)) {
+				input.min = -Infinity;
+			}
+
+			if (isNaN(input.max)) {
+				input.max = Infinity;
+			}
+
+			if (isNaN(input.minCount)) {
+				input.minCount = -Infinity;
+			}
+
+			if (isNaN(input.maxCount)) {
+				input.maxCount = Infinity;
+			}
+
+			if (isNaN(input.step)) {
+				input.step = 0;
+			}
+
+			if (isNaN(input.mod)) {
+				input.mod = 0;
+			}
+
+			if (input.type === 'enum') {
+				/*
+                Normalize options to make validation easy
+                - all items will have both a key and a name
+                - all keys will be lowercase strings
+                */
+				if (input.options && isArrayLike(input.options) && input.options.length) {
+					options = {};
+					input.options.forEach(normalizeEnumOption);
+					input.options = options;
+				}
+			}
+
+			if (input.type === 'vector') {
+				if (input.dimensions < 2) {
+					input.dimensions = 2;
+				} else if (input.dimensions > 4) {
+					input.dimensions = 4;
+				} else if (!input.dimensions || isNaN(input.dimensions)) {
+					input.dimensions = 4;
+				} else {
+					input.dimensions = Math.round(input.dimensions);
+				}
+			} else {
+				input.dimensions = 1;
+			}
+
+			input.shaderDirty = !!input.shaderDirty;
+
+			if (typeof input.validate !== 'function') {
+				input.validate = Seriously$2.inputValidators[input.type] || passThrough;
+			}
+
+			if (!plugin.defaultImageInput && input.type === 'image') {
+				plugin.defaultImageInput = name;
+			}
+		}
+	}
+}
 
 function Seriously$2(options) {
 
@@ -4625,7 +4651,7 @@ function Seriously$2(options) {
 
 		this.rectangleModel = buildRectangleModel(gl);
 
-		this.baseShader = new ShaderProgram$1(
+		this.baseShader = new ShaderProgram(
 			gl,
 			'#define SHADER_NAME seriously.base\n' + baseVertexShader, '#define SHADER_NAME seriously.base\n' + baseFragmentShader
 		);
@@ -4899,7 +4925,7 @@ function Seriously$2(options) {
 		if (allTargets) {
 			targetList = allTargets.get(target);
 			if (targetList) {
-				logger.warn(
+				Seriously$2.logger.warn(
 					'Target already in use by another instance',
 					target,
 					Object.keys(targetList).map(function (key) {
@@ -5726,6 +5752,8 @@ Seriously$2.inputValidators = {
 	//todo: date/time
 };
 
+Seriously$2.validateInputSpecs = validateInputSpecs;
+
 Seriously$2.prototype.effects = Seriously$2.effects = function () {
 	let name,
 		effect,
@@ -5805,7 +5833,7 @@ Seriously$2.util = {
 	hslToRgb: hslToRgb,
 	colors: colorNames,
 	setTimeoutZero: setTimeoutZero,
-	ShaderProgram: ShaderProgram$1,
+	ShaderProgram: ShaderProgram,
 	FrameBuffer: FrameBuffer,
 	requestAnimationFrame: requestAnimationFrame,
 	shader: {
@@ -5823,6 +5851,229 @@ Seriously$2.util = {
 		'#endif\n'
 	}
 };
+
+Seriously$2.source('array', function (source, options, force) {
+	var width,
+		height,
+		typedArray;
+
+	if (options && (Array.isArray(source) ||
+			(source && source.BYTES_PER_ELEMENT && 'length' in source))) {
+
+		width = options.width;
+		height = options.height;
+
+		if (!width || !height) {
+			if (force) {
+				throw 'Height and width must be provided with an Array';
+			}
+			return;
+		}
+
+		if (width * height * 4 !== source.length) {
+			if (force) {
+				throw 'Array length must be height x width x 4.';
+			}
+			return;
+		}
+
+		this.width = width;
+		this.height = height;
+
+		//use opposite default for flip
+		if (options.flip === undefined) {
+			this.flip = false;
+		}
+
+		if (!(source instanceof Uint8Array)) {
+			typedArray = new Uint8Array(source.length);
+		}
+
+		return {
+			render: function (gl) {
+				var i;
+				if (this.dirty) {
+					//pixel array can be updated, but we need to load from the typed array
+					//todo: see if there's a faster copy method
+					if (typedArray) {
+						for (i = 0; i < typedArray.length; i++) {
+							typedArray[i] = source[i];
+						}
+					}
+
+					gl.bindTexture(gl.TEXTURE_2D, this.texture);
+					gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, this.flip);
+					gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, this.width, this.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, typedArray || source);
+
+					this.lastRenderTime = Date.now() / 1000;
+
+					return true;
+				}
+			}
+		};
+	}
+}, {
+	title: 'Array',
+	description: 'Array or Uint8Array'
+});
+
+Seriously$2.source('imagedata', function (source) {
+	if (source instanceof Object && source.data &&
+		source.width && source.height &&
+		source.width * source.height * 4 === source.data.length
+	) {
+
+		//Because of this bug, Firefox doesn't recognize ImageData, so we have to duck type
+		//https://bugzilla.mozilla.org/show_bug.cgi?id=637077
+
+		this.width = source.width;
+		this.height = source.height;
+
+		return {
+			render: function (gl) {
+				if (this.dirty) {
+					gl.bindTexture(gl.TEXTURE_2D, this.texture);
+					gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, this.flip);
+					gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source);
+					this.lastRenderTime = Date.now() / 1000;
+					return true;
+				}
+			}
+		};
+	}
+}, {
+	title: 'ImageData',
+	description: '2D Canvas ImageData'
+});
+
+const document$3 = window.document;
+
+let noVideoTextureSupport;
+
+Seriously$2.source('video', function (video, options, force) {
+	const me = this;
+
+	let canvas,
+		ctx2d,
+		destroyed = false,
+		deferTexture = false,
+		isSeeking = false,
+		lastRenderTime = 0;
+
+	function initializeVideo() {
+		video.removeEventListener('loadedmetadata', initializeVideo, true);
+
+		if (destroyed) {
+			return;
+		}
+
+		if (video.videoWidth) {
+			if (me.width !== video.videoWidth || me.height !== video.videoHeight) {
+				me.width = video.videoWidth;
+				me.height = video.videoHeight;
+				me.resize();
+			}
+
+			if (deferTexture) {
+				me.setReady();
+			}
+		} else {
+			//Workaround for Firefox bug https://bugzilla.mozilla.org/show_bug.cgi?id=926753
+			deferTexture = true;
+			window.setTimeout(initializeVideo, 50);
+		}
+	}
+
+	function seeking() {
+		// IE doesn't report .seeking properly so make our own
+		isSeeking = true;
+	}
+
+	function seeked() {
+		isSeeking = false;
+		me.setDirty();
+	}
+
+	if (isInstance(video, 'HTMLVideoElement')) {
+		if (video.readyState) {
+			initializeVideo();
+		} else {
+			deferTexture = true;
+			video.addEventListener('loadedmetadata', initializeVideo, true);
+		}
+
+		video.addEventListener('seeking', seeking, false);
+		video.addEventListener('seeked', seeked, false);
+
+		return {
+			deferTexture: deferTexture,
+			source: video,
+			render: function renderVideo(gl) {
+				let source,
+					error;
+
+				lastRenderTime = video.currentTime;
+
+				if (!video.videoHeight || !video.videoWidth) {
+					return false;
+				}
+
+				if (noVideoTextureSupport) {
+					if (!ctx2d) {
+						ctx2d = document$3.createElement('canvas').getContext('2d');
+						canvas = ctx2d.canvas;
+						canvas.width = me.width;
+						canvas.height = me.height;
+					}
+					source = canvas;
+					ctx2d.drawImage(video, 0, 0, me.width, me.height);
+				} else {
+					source = video;
+				}
+
+				gl.bindTexture(gl.TEXTURE_2D, me.texture);
+				gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, me.flip);
+				gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+				try {
+					gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source);
+
+					//workaround for lack of video texture support in IE
+					if (noVideoTextureSupport === undefined) {
+						error = gl.getError();
+						if (error === gl.INVALID_VALUE) {
+							noVideoTextureSupport = true;
+							return renderVideo(gl);
+						}
+						noVideoTextureSupport = false;
+					}
+					return true;
+				} catch (securityError) {
+					if (securityError.code === window.DOMException.SECURITY_ERR) {
+						me.allowRefresh = false;
+						Seriously$2.logger.error('Unable to access cross-domain image');
+					} else {
+						Seriously$2.logger.error('Error rendering video source', securityError);
+					}
+				}
+				return false;
+			},
+			checkDirty: function () {
+				return !isSeeking && video.currentTime !== lastRenderTime;
+			},
+			compare: function (source) {
+				return me.source === source;
+			},
+			destroy: function () {
+				destroyed = true;
+				video.removeEventListener('seeking', seeking, false);
+				video.removeEventListener('seeked', seeked, false);
+				video.removeEventListener('loadedmetadata', initializeVideo, true);
+			}
+		};
+	}
+}, {
+	title: 'Video'
+});
 
 const mat4$1 = Seriously$2.util.mat4;
 
@@ -6227,98 +6478,730 @@ Seriously$2.transform('2d', function (options) {
 	description: 'Translate, Rotate, Scale, Skew'
 });
 
-Seriously$2.source('array', function (source, options, force) {
-	var width,
-		height,
-		typedArray;
+const mat4$2 = Seriously$2.util.mat4;
 
-	if (options && (Array.isArray(source) ||
-			(source && source.BYTES_PER_ELEMENT && 'length' in source))) {
+Seriously$2.transform('reformat', function () {
+	let me = this,
+		forceWidth,
+		forceHeight,
+		mode = 'contain';
 
-		width = options.width;
-		height = options.height;
+	function recompute() {
+		let matrix = me.matrix,
+			width = forceWidth || me.width,
+			height = forceHeight || me.height,
+			scaleX,
+			scaleY,
+			source = me.source,
+			sourceWidth = source && source.width || 1,
+			sourceHeight = source && source.height || 1,
+			aspectIn,
+			aspectOut;
 
-		if (!width || !height) {
-			if (force) {
-				throw 'Height and width must be provided with an Array';
-			}
+		if (mode === 'distort' || width === sourceWidth && height === sourceHeight) {
+			me.transformed = false;
 			return;
 		}
 
-		if (width * height * 4 !== source.length) {
-			if (force) {
-				throw 'Array length must be height x width x 4.';
+		aspectIn = sourceWidth / sourceHeight;
+
+		aspectOut = width / height;
+
+		if (mode === 'none') {
+			scaleX = sourceWidth / width;
+			scaleY = sourceHeight / height;
+		} else if (mode === 'width' || mode === 'contain' && aspectOut <= aspectIn) {
+			scaleX = 1;
+			scaleY = aspectOut / aspectIn;
+		} else if (mode === 'height' || mode === 'contain' && aspectOut > aspectIn) {
+			scaleX = aspectIn / aspectOut;
+			scaleY = 1;
+		} else {
+			//mode === 'cover'
+			if (aspectOut > aspectIn) {
+				scaleX = 1;
+				scaleY = aspectOut / aspectIn;
+			} else {
+				scaleX = aspectIn / aspectOut;
+				scaleY = 1;
 			}
+		}
+
+		if (scaleX === 1 && scaleY === 1) {
+			me.transformed = false;
 			return;
 		}
 
-		this.width = width;
-		this.height = height;
+		//calculate transformation matrix
+		mat4$2.identity(matrix);
 
-		//use opposite default for flip
-		if (options.flip === undefined) {
-			this.flip = false;
+		//scale
+		if (scaleX !== 1) {
+			matrix[0] *= scaleX;
+			matrix[1] *= scaleX;
+			matrix[2] *= scaleX;
+			matrix[3] *= scaleX;
+		}
+		if (scaleY !== 1) {
+			matrix[4] *= scaleY;
+			matrix[5] *= scaleY;
+			matrix[6] *= scaleY;
+			matrix[7] *= scaleY;
+		}
+		me.transformed = true;
+	}
+
+	function getWidth() {
+		return forceWidth || me.source && me.source.width || 1;
+	}
+
+	function getHeight() {
+		return forceHeight || me.source && me.source.height || 1;
+	}
+
+	this.resize = function () {
+		let width = getWidth(),
+			height = getHeight(),
+			i;
+
+		if (this.width !== width || this.height !== height) {
+			this.width = width;
+			this.height = height;
+
+			if (this.uniforms && this.uniforms.resolution) {
+				this.uniforms.resolution[0] = width;
+				this.uniforms.resolution[1] = height;
+			}
+
+			if (this.frameBuffer && this.frameBuffer.resize) {
+				this.frameBuffer.resize(width, height);
+			}
+
+			for (i = 0; i < this.targets.length; i++) {
+				this.targets[i].resize();
+			}
 		}
 
-		if (!(source instanceof Uint8Array)) {
-			typedArray = new Uint8Array(source.length);
-		}
+		this.setTransformDirty();
 
-		return {
-			render: function (gl) {
-				var i;
-				if (this.dirty) {
-					//pixel array can be updated, but we need to load from the typed array
-					//todo: see if there's a faster copy method
-					if (typedArray) {
-						for (i = 0; i < typedArray.length; i++) {
-							typedArray[i] = source[i];
-						}
+		recompute();
+	};
+
+	return {
+		inputs: {
+			width: {
+				get: getWidth,
+				set: function (x) {
+					x = Math.floor(x);
+					if (x === forceWidth) {
+						return false;
 					}
 
-					gl.bindTexture(gl.TEXTURE_2D, this.texture);
-					gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, this.flip);
-					gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, this.width, this.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, typedArray || source);
+					forceWidth = x;
 
-					this.lastRenderTime = Date.now() / 1000;
+					this.resize();
 
+					//don't need to run setTransformDirty again
+					return false;
+				},
+				type: 'number'
+			},
+			height: {
+				get: getHeight,
+				set: function (y) {
+					y = Math.floor(y);
+					if (y === forceHeight) {
+						return false;
+					}
+
+					forceHeight = y;
+
+					this.resize();
+
+					//don't need to run setTransformDirty again
+					return false;
+				},
+				type: 'number'
+			},
+			mode: {
+				get: function () {
+					return mode;
+				},
+				set: function (m) {
+					if (m === mode) {
+						return false;
+					}
+
+					mode = m;
+
+					recompute();
 					return true;
-				}
+				},
+				type: 'enum',
+				options: [
+					'cover',
+					'contain',
+					'distort',
+					'width',
+					'height',
+					'none'
+				]
 			}
-		};
-	}
+		}
+	};
 }, {
-	title: 'Array',
-	description: 'Array or Uint8Array'
+	title: 'Reformat',
+	description: 'Change output dimensions'
 });
 
-Seriously$2.source('imagedata', function (source) {
-	if (source instanceof Object && source.data &&
-		source.width && source.height &&
-		source.width * source.height * 4 === source.data.length
-	) {
+/*
+ *	experimental chroma key algorithm
+ *	todo: try allowing some color despill on opaque pixels
+ *	todo: add different modes?
+ */
 
-		//Because of this bug, Firefox doesn't recognize ImageData, so we have to duck type
-		//https://bugzilla.mozilla.org/show_bug.cgi?id=637077
+Seriously$2.plugin('chroma', {
+	shader: function (inputs, shaderSource) {
+		shaderSource.vertex = [
+			'precision mediump float;',
 
-		this.width = source.width;
-		this.height = source.height;
+			'attribute vec4 position;',
+			'attribute vec2 texCoord;',
 
-		return {
-			render: function (gl) {
-				if (this.dirty) {
-					gl.bindTexture(gl.TEXTURE_2D, this.texture);
-					gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, this.flip);
-					gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source);
-					this.lastRenderTime = Date.now() / 1000;
-					return true;
+			'uniform vec2 resolution;',
+			'uniform mat4 transform;',
+
+			'varying vec2 vTexCoord;',
+
+			'uniform vec4 screen;',
+			'uniform float balance;',
+			'varying float screenSat;',
+			'varying vec3 screenPrimary;',
+
+			'void main(void) {',
+			'	float fmin = min(min(screen.r, screen.g), screen.b);', //Min. value of RGB
+			'	float fmax = max(max(screen.r, screen.g), screen.b);', //Max. value of RGB
+			'	float secondaryComponents;',
+
+			'	screenPrimary = step(fmax, screen.rgb);',
+			'	secondaryComponents = dot(1.0 - screenPrimary, screen.rgb);',
+			'	screenSat = fmax - mix(secondaryComponents - fmin, secondaryComponents / 2.0, balance);',
+
+			// first convert to screen space
+			'	vec4 screenPosition = vec4(position.xy * resolution / 2.0, position.z, position.w);',
+			'	screenPosition = transform * screenPosition;',
+
+			// convert back to OpenGL coords
+			'	gl_Position = screenPosition;',
+			'	gl_Position.xy = screenPosition.xy * 2.0 / resolution;',
+			'	gl_Position.z = screenPosition.z * 2.0 / (resolution.x / resolution.y);',
+			'	vTexCoord = texCoord;',
+			'}'
+		].join('\n');
+		shaderSource.fragment = [
+			this.inputs.mask ? '#define MASK' : '',
+			'precision mediump float;',
+
+			'varying vec2 vTexCoord;',
+
+			'uniform sampler2D source;',
+			'uniform vec4 screen;',
+			'uniform float screenWeight;',
+			'uniform float balance;',
+			'uniform float clipBlack;',
+			'uniform float clipWhite;',
+			'uniform bool mask;',
+
+			'varying float screenSat;',
+			'varying vec3 screenPrimary;',
+
+			'void main(void) {',
+			'	float pixelSat, secondaryComponents;',
+			'	vec4 sourcePixel = texture2D(source, vTexCoord);',
+
+			'	float fmin = min(min(sourcePixel.r, sourcePixel.g), sourcePixel.b);', //Min. value of RGB
+			'	float fmax = max(max(sourcePixel.r, sourcePixel.g), sourcePixel.b);', //Max. value of RGB
+			//	luminance = fmax
+
+			'	vec3 pixelPrimary = step(fmax, sourcePixel.rgb);',
+
+			'	secondaryComponents = dot(1.0 - pixelPrimary, sourcePixel.rgb);',
+			'	pixelSat = fmax - mix(secondaryComponents - fmin, secondaryComponents / 2.0, balance);', // Saturation
+
+			// solid pixel if primary color component is not the same as the screen color
+			'	float diffPrimary = dot(abs(pixelPrimary - screenPrimary), vec3(1.0));',
+			'	float solid = step(1.0, step(pixelSat, 0.1) + step(fmax, 0.1) + diffPrimary);',
+
+			/*
+			Semi-transparent pixel if the primary component matches but if saturation is less
+			than that of screen color. Otherwise totally transparent
+			*/
+			'	float alpha = max(0.0, 1.0 - pixelSat / screenSat);',
+			'	alpha = smoothstep(clipBlack, clipWhite, alpha);',
+			'	vec4 semiTransparentPixel = vec4((sourcePixel.rgb - (1.0 - alpha) * screen.rgb * screenWeight) / max(0.0001, alpha), alpha);',
+
+			'	vec4 pixel = mix(semiTransparentPixel, sourcePixel, solid);',
+
+			/*
+			Old branching code
+			'	if (pixelSat < 0.1 || fmax < 0.1 || any(notEqual(pixelPrimary, screenPrimary))) {',
+			'		pixel = sourcePixel;',
+
+			'	} else if (pixelSat < screenSat) {',
+			'		float alpha = max(0.0, 1.0 - pixelSat / screenSat);',
+			'		alpha = smoothstep(clipBlack, clipWhite, alpha);',
+			'		pixel = vec4((sourcePixel.rgb - (1.0 - alpha) * screen.rgb * screenWeight) / alpha, alpha);',
+			'	}',
+			//*/
+
+
+			'#ifdef MASK',
+			'	gl_FragColor = vec4(vec3(pixel.a), 1.0);',
+			'#else',
+			'	gl_FragColor = pixel;',
+			'#endif',
+			'}'
+		].join('\n');
+		return shaderSource;
+	},
+	inPlace: true,
+	inputs: {
+		source: {
+			type: 'image',
+			uniform: 'source'
+		},
+		screen: {
+			type: 'color',
+			uniform: 'screen',
+			defaultValue: [66 / 255, 195 / 255, 31 / 255, 1]
+		},
+		weight: {
+			type: 'number',
+			uniform: 'screenWeight',
+			defaultValue: 1,
+			min: 0
+		},
+		balance: {
+			type: 'number',
+			uniform: 'balance',
+			defaultValue: 1,
+			min: 0,
+			max: 1
+		},
+		clipBlack: {
+			type: 'number',
+			uniform: 'clipBlack',
+			defaultValue: 0,
+			min: 0,
+			max: 1
+		},
+		clipWhite: {
+			type: 'number',
+			uniform: 'clipWhite',
+			defaultValue: 1,
+			min: 0,
+			max: 1
+		},
+		mask: {
+			type: 'boolean',
+			defaultValue: false,
+			uniform: 'mask',
+			shaderDirty: true
+		}
+	},
+	title: 'Chroma Key',
+	description: ''
+});
+
+Seriously$2.plugin('invert', {
+	commonShader: true,
+	shader: function (inputs, shaderSource) {
+		shaderSource.fragment = [
+			'precision mediump float;',
+
+			'varying vec2 vTexCoord;',
+
+			'uniform sampler2D source;',
+
+			'void main(void) {',
+			'	gl_FragColor = texture2D(source, vTexCoord);',
+			'	gl_FragColor = vec4(1.0 - gl_FragColor.rgb, gl_FragColor.a);',
+			'}'
+		].join('\n');
+		return shaderSource;
+	},
+	inPlace: true,
+	inputs: {
+		source: {
+			type: 'image',
+			uniform: 'source',
+			shaderDirty: false
+		}
+	},
+	title: 'Invert',
+	description: 'Invert image color'
+});
+
+const channelOptions = [
+		'Red',
+		'Green',
+		'Blue',
+		'Alpha'
+	];
+const channelLookup = {
+		r: 0,
+		g: 1,
+		b: 2,
+		a: 3,
+		x: 0,
+		y: 1,
+		z: 2,
+		w: 3
+	};
+
+Seriously$2.plugin('channels', function () {
+	const sources = [],
+		shaders = [],
+		matrices = [],
+		me = this;
+
+	function validateChannel(value, input, name) {
+		let val;
+		if (typeof value === 'string') {
+			val = value.charAt(0).toLowerCase();
+			val = channelLookup[val];
+			if (val === undefined) {
+				val = -1;
+			}
+			if (val < 0) {
+				val = parseFloat(value);
+			}
+		} else {
+			val = value;
+		}
+
+		if (val === 0 || val === 1 || val === 2 || val === 3) {
+			return val;
+		}
+
+		return me.inputs[name];
+	}
+
+	function updateChannels() {
+		let inputs = me.inputs,
+			i, j,
+			source,
+			matrix;
+
+		for (i = 0; i < sources.length; i++) {
+			source = sources[i];
+			matrix = matrices[i];
+			if (!matrix) {
+				matrix = matrices[i] = [];
+				me.uniforms['channels' + i] = matrix;
+			}
+
+			for (j = 0; j < 16; j++) {
+				matrix[j] = 0;
+			}
+
+			matrix[inputs.red] = (inputs.redSource === source) ? 1 : 0;
+			matrix[4 + inputs.green] = (inputs.greenSource === source) ? 1 : 0;
+			matrix[8 + inputs.blue] = (inputs.blueSource === source) ? 1 : 0;
+			matrix[12 + inputs.alpha] = (inputs.alphaSource === source) ? 1 : 0;
+		}
+	}
+
+	function updateSources() {
+		const inputs = me.inputs;
+
+		function validateSource(name) {
+			let s, j;
+			s = inputs[name];
+			if (!s) {
+				s = me.sources[name] = inputs[name] = inputs.source;
+
+				if (!s) {
+					//no main source to fall back to
+					return;
 				}
 			}
-		};
+
+			j = sources.indexOf(s);
+			if (j < 0) {
+				j = sources.length;
+				sources.push(s);
+				me.uniforms['source' + j] = s;
+			}
+		}
+
+		sources.length = 0;
+
+		validateSource('redSource');
+		validateSource('greenSource');
+		validateSource('blueSource');
+		validateSource('alphaSource');
+
+		me.resize();
+
+		updateChannels();
 	}
-}, {
-	title: 'ImageData',
-	description: '2D Canvas ImageData'
+
+	// custom resize method
+	this.resize = function () {
+		let width,
+			height,
+			mode = this.inputs.sizeMode,
+			i,
+			resolution,
+			source;
+
+		if (!sources.length) {
+			width = 1;
+			height = 1;
+		} else if (sources.length === 1) {
+			source = sources[0];
+			width = source.width;
+			height = source.height;
+		} else if (mode === 'union') {
+			width = 0;
+			height = 0;
+			for (i = 0; i < sources.length; i++) {
+				source = sources[0];
+				width = Math.max(width, source.width);
+				height = Math.max(height, source.height);
+			}
+		} else if (mode === 'intersection') {
+			width = Infinity;
+			height = Infinity;
+			for (i = 0; i < sources.length; i++) {
+				source = sources[0];
+				width = Math.min(width, source.width);
+				height = Math.min(height, source.height);
+			}
+		} else {
+			source = me.inputs[mode + 'Source'];
+			if (source) {
+				width = source.width;
+				height = source.height;
+			} else {
+				width = 1;
+				height = 1;
+			}
+		}
+
+		for (i = 0; i < sources.length; i++) {
+			source = sources[i];
+			resolution = me.uniforms['resolution' + i];
+			if (resolution) {
+				resolution[0] = source.width;
+				resolution[1] = source.height;
+			} else {
+				me.uniforms['resolution' + i] = [source.width, source.height];
+			}
+		}
+
+		if (this.width !== width || this.height !== height) {
+			this.width = width;
+			this.height = height;
+
+			this.uniforms.resolution[0] = width;
+			this.uniforms.resolution[1] = height;
+
+			if (this.frameBuffer) {
+				this.frameBuffer.resize(width, height);
+			}
+
+			this.emit('resize');
+			this.setDirty();
+		}
+
+		for (i = 0; i < this.targets.length; i++) {
+			this.targets[i].resize();
+		}
+	};
+
+	return {
+		shader: function () {
+			let i,
+				frag,
+				vert,
+				shader,
+				uniforms = '',
+				samples = '',
+				varyings = '',
+				position = '';
+
+			/*
+			We'll restore this and the draw function below if we ever figure out a way to
+			add/& multiple renders without screwing up the brightness
+			shaderSource.fragment = [
+				'precision mediump float;',
+
+				'varying vec2 vTexCoord;',
+				'uniform mat4 channels;',
+				'uniform sampler2D source;',
+				//'uniform sampler2D previous;',
+				'void main(void) {',
+				'	vec4 pixel;',
+				'	if (any(lessThan(vTexCoord, vec2(0.0))) || any(greaterThanEqual(vTexCoord, vec2(1.0)))) {',
+				'		pixel = vec4(0.0);',
+				'	} else {',
+				'		pixel = texture2D(source, vTexCoord) * channels;',
+				//'		if (gl_FragColor.a == 0.0) gl_FragColor.a = 1.0;',
+				'	}',
+				'	gl_FragColor = pixel;',
+				'}'
+			].join('\n');
+
+			return shaderSource;
+			*/
+			if (shaders[sources.length]) {
+				return shaders[sources.length];
+			}
+
+			for (i = 0; i < sources.length; i++) {
+				varyings += 'varying vec2 vTexCoord' + i + ';\n';
+
+				uniforms += 'uniform sampler2D source' + i + ';\n' +
+					'uniform mat4 channels' + i + ';\n' +
+					'uniform vec2 resolution' + i + ';\n\n';
+
+				position += '    vTexCoord' + i + ' = (position.xy * resolution / resolution' + i + ') * 0.5 + 0.5;\n';
+
+				samples += '    if (all(greaterThanEqual(vTexCoord' + i + ', vec2(0.0))) && all(lessThan(vTexCoord' + i + ', vec2(1.0)))) {\n' +
+					'        gl_FragColor += texture2D(source' + i + ', vTexCoord' + i + ') * channels' + i + ';\n    }\n';
+			}
+
+			vert = [
+				'precision mediump float;',
+
+				'attribute vec4 position;',
+				'attribute vec2 texCoord;',
+
+				'uniform vec2 resolution;',
+				uniforms,
+
+				varyings,
+
+				'void main(void) {',
+				position,
+				'	gl_Position = position;',
+				'}\n'
+			].join('\n');
+
+			frag = [
+				'precision mediump float;',
+
+				varyings,
+				uniforms,
+
+				'void main(void) {',
+				'	gl_FragColor = vec4(0.0);',
+				samples,
+				'}'
+			].join('\n');
+
+			shader = new Seriously$2.util.ShaderProgram(this.gl,
+				vert,
+				frag);
+
+			shaders[sources.length] = shader;
+			return shader;
+		},
+		/*
+		draw: function (shader, model, uniforms, frameBuffer, draw) {
+			var i,
+				source;
+
+			options.clear = true;
+			for (i = 0; i < sources.length; i++) {
+			//for (i = sources.length - 1; i >= 0; i--) {
+				uniforms.channels = matrices[i];
+				source = sources[i];
+				uniforms.source = sources[i];
+				//uniforms.resolution[]
+
+				draw(shader, model, uniforms, frameBuffer, null, options);
+				options.clear = false;
+			}
+		},
+		*/
+		inputs: {
+			sizeMode: {
+				type: 'enum',
+				defaultValue: 'red',
+				options: [
+					'red',
+					'green',
+					'blue',
+					'alpha',
+					'union',
+					'intersection'
+				],
+				update: function () {
+					this.resize();
+				}
+			},
+			source: {
+				type: 'image',
+				update: updateSources,
+				shaderDirty: true
+			},
+			redSource: {
+				type: 'image',
+				update: updateSources,
+				shaderDirty: true
+			},
+			greenSource: {
+				type: 'image',
+				update: updateSources,
+				shaderDirty: true
+			},
+			blueSource: {
+				type: 'image',
+				update: updateSources,
+				shaderDirty: true
+			},
+			alphaSource: {
+				type: 'image',
+				update: updateSources,
+				shaderDirty: true
+			},
+			red: {
+				type: 'enum',
+				options: channelOptions,
+				validate: validateChannel,
+				update: updateChannels,
+				defaultValue: 0
+			},
+			green: {
+				type: 'enum',
+				options: channelOptions,
+				validate: validateChannel,
+				update: updateChannels,
+				defaultValue: 1
+			},
+			blue: {
+				type: 'enum',
+				options: channelOptions,
+				validate: validateChannel,
+				update: updateChannels,
+				defaultValue: 2
+			},
+			alpha: {
+				type: 'enum',
+				options: channelOptions,
+				validate: validateChannel,
+				update: updateChannels,
+				defaultValue: 3
+			}
+		}
+	};
+},
+{
+	inPlace: false,
+	title: 'Channel Mapping'
 });
 
 return Seriously$2;
