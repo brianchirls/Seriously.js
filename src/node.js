@@ -73,8 +73,9 @@ Node.prototype.initFrameBuffer = function (useFloat) {
 
 Node.prototype.readPixels = function (x, y, width, height, dest) {
 	const gl = this.seriously.gl;
+	const nodeGl = this.gl || gl;
 
-	if (!this.seriously.gl) {
+	if (!gl) {
 		//todo: is this the best approach?
 		throw new Error('Cannot read pixels until a canvas is connected');
 	}
@@ -96,8 +97,8 @@ Node.prototype.readPixels = function (x, y, width, height, dest) {
 		throw new Error('Incompatible array type');
 	}
 
-	gl.bindFramebuffer(gl.FRAMEBUFFER, this.frameBuffer.frameBuffer);
-	gl.readPixels(x, y, width, height, gl.RGBA, gl.UNSIGNED_BYTE, dest);
+	nodeGl.bindFramebuffer(gl.FRAMEBUFFER, this.frameBuffer.frameBuffer);
+	nodeGl.readPixels(x, y, width, height, gl.RGBA, gl.UNSIGNED_BYTE, dest);
 
 	return dest;
 };

@@ -883,14 +883,14 @@ function Seriously(options) {
 			}
 
 			return;
-		} else if (typeof hook === 'string') {
-			return defaultInputs[hook];
 		}
 
 		if (options === null) {
 			delete defaultInputs[hook];
 		} else if (typeof options === 'object') {
 			defaultInputs[hook] = extend({}, options);
+		} else if (options === undefined) {
+			return defaultInputs[hook];
 		}
 	};
 

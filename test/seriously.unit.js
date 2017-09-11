@@ -23,12 +23,10 @@
 
 	function nop() {}
 
-	Seriously.logger = {
-		log: nop,
-		info: nop,
-		warn: nop,
-		error: nop
-	};
+	Seriously.logger.log = nop;
+	Seriously.logger.info = nop;
+	Seriously.logger.warn = nop;
+	Seriously.logger.error = nop;
 
 	module('Core');
 	test('Core', 6, function () {
@@ -3023,7 +3021,7 @@
 		Seriously.removePlugin('invert');
 	});
 
-	test('Chroma Key', function (Seriously) {
+	test('Chroma Key', function () {
 		var seriously,
 			effect,
 			target,
@@ -3119,7 +3117,7 @@
 		Seriously.removePlugin('chroma');
 	});
 
-	test('Channels', 5, function (Seriously) {
+	test('Channels', 5, function () {
 		var seriously,
 			effect,
 			target,

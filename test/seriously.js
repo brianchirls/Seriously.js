@@ -1156,8 +1156,9 @@ Node.prototype.initFrameBuffer = function (useFloat) {
 
 Node.prototype.readPixels = function (x, y, width, height, dest) {
 	const gl = this.seriously.gl;
+	const nodeGl = this.gl || gl;
 
-	if (!this.seriously.gl) {
+	if (!gl) {
 		//todo: is this the best approach?
 		throw new Error('Cannot read pixels until a canvas is connected');
 	}
@@ -1179,8 +1180,8 @@ Node.prototype.readPixels = function (x, y, width, height, dest) {
 		throw new Error('Incompatible array type');
 	}
 
-	gl.bindFramebuffer(gl.FRAMEBUFFER, this.frameBuffer.frameBuffer);
-	gl.readPixels(x, y, width, height, gl.RGBA, gl.UNSIGNED_BYTE, dest);
+	nodeGl.bindFramebuffer(gl.FRAMEBUFFER, this.frameBuffer.frameBuffer);
+	nodeGl.readPixels(x, y, width, height, gl.RGBA, gl.UNSIGNED_BYTE, dest);
 
 	return dest;
 };
@@ -4991,14 +4992,14 @@ function Seriously$2(options) {
 			}
 
 			return;
-		} else if (typeof hook === 'string') {
-			return defaultInputs[hook];
 		}
 
 		if (options === null) {
 			delete defaultInputs[hook];
 		} else if (typeof options === 'object') {
 			defaultInputs[hook] = extend({}, options);
+		} else if (options === undefined) {
+			return defaultInputs[hook];
 		}
 	};
 
@@ -6478,7 +6479,62 @@ Seriously$2.transform('2d', function (options) {
 	description: 'Translate, Rotate, Scale, Skew'
 });
 
-const mat4$2 = Seriously$2.util.mat4;
+let mat4$2 = Seriously$2.util.mat4;
+
+Seriously$2.transform('flip', function () {
+	let me = this,
+		horizontal = true;
+
+	function recompute() {
+		let matrix = me.matrix;
+
+		//calculate transformation matrix
+		//mat4.identity(matrix);
+
+		//scale
+		if (horizontal) {
+			matrix[0] = -1;
+			matrix[5] = 1;
+		} else {
+			matrix[0] = 1;
+			matrix[5] = -1;
+		}
+	}
+
+	mat4$2.identity(me.matrix);
+	recompute();
+
+	me.transformDirty = true;
+
+	me.transformed = true;
+
+	return {
+		inputs: {
+			direction: {
+				get: function () {
+					return horizontal ? 'horizontal' : 'vertical';
+				},
+				set: function (d) {
+					let horiz = d !== 'vertical';
+
+					if (horiz === horizontal) {
+						return false;
+					}
+
+					horizontal = horiz;
+					recompute();
+					return true;
+				},
+				type: 'string'
+			}
+		}
+	};
+}, {
+	title: 'Flip',
+	description: 'Flip Horizontal/Vertical'
+});
+
+const mat4$3 = Seriously$2.util.mat4;
 
 Seriously$2.transform('reformat', function () {
 	let me = this,
@@ -6533,7 +6589,7 @@ Seriously$2.transform('reformat', function () {
 		}
 
 		//calculate transformation matrix
-		mat4$2.identity(matrix);
+		mat4$3.identity(matrix);
 
 		//scale
 		if (scaleX !== 1) {
