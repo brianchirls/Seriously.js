@@ -86,6 +86,7 @@ const reservedNames = [
 		'defaults',
 		'destroy',
 		'effect',
+		'draw',
 		'go',
 		'id',
 		'incompatible',
@@ -95,12 +96,29 @@ const reservedNames = [
 		'isSource',
 		'isTarget',
 		'isTransform',
+		'initDaemon',
+		'addAlias',
 		'removeAlias',
 		'render',
 		'source',
 		'stop',
+		'addNode',
+		'removeNode',
 		'target',
-		'transform'
+		'transform',
+		'getNodeId',
+		'findInputNode',
+		'addSourceNode',
+		'removeSourceNode',
+		'addEffectNode',
+		'removeEffectNode',
+		'addTransformNode',
+		'removeTransformNode',
+		'addTargetNode',
+		'removeTargetNode',
+		'commonShaders',
+		'auto',
+		'attachContext'
 	];
 const baseVertexShader = [
 		'precision mediump float;',
@@ -186,114 +204,6 @@ function extend(dest, src) {
 function isArrayLike(obj) {
 	return Array.isArray(obj) ||
 		(obj && obj.BYTES_PER_ELEMENT && 'length' in obj);
-}
-
-function validateInputSpecs(plugin) {
-	let input,
-		options,
-		name;
-
-	function normalizeEnumOption(option, i) {
-		let key,
-			name;
-
-		if (isArrayLike(option)) {
-			key = option[0];
-			name = option[1] || key;
-		} else {
-			key = option;
-		}
-
-		if (typeof key === 'string') {
-			key = key.toLowerCase();
-		} else if (typeof key === 'number') {
-			key = String(key);
-		} else if (!key) {
-			key = '';
-		}
-
-		options[key] = name;
-
-		if (!i) {
-			input.firstValue = key;
-		}
-	}
-
-	function passThrough(value) {
-		return value;
-	}
-
-	for (name in plugin.inputs) {
-		if (plugin.inputs.hasOwnProperty(name)) {
-			if (plugin.reserved.indexOf(name) >= 0 || Object.prototype[name]) {
-				throw new Error('Reserved input name: ' + name);
-			}
-
-			input = plugin.inputs[name];
-			input.name = name;
-
-			if (isNaN(input.min)) {
-				input.min = -Infinity;
-			}
-
-			if (isNaN(input.max)) {
-				input.max = Infinity;
-			}
-
-			if (isNaN(input.minCount)) {
-				input.minCount = -Infinity;
-			}
-
-			if (isNaN(input.maxCount)) {
-				input.maxCount = Infinity;
-			}
-
-			if (isNaN(input.step)) {
-				input.step = 0;
-			}
-
-			if (isNaN(input.mod)) {
-				input.mod = 0;
-			}
-
-			if (input.type === 'enum') {
-				/*
-                Normalize options to make validation easy
-                - all items will have both a key and a name
-                - all keys will be lowercase strings
-                */
-				if (input.options && isArrayLike(input.options) && input.options.length) {
-					options = {};
-					input.options.forEach(normalizeEnumOption);
-					input.options = options;
-				}
-			}
-
-			if (input.type === 'vector') {
-				if (input.dimensions < 2) {
-					input.dimensions = 2;
-				} else if (input.dimensions > 4) {
-					input.dimensions = 4;
-				} else if (!input.dimensions || isNaN(input.dimensions)) {
-					input.dimensions = 4;
-				} else {
-					input.dimensions = Math.round(input.dimensions);
-				}
-			} else {
-				input.dimensions = 1;
-			}
-
-			input.shaderDirty = !!input.shaderDirty;
-
-			if (typeof input.validate !== 'function') {
-				input.validate = Seriously.inputValidators[input.type] || passThrough;
-			}
-
-			if (!plugin.defaultImageInput && input.type === 'image') {
-				plugin.defaultImageInput = name;
-			}
-		}
-	}
 }
 
 /*!
@@ -972,7 +882,7 @@ FrameBuffer.prototype.destroy = function () {
  *  @class ShaderProgram
  */
 
-function ShaderProgram$1(gl, vertexShaderSource, fragmentShaderSource) {
+function ShaderProgram(gl, vertexShaderSource, fragmentShaderSource) {
 	let program,
 		vertexShader,
 		fragmentShader,
@@ -1172,7 +1082,7 @@ function ShaderProgram$1(gl, vertexShaderSource, fragmentShaderSource) {
 	};
 }
 
-ShaderProgram$1.prototype.use = function () {
+ShaderProgram.prototype.use = function () {
 	this.gl.useProgram(this.program);
 };
 
@@ -1180,8 +1090,6 @@ function Node (seriously) {
 	this.ready = false;
 	this.width = 1;
 	this.height = 1;
-
-	this.gl = seriously.gl;
 
 	this.uniforms = {
 		resolution: [this.width, this.height],
@@ -1192,6 +1100,7 @@ function Node (seriously) {
 	this.isDestroyed = false;
 
 	this.seriously = seriously;
+	this.gl = seriously.gl;
 
 	this.listeners = {};
 
@@ -1242,13 +1151,16 @@ Node.prototype.setDirty = function () {
 };
 
 Node.prototype.initFrameBuffer = function (useFloat) {
-	if (this.gl) {
-		this.frameBuffer = new FrameBuffer(this.gl, this.width, this.height, useFloat);
+	if (this.seriously.gl) {
+		this.frameBuffer = new FrameBuffer(this.seriously.gl, this.width, this.height, useFloat);
 	}
 };
 
 Node.prototype.readPixels = function (x, y, width, height, dest) {
-	if (!this.gl) {
+	const gl = this.seriously.gl;
+	const nodeGl = this.gl || gl;
+
+	if (!gl) {
 		//todo: is this the best approach?
 		throw new Error('Cannot read pixels until a canvas is connected');
 	}
@@ -1270,8 +1182,8 @@ Node.prototype.readPixels = function (x, y, width, height, dest) {
 		throw new Error('Incompatible array type');
 	}
 
-	this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.frameBuffer.frameBuffer);
-	this.gl.readPixels(x, y, width, height, this.gl.RGBA, this.gl.UNSIGNED_BYTE, dest);
+	nodeGl.bindFramebuffer(gl.FRAMEBUFFER, this.frameBuffer.frameBuffer);
+	nodeGl.readPixels(x, y, width, height, gl.RGBA, gl.UNSIGNED_BYTE, dest);
 
 	return dest;
 };
@@ -1397,7 +1309,6 @@ Node.prototype.destroy = function () {
 	//remove from main nodes index
 	this.seriously.removeNode(this);
 
-	delete this.gl;
 	delete this.seriously;
 
 	this.isDestroyed = true;
@@ -1510,7 +1421,7 @@ function SourceNode(seriously, hook, source, options) {
 	Node.call(this, seriously);
 
 	// set inside Node constructor
-	gl = this.gl;
+	gl = this.seriously.gl;
 
 	if (hook && typeof hook !== 'string' || !source && source !== 0) {
 		if (!options || typeof options !== 'object') {
@@ -1658,7 +1569,7 @@ SourceNode.prototype = Object.create(Node.prototype);
 SourceNode.prototype.constructor = SourceNode;
 
 SourceNode.prototype.initialize = function () {
-	let gl = this.gl,
+	let gl = this.seriously.gl,
 		texture;
 
 	if (!gl || this.texture || !this.ready) {
@@ -1681,8 +1592,10 @@ SourceNode.prototype.initialize = function () {
 };
 
 SourceNode.prototype.initFrameBuffer = function (useFloat) {
-	if (this.gl) {
-		this.frameBuffer = new FrameBuffer(this.gl, this.width, this.height, {
+	const gl = this.seriously.gl;
+
+	if (gl) {
+		this.frameBuffer = new FrameBuffer(gl, this.width, this.height, {
 			texture: this.texture,
 			useFloat: useFloat
 		});
@@ -1752,9 +1665,10 @@ SourceNode.prototype.setReady = function () {
 };
 
 SourceNode.prototype.render = function () {
+	const gl = this.seriously.gl;
 	let media = this.source;
 
-	if (!this.gl || !media && media !== 0 || !this.ready) {
+	if (!gl || !media && media !== 0 || !this.ready) {
 		return;
 	}
 
@@ -1768,7 +1682,7 @@ SourceNode.prototype.render = function () {
 
 	if (this.plugin && this.plugin.render &&
 		(this.dirty || this.checkDirty && this.checkDirty()) &&
-		this.plugin.render.call(this, this.gl, this.seriously.draw, this.seriously.rectangleModel, this.seriously.baseShader)) {
+		this.plugin.render.call(this, gl, this.seriously.draw, this.seriously.rectangleModel, this.seriously.baseShader)) {
 
 		this.dirty = false;
 		this.emit('render');
@@ -1776,8 +1690,8 @@ SourceNode.prototype.render = function () {
 };
 
 SourceNode.prototype.renderImageCanvas = function () {
-	let gl = this.gl,
-		media = this.source;
+	const gl = this.seriously.gl;
+	let media = this.source;
 
 	if (!gl || !media || !this.ready) {
 		return;
@@ -1819,8 +1733,8 @@ SourceNode.prototype.destroy = function () {
 		this.plugin.destroy.call(this);
 	}
 
-	if (this.gl && this.texture) {
-		this.gl.deleteTexture(this.texture);
+	if (this.seriously.gl && this.texture) {
+		this.seriously.gl.deleteTexture(this.texture);
 	}
 
 	//targets
@@ -2147,7 +2061,8 @@ function EffectNode (seriously, hook, effect, options) {
             */
 		extend(this.effect, this.effectRef.definition.call(this, options));
 	}
-	validateInputSpecs(this.effect);
+
+	Seriously.validateInputSpecs(this.effect);
 
 	this.uniforms.transform = identity;
 	this.inputs = {};
@@ -2187,7 +2102,7 @@ function EffectNode (seriously, hook, effect, options) {
 		}
 	}
 
-	if (this.gl) {
+	if (this.seriously.gl) {
 		this.initialize();
 		if (this.effect.commonShader) {
 			/*
@@ -2228,7 +2143,7 @@ EffectNode.prototype.initialize = function () {
 		if (typeof this.effect.initialize === 'function') {
 			this.effect.initialize.call(this, function () {
 				this.initFrameBuffer(true);
-			}.bind(this), this.gl);
+			}.bind(this), this.seriously.gl);
 		} else {
 			this.initFrameBuffer(true);
 		}
@@ -2357,13 +2272,13 @@ EffectNode.prototype.buildShader = function () {
 			shader = effect.shader.call(this, this.inputs, {
 				vertex: baseVertexShader,
 				fragment: baseFragmentShader
-			}, Seriously.util);
+			}, this.seriously.constructor.util);
 
 			if (shader instanceof ShaderProgram) {
 				this.shader = shader;
 			} else if (shader && shader.vertex && shader.fragment) {
 				this.shader = new ShaderProgram(
-					this.gl,
+					this.seriously.gl,
 					addShaderName(shader.vertex),
 					addShaderName(shader.fragment)
 				);
@@ -2396,7 +2311,7 @@ EffectNode.prototype.render = function () {
 		that.seriously.draw(shader, model, uniforms, frameBuffer, node || that, options);
 	}
 
-	if (!this.gl) {
+	if (!this.seriously.gl) {
 		return;
 	}
 
@@ -2808,7 +2723,6 @@ EffectNode.prototype.matte = function (poly) {
 
 		nv = n;
 		count = 2 * nv;
-		m = 0;
 		v = nv - 1;
 		while (nv > 2) {
 			if ((count--) <= 0) {
@@ -2843,7 +2757,6 @@ EffectNode.prototype.matte = function (poly) {
 					indices.push(points[b]);
 					indices.push(points[a]);
 				}
-				m++;
 				for (s = v, t = v + 1; t < nv; s++, t++) {
 					V[s] = V[t];
 				}
@@ -3347,7 +3260,7 @@ function TransformNode (seriously, hook, transform, options) {
 		}
 	}
 
-	validateInputSpecs(this.plugin);
+	Seriously.validateInputSpecs(this.plugin);
 
 	// set default value for all inputs (no defaults for methods)
 	defaults = seriously.defaults(hook);
@@ -3430,7 +3343,7 @@ TransformNode.prototype.setSource = function (source) {
 		return;
 	}
 
-	if (traceSources(newSource, this)) {
+	if (this.seriously.constructor.traceSources(newSource, this)) {
 		throw new Error('Attempt to make cyclical connection.');
 	}
 
@@ -3554,6 +3467,8 @@ TransformNode.prototype.alias = function (inputName, aliasName) {
 };
 
 TransformNode.prototype.render = function (renderTransform) {
+	const gl = this.seriously.gl;
+
 	if (!this.source) {
 		if (this.transformDirty) {
 			mat4.copy(this.cumulativeMatrix, this.matrix);
@@ -3611,7 +3526,8 @@ TransformNode.prototype.render = function (renderTransform) {
 };
 
 TransformNode.prototype.readPixels = function (x, y, width, height, dest) {
-	const nodeGl = this.gl || this.seriously.gl;
+	const gl = this.seriously.gl,
+		nodeGl = this.gl || gl;
 
 	if (!nodeGl) {
 		//todo: is this the best approach?
@@ -3627,8 +3543,8 @@ TransformNode.prototype.readPixels = function (x, y, width, height, dest) {
 		throw new Error('Incompatible array type');
 	}
 
-	nodeGl.bindFramebuffer(nodeGl.FRAMEBUFFER, this.frameBuffer.frameBuffer);
-	nodeGl.readPixels(x, y, width, height, nodeGl.RGBA, nodeGl.UNSIGNED_BYTE, dest);
+	nodeGl.bindFramebuffer(gl.FRAMEBUFFER, this.frameBuffer.frameBuffer);
+	nodeGl.readPixels(x, y, width, height, gl.RGBA, gl.UNSIGNED_BYTE, dest);
 
 	return dest;
 };
@@ -3843,11 +3759,11 @@ function TargetNode(seriously, hook, target, options) {
 			}
 			if (plugin.gl && !that.gl) {
 				that.gl = plugin.gl;
-				if (!gl) {
+				if (!seriously.gl) {
 					seriously.attachContext(plugin.gl);
 				}
 			}
-			if (that.gl === gl) {
+			if (that.gl === seriously.gl) {
 				that.model = seriously.rectangleModel;
 				that.shader = seriously.baseShader;
 			}
@@ -3858,7 +3774,7 @@ function TargetNode(seriously, hook, target, options) {
 	Node.call(this, seriously);
 
 	// set in Node constructor
-	gl = this.gl;
+	gl = seriously.gl;
 
 	if (hook && typeof hook !== 'string' || !target && target !== 0) {
 		if (!options || typeof options !== 'object') {
@@ -3903,7 +3819,6 @@ function TargetNode(seriously, hook, target, options) {
 
 		//try to get a webgl context.
 		if (!gl || gl.canvas !== target && opts.allowSecondaryWebGL) {
-			triedWebGl = true;
 			context = getWebGlContext(target, {
 				alpha: true,
 				premultipliedAlpha: true,
@@ -3945,7 +3860,7 @@ function TargetNode(seriously, hook, target, options) {
 			}
 		} else {
 			//set up alternative drawing method using ArrayBufferView
-			gl = context;
+			this.gl = context;
 
 			//this.pixels = new Uint8Array(width * height * 4);
 			//todo: probably need another framebuffer for renderToTexture?
@@ -3953,16 +3868,16 @@ function TargetNode(seriously, hook, target, options) {
 			this.frameBuffer = {
 				frameBuffer: frameBuffer || null
 			};
-			this.shader = new ShaderProgram$1(gl, baseVertexShader, baseFragmentShader);
-			this.model = buildRectangleModel(gl);
+			this.shader = new ShaderProgram(this.gl, baseVertexShader, baseFragmentShader);
+			this.model = buildRectangleModel(this.gl);
 			this.pixels = null;
 
-			this.texture = gl.createTexture();
-			gl.bindTexture(gl.TEXTURE_2D, this.texture);
-			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+			this.texture = this.gl.createTexture();
+			this.gl.bindTexture(gl.TEXTURE_2D, this.texture);
+			this.gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+			this.gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+			this.gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+			this.gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 
 			this.render = this.renderSecondaryWebGL;
 		}
@@ -4088,7 +4003,7 @@ TargetNode.prototype.stop = function () {
 };
 
 TargetNode.prototype.render = function () {
-	if (this.gl && this.plugin && this.plugin.render) {
+	if (this.seriously.gl && this.plugin && this.plugin.render) {
 		this.plugin.render.call(this, this.seriously.draw, this.seriously.baseShader, this.seriously.rectangleModel);
 	}
 };
@@ -4098,7 +4013,7 @@ TargetNode.prototype.renderWebGL = function () {
 
 	this.resize();
 
-	if (this.gl && this.dirty && this.ready) {
+	if (this.seriously.gl && this.dirty && this.ready) {
 		if (!this.source) {
 			return;
 		}
@@ -4154,7 +4069,7 @@ TargetNode.prototype.renderSecondaryWebGL = function () {
 
 		this.source.readPixels(0, 0, sourceWidth, sourceHeight, this.pixels);
 
-		gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, sourceWidth, sourceHeight, 0, gl.RGBA, gl.UNSIGNED_BYTE, this.pixels);
+		this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, sourceWidth, sourceHeight, 0, this.gl.RGBA, this.gl.UNSIGNED_BYTE, this.pixels);
 
 		if (sourceWidth === this.width && sourceHeight === this.height) {
 			this.uniforms.transform = identity;
@@ -4229,6 +4144,115 @@ const nop  = function () {};
 let maxSeriouslyId = 0;
 let colorCtx;
 let incompatibility;
+
+
+function validateInputSpecs(plugin) {
+	let input,
+		options,
+		name;
+
+	function normalizeEnumOption(option, i) {
+		let key,
+			name;
+
+		if (isArrayLike(option)) {
+			key = option[0];
+			name = option[1] || key;
+		} else {
+			key = option;
+		}
+
+		if (typeof key === 'string') {
+			key = key.toLowerCase();
+		} else if (typeof key === 'number') {
+			key = String(key);
+		} else if (!key) {
+			key = '';
+		}
+
+		options[key] = name;
+
+		if (!i) {
+			input.firstValue = key;
+		}
+	}
+
+	function passThrough(value) {
+		return value;
+	}
+
+	for (name in plugin.inputs) {
+		if (plugin.inputs.hasOwnProperty(name)) {
+			if (plugin.reserved.indexOf(name) >= 0 || Object.prototype[name]) {
+				throw new Error('Reserved input name: ' + name);
+			}
+
+			input = plugin.inputs[name];
+			input.name = name;
+
+			if (isNaN(input.min)) {
+				input.min = -Infinity;
+			}
+
+			if (isNaN(input.max)) {
+				input.max = Infinity;
+			}
+
+			if (isNaN(input.minCount)) {
+				input.minCount = -Infinity;
+			}
+
+			if (isNaN(input.maxCount)) {
+				input.maxCount = Infinity;
+			}
+
+			if (isNaN(input.step)) {
+				input.step = 0;
+			}
+
+			if (isNaN(input.mod)) {
+				input.mod = 0;
+			}
+
+			if (input.type === 'enum') {
+				/*
+                Normalize options to make validation easy
+                - all items will have both a key and a name
+                - all keys will be lowercase strings
+                */
+				if (input.options && isArrayLike(input.options) && input.options.length) {
+					options = {};
+					input.options.forEach(normalizeEnumOption);
+					input.options = options;
+				}
+			}
+
+			if (input.type === 'vector') {
+				if (input.dimensions < 2) {
+					input.dimensions = 2;
+				} else if (input.dimensions > 4) {
+					input.dimensions = 4;
+				} else if (!input.dimensions || isNaN(input.dimensions)) {
+					input.dimensions = 4;
+				} else {
+					input.dimensions = Math.round(input.dimensions);
+				}
+			} else {
+				input.dimensions = 1;
+			}
+
+			input.shaderDirty = !!input.shaderDirty;
+
+			if (typeof input.validate !== 'function') {
+				input.validate = Seriously$1.inputValidators[input.type] || passThrough;
+			}
+
+			if (!plugin.defaultImageInput && input.type === 'image') {
+				plugin.defaultImageInput = name;
+			}
+		}
+	}
+}
 
 function Seriously$1(options) {
 
@@ -4630,7 +4654,7 @@ function Seriously$1(options) {
 
 		this.rectangleModel = buildRectangleModel(gl);
 
-		this.baseShader = new ShaderProgram$1(
+		this.baseShader = new ShaderProgram(
 			gl,
 			'#define SHADER_NAME seriously.base\n' + baseVertexShader, '#define SHADER_NAME seriously.base\n' + baseFragmentShader
 		);
@@ -4904,7 +4928,7 @@ function Seriously$1(options) {
 		if (allTargets) {
 			targetList = allTargets.get(target);
 			if (targetList) {
-				logger.warn(
+				Seriously$1.logger.warn(
 					'Target already in use by another instance',
 					target,
 					Object.keys(targetList).map(function (key) {
@@ -4970,14 +4994,14 @@ function Seriously$1(options) {
 			}
 
 			return;
-		} else if (typeof hook === 'string') {
-			return defaultInputs[hook];
 		}
 
 		if (options === null) {
 			delete defaultInputs[hook];
 		} else if (typeof options === 'object') {
 			defaultInputs[hook] = extend({}, options);
+		} else if (options === undefined) {
+			return defaultInputs[hook];
 		}
 	};
 
@@ -5731,6 +5755,8 @@ Seriously$1.inputValidators = {
 	//todo: date/time
 };
 
+Seriously$1.validateInputSpecs = validateInputSpecs;
+
 Seriously$1.prototype.effects = Seriously$1.effects = function () {
 	let name,
 		effect,
@@ -5810,7 +5836,7 @@ Seriously$1.util = {
 	hslToRgb: hslToRgb,
 	colors: colorNames,
 	setTimeoutZero: setTimeoutZero,
-	ShaderProgram: ShaderProgram$1,
+	ShaderProgram: ShaderProgram,
 	FrameBuffer: FrameBuffer,
 	requestAnimationFrame: requestAnimationFrame,
 	shader: {

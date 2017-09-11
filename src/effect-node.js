@@ -521,7 +521,7 @@ EffectNode.prototype.buildShader = function () {
 			shader = effect.shader.call(this, this.inputs, {
 				vertex: baseVertexShader,
 				fragment: baseFragmentShader
-			}, Seriously.util);
+			}, this.seriously.constructor.util);
 
 			if (shader instanceof ShaderProgram) {
 				this.shader = shader;

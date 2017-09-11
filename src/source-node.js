@@ -258,7 +258,7 @@ SourceNode.prototype = Object.create(Node.prototype);
 SourceNode.prototype.constructor = SourceNode;
 
 SourceNode.prototype.initialize = function () {
-	let gl = this.gl,
+	let gl = this.seriously.gl,
 		texture;
 
 	if (!gl || this.texture || !this.ready) {
