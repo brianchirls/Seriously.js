@@ -10,8 +10,11 @@
   },
   "scripts": {
     "test": "test",
-	"build": "rollup -c",
-	"buildtest": "rollup -c rollup.test.config.js"
+    "build": "rollup -c",
+    "buildtest": "rollup -c rollup.test.config.js",
+    "buildexamples": "rollup -c rollup.examples.config.js",
+    "serve": "http-server",
+    "examples": "http-server ./examples/ | opn localhost:8080"
   },
   "repository": {
     "type": "git",
@@ -35,8 +38,12 @@
   "homepage": "https://github.com/brianchirls/Seriously.js#readme",
   "dependencies": {},
   "devDependencies": {
+    "http-server": "^0.10.0",
+    "opn-cli": "^3.1.0",
     "rollup": "^0.49.2",
     "rollup-plugin-filesize": "^1.4.2",
-    "rollup-plugin-progress": "^0.4.0"
+    "rollup-plugin-progress": "^0.4.0",
+    "rollup-plugin-uglify": "^2.0.1",
+    "uglify-es": "^3.1.0"
   }
 }

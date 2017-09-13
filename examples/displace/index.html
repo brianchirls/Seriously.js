@@ -53,10 +53,8 @@
 			<input type="file" id="file" accept="image/jpeg"/>
 		</div>
 	</body>
-	<script type="text/javascript" src="../../util/medialoader.js"></script>
-	<script type="text/javascript" src="../../seriously.js"></script>
-	<script type="text/javascript" src="../../src/sources/depth.js"></script>
-	<script type="text/javascript" src="../../src/effects/seriously.displacement.js"></script>
+	<script type="text/javascript" src="../util/medialoader.js"></script>
+	<script type="text/javascript" src="../seriously.js"></script>
 	<script type="text/javascript">
 
 	(function () {
@@ -94,7 +92,7 @@
 			];
 		}, false);
 
-		medialoader = new MediaLoader(function (file) {
+		new MediaLoader(function (file) {
 			var reader,
 				element,
 				newMapSource;

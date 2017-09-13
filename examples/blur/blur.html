@@ -29,97 +29,88 @@
 	</style>
 </head>
 <body>
-	<img src="../../examples/images/robot.jpg" id="robot"/>
+	<img src="../images/robot.jpg" id="robot"/>
 	<canvas id="canvas" width="640" height="662"></canvas>
 	<div id="controls">
 		<div><label for="amount">Blur</label><input type="range" id="amount" min="0" max="1" step="0.001" value="0.5"/></div>
 		<button id="button">Oscillate: Start</button>
 	</div>
-	<script src="../../lib/rStats.js"></script>
-	<script src="../../lib/require.js"></script>
+	<script src="../seriously.js"></script>
+	<script src="../lib/rStats.js"></script>
 	<script>
-		require.config({
-			baseUrl: '../../'
+		// declare our variables
+		var seriously, // the main object that holds the entire composition
+			blur, // blur effect node
+			target, // a wrapper object for our target canvas
+			reformat,
+
+			oscillating = false,
+
+			control = document.getElementById('amount'),
+			canvas = document.getElementById('canvas'),
+			rS, // stats object
+
+			devicePixelRatio = window.devicePixelRatio || 1;
+
+		// take advantage of retina/HighDPI display
+		canvas.width = 640 * devicePixelRatio;
+		canvas.height = 662 * devicePixelRatio;
+
+		// set up stats
+		rS = new rStats({
+			CSSPath: '../',
+			values: {
+				fps: { caption: 'Framerate (FPS)', below: 30 },
+				raf: { caption: 'Time since last rAF (ms)' }
+			},
+			groups: [
+				{ caption: 'Framerate', values: [ 'fps', 'raf' ] }
+			]
 		});
 
-		require([
-			'seriously',
-			'src/effects/seriously.blur'
-		], function (Seriously) {
-			// declare our variables
-			var seriously, // the main object that holds the entire composition
-				blur, // blur effect node
-				target, // a wrapper object for our target canvas
-				reformat,
+		seriously = new Seriously();
 
-				oscillating = false,
+		reformat = seriously.transform('reformat');
+		reformat.source = '#robot';
+		reformat.width = canvas.width;
+		reformat.height = canvas.height;
 
-				control = document.getElementById('amount'),
-				canvas = document.getElementById('canvas'),
-				rS, // stats object
+		blur = seriously.effect('blur');
+		blur.source = reformat;
+		blur.amount = '#amount';
 
-				devicePixelRatio = window.devicePixelRatio || 1;
+		target = seriously.target('#canvas');
+		target.source = blur;
 
-			// take advantage of retina/HighDPI display
-			canvas.width = 640 * devicePixelRatio;
-			canvas.height = 662 * devicePixelRatio;
+		seriously.go(function (now) {
+			// callback runs before render
+			var amount;
 
-			// set up stats
-			rS = new rStats({
-				CSSPath: '../',
-				values: {
-					fps: { caption: 'Framerate (FPS)', below: 30 },
-					raf: { caption: 'Time since last rAF (ms)' }
-				},
-				groups: [
-					{ caption: 'Framerate', values: [ 'fps', 'raf' ] }
-				]
-			});
+			rS('rAF').tick();
+			rS('FPS').frame();
 
-			seriously = new Seriously();
+			if (oscillating) {
+				amount = (1 - Math.cos(now * Math.PI / 1000)) / 2;
+				control.value = amount;
+				blur.amount = amount;
+			}
+		}, function () {
+			// callback runs after render
+			rS().update();
+		});
 
-			reformat = seriously.transform('reformat');
-			reformat.source = '#robot';
-			reformat.width = canvas.width;
-			reformat.height = canvas.height;
+		document.getElementById('button').addEventListener('click', function () {
+			if (oscillating) {
+				oscillating = false;
 
-			blur = seriously.effect('blur');
-			blur.source = reformat;
-			blur.amount = '#amount';
+				// set back to manual control
+				blur.amount = control;
 
-			target = seriously.target('#canvas');
-			target.source = blur;
-
-			seriously.go(function (now) {
-				// callback runs before render
-				var amount;
-
-				rS('rAF').tick();
-				rS('FPS').frame();
-
-				if (oscillating) {
-					amount = (1 - Math.cos(now * Math.PI / 1000)) / 2;
-					control.value = amount;
-					blur.amount = amount;
-				}
-			}, function () {
-				// callback runs after render
-				rS().update();
-			});
-
-			document.getElementById('button').addEventListener('click', function () {
-				if (oscillating) {
-					oscillating = false;
-
-					// set back to manual control
-					blur.amount = control;
-
-					this.innerHTML = 'Oscillate: Start';
-				} else {
-					oscillating = true;
-					this.innerHTML = 'Oscillate: Stop';
-				}
-			});
+				this.innerHTML = 'Oscillate: Start';
+			} else {
+				oscillating = true;
+				this.innerHTML = 'Oscillate: Stop';
+			}
 		});
 	</script>
 </body>

@@ -230,11 +230,27 @@ const noiseHelpers = '#ifndef NOISE_HELPERS\n' +
 		'	return 49.0 * (dot(m0*m0, vec3(dot(p0, x0), dot(p1, x1), dot(p2, x2)))\n' +
 		'							+ dot(m1*m1, vec2(dot(p3, x3), dot(p4, x4)))) ;\n' +
 		'}\n' +
-		'#endif\n';
+		'#endif\n',
+
+	random = '#ifndef RANDOM\n' +
+			'#define RANDOM\n' +
+		'float random(vec2 n) {\n' +
+		'	return 0.5 + 0.5 * fract(sin(dot(n.xy, vec2(12.9898, 78.233)))* 43758.5453);\n' +
+		'}\n' +
+		'#endif\n',
+
+	makeNoise = 'float makeNoise(float u, float v, float timer) {\n' +
+		'	float x = u * v * mod(timer * 1000.0, 100.0);\n' +
+		'	x = mod(x, 13.0) * mod(x, 127.0);\n' +
+		'	float dx = mod(x, 0.01);\n' +
+		'	return clamp(0.1 + dx * 100.0, 0.0, 1.0);\n' +
+		'}\n';
 
 export {
 	noiseHelpers,
 	snoise2d,
 	snoise3d,
-	snoise4d
+	snoise4d,
+	random,
+	makeNoise
 };

@@ -18,38 +18,29 @@
 	</style>
 </head>
 <body>
-	<img src="../../examples/images/robot.jpg" id="robot"/>
+	<img src="../images/robot.jpg" id="robot"/>
 	<canvas id="canvas" width="640" height="619"></canvas>
 	<div id="controls">
 		<div><label for="amount">Blur</label><input type="range" id="amount" min="0" max="1" step="0.001" value="0.1"/></div>
 		<div><label for="angle">Angle</label><input type="range" id="angle" min="0" max="6.2831853072" step="0.001" value="0"/></div>
 	</div>
-	<script src="../../lib/require.js"></script>
+	<script src="../seriously.js"></script>
 	<script>
-		require.config({
-			baseUrl: '../../'
-		});
+		// declare our variables
+		var seriously, // the main object that holds the entire composition
+			moblur,
+			target; // a wrapper object for our target canvas
 
-		require([
-			'seriously',
-			'src/effects/seriously.directionblur'
-		], function (Seriously) {
-			// declare our variables
-			var seriously, // the main object that holds the entire composition
-				moblur,
-				target; // a wrapper object for our target canvas
+		seriously = new Seriously();
+		target = seriously.target('#canvas');
+		moblur = seriously.effect('directionblur');
+		moblur.source = seriously.source('#robot');
 
-			seriously = new Seriously();
-			target = seriously.target('#canvas');
-			moblur = seriously.effect('directionblur');
-			moblur.source = seriously.source('#robot');
+		moblur.amount = '#amount';
+		moblur.angle = '#angle';
 
-			moblur.amount = '#amount';
-			moblur.angle = '#angle';
-
-			target.source = moblur;
-			seriously.go();
-		});
+		target.source = moblur;
+		seriously.go();
 	</script>
 </body>
 </html>

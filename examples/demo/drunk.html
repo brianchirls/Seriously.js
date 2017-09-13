@@ -23,59 +23,48 @@
 </head>
 <body>
 	<canvas id="canvas" width="960" height="540"></canvas>
-	<script src="../../lib/require.js"></script>
+	<script src="../seriously.js"></script>
 	<script>
-		require.config({
-			baseUrl: '../../'
-		});
+		// declare our variables
+		var seriously, // the main object that holds the entire composition
+			target, // a wrapper object for our target canvas
+			shake,
+			reformat,
+			accumulator;
 
-		require([
-			'seriously',
-			'src/effects/seriously.accumulator',
-			'src/transforms/camerashake',
-			'src/sources/camera'
-		], function (Seriously) {
-			// declare our variables
-			var seriously, // the main object that holds the entire composition
-				target, // a wrapper object for our target canvas
-				shake,
-				reformat,
-				accumulator;
+		function resize() {
+			var aspect = window.innerWidth / window.innerHeight;
+			target.width = Math.min(960, window.innerWidth);
+			target.height = target.width / aspect;
+			reformat.width = target.width;
+			reformat.height = target.height;
+		}
 
-			function resize() {
-				var aspect = window.innerWidth / window.innerHeight;
-				target.width = Math.min(960, window.innerWidth);
-				target.height = target.width / aspect;
-				reformat.width = target.width;
-				reformat.height = target.height;
-			}
+		window.onresize = resize;
 
-			window.onresize = resize;
+		seriously = new Seriously();
+		reformat = seriously.transform('reformat');
+		shake = seriously.transform('camerashake');
+		accumulator = seriously.effect('accumulator');
+		target = seriously.target('#canvas');
 
-			seriously = new Seriously();
-			reformat = seriously.transform('reformat');
-			shake = seriously.transform('camerashake');
-			accumulator = seriously.effect('accumulator');
-			target = seriously.target('#canvas');
+		reformat.mode = 'cover';
 
-			reformat.mode = 'cover';
+		shake.rotation = 4;
+		shake.frequency = 0.22;
+		shake.amplitudeX = 16;
+		shake.amplitudeY = 8;
+		shake.preScale = 0;
 
-			shake.rotation = 4;
-			shake.frequency = 0.22;
-			shake.amplitudeX = 16;
-			shake.amplitudeY = 8;
-			shake.preScale = 0;
+		accumulator.opacity = 0.05;
 
-			accumulator.opacity = 0.05;
-
-			shake.source = seriously.source('camera');
-			accumulator.source = shake;
-			reformat.source = accumulator;
-			target.source = reformat;
-			resize();
-			seriously.go(function (now) {
-				shake.time = now / 200;
-			});
+		shake.source = seriously.source('camera');
+		accumulator.source = shake;
+		reformat.source = accumulator;
+		target.source = reformat;
+		resize();
+		seriously.go(function (now) {
+			shake.time = now / 200;
 		});
 	</script>
 </body>

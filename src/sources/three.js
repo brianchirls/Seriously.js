@@ -1,14 +1,14 @@
 import Seriously from '../seriously';
 
 Seriously.source('three', function (source, options, force) {
-	var width,
+	let width,
 		height,
 		typedArray,
 		me = this,
 		setDirty = this.setDirty;
 
 	function initialize() {
-		var texture = source.__webglTexture,
+		const texture = source.__webglTexture,
 			gl = me.gl;
 
 		if (!texture || !gl || me.initialized) {

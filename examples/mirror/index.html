@@ -23,31 +23,22 @@
 <body>
 	<img src="../images/robot.jpg" id="image"/>
 	<canvas id="canvas" width="989" height="1024"></canvas>
-	<script src="../../lib/require.js"></script>
+	<script src="../seriously.js"></script>
 	<script>
-		require.config({
-			baseUrl: '../../'
-		});
+		// declare our variables
+		var seriously, // the main object that holds the entire composition
+			target, // a wrapper object for our target canvas
+			mirror;
 
-		require([
-			'seriously',
-			'src/effects/seriously.mirror'
-		], function (Seriously) {
-			// declare our variables
-			var seriously, // the main object that holds the entire composition
-				target, // a wrapper object for our target canvas
-				mirror;
+		seriously = new Seriously();
+		target = seriously.target('#canvas');
 
-			seriously = new Seriously();
-			target = seriously.target('#canvas');
+		mirror = seriously.effect('mirror');
+		mirror.source = '#image';
 
-			mirror = seriously.effect('mirror');
-			mirror.source = '#image';
+		target.source = mirror;
 
-			target.source = mirror;
-
-			seriously.go();
-		});
+		seriously.go();
 	</script>
 </body>
 </html>

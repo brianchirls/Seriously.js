@@ -16,16 +16,16 @@ function ab2str(buf) {
 }
 
 function memcpy(dst, dstOffset, src, srcOffset, length) {
-	var dstU8 = new Uint8Array(dst, dstOffset, length),
+	let dstU8 = new Uint8Array(dst, dstOffset, length),
 		srcU8 = new Uint8Array(src, srcOffset, length);
 
 	dstU8.set(srcU8);
 }
 
-var depthRegex = /GDepth:Data="([\S]*)"/;
+let depthRegex = /GDepth:Data="([\S]*)"/;
 
 Seriously.source('depth', function (source, options, force) {
-	var that = this,
+	let that = this,
 		element,
 		url,
 		xhr,

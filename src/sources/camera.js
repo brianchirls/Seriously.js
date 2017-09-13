@@ -1,12 +1,12 @@
 import Seriously from '../seriously';
 
-var getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia,
+let getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia,
 
 	// detect browser-prefixed window.URL
 	URL = window.URL || window.webkitURL || window.mozURL || window.msURL;
 
 Seriously.source('camera', function (source, options, force) {
-	var me = this,
+	let me = this,
 		video,
 		key,
 		opts,
