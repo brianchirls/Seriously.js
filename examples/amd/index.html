@@ -10,17 +10,14 @@
 		<label for="split">Split</label><input type="range" id="split" min="0" max="1" step="0.0001" value="1"/>
 	</div>
 
-	<script src="../../lib/require.js"></script>
+	<script src="../lib/require.js"></script>
 	<script>
 		require.config({
-			baseUrl: '../../'
+			baseUrl: '../'
 		});
 
 		require([
-			'seriously',
-			'effects/seriously.vignette',
-			'effects/seriously.hue-saturation',
-			'effects/seriously.split'
+			'seriously'
 		], function (Seriously) {
 			// declare our variables
 			var seriously, // the main object that holds the entire composition

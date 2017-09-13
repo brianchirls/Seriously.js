@@ -18,8 +18,8 @@
 	</style>
 </head>
 <body>
-	<img src="../../examples/images/robot.jpg" id="robot"/>
-	<img src="../../examples/images/monochromebars.png" id="bars"/>
+	<img src="../images/robot.jpg" id="robot"/>
+	<img src="../images/monochromebars.png" id="bars"/>
 	<div id="controls">
 		<div>
 			<label for="mode">Blend Mode</label>
@@ -58,50 +58,41 @@
 				<option value="darkercolor">Darker Color</option>
 			</select>
 		</div>
-		<div><label for="amount">Opacity</label><input type="range" id="opacity" min="0" max="1" step="0.001" value="1"/></div>
+		<div><label for="opacity">Opacity</label><input type="range" id="opacity" min="0" max="1" step="0.001" value="1"/></div>
 	</div>
 	<canvas id="canvas" width="640" height="619"></canvas>
-	<script src="../../lib/require.js"></script>
+	<script src="../seriously.js"></script>
 	<script>
-		require.config({
-			baseUrl: '../../'
-		});
+		// declare our variables
+		var seriously, // the main object that holds the entire composition
+			blend,
+			reformat,
+			reformatRobot,
+			target; // a wrapper object for our target canvas
 
-		require([
-			'seriously',
-			'effects/seriously.blend'
-		], function (Seriously) {
-			// declare our variables
-			var seriously, // the main object that holds the entire composition
-				blend,
-				reformat,
-				reformatRobot,
-				target; // a wrapper object for our target canvas
+		seriously = new Seriously();
+		target = seriously.target('#canvas');
+		blend = seriously.effect('blend');
+		reformat = seriously.transform('reformat');
+		reformatRobot = seriously.transform('reformat');
 
-			seriously = new Seriously();
-			target = seriously.target('#canvas');
-			blend = seriously.effect('blend');
-			reformat = seriously.transform('reformat');
-			reformatRobot = seriously.transform('reformat');
+		reformatRobot.source = '#robot';
+		reformatRobot.mode = 'cover';
+		reformatRobot.width = 640;
+		reformatRobot.height = 619;
 
-			reformatRobot.source = '#robot';
-			reformatRobot.mode = 'cover';
-			reformatRobot.width = 640;
-			reformatRobot.height = 619;
+		reformat.source = '#bars';
+		reformat.mode = 'distort';
+		reformat.width = 640;
+		reformat.height = 619;
 
-			reformat.source = '#bars';
-			reformat.mode = 'distort';
-			reformat.width = 640;
-			reformat.height = 619;
+		blend.bottom = reformatRobot;
+		blend.top = reformat;
+		blend.opacity = '#opacity';
+		blend.mode = '#mode';
 
-			blend.bottom = reformatRobot;
-			blend.top = reformat;
-			blend.opacity = '#opacity';
-			blend.mode = '#mode';
-
-			target.source = blend;
-			seriously.go();
-		});
+		target.source = blend;
+		seriously.go();
 	</script>
 </body>
 </html>

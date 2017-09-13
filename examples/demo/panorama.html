@@ -23,7 +23,7 @@
 		#controls {
 			position: absolute;
 			top: 0;
-			padding: 20;
+			padding: 20px;
 			background-color: rgba(0, 0, 0, 0.4);
 		}
 
@@ -40,54 +40,44 @@
 		<label>Saturation <input type="range" id="saturation" min="-1" max="1" value="0" step="0.000001"/></label>
 		<label>FOV <input type="range" id="fov" min="10" max="180" value="80" step="0.000001"/></label>
 	</div>
-	<script src="../../lib/require.js"></script>
+	<script src="../seriously.js"></script>
 	<script>
-		require.config({
-			baseUrl: '../../'
-		});
+		// declare our variables
+		var seriously, // the main object that holds the entire composition
+			target, // a wrapper object for our target canvas
+			saturation,
+			effect,
+			panorama;
 
-		require([
-			'seriously',
-			'effects/seriously.panorama',
-			'effects/seriously.vibrance'
-		], function (Seriously) {
-			// declare our variables
-			var seriously, // the main object that holds the entire composition
-				target, // a wrapper object for our target canvas
-				saturation,
-				effect,
-				panorama;
+		function resize() {
+			var aspect = window.innerWidth / window.innerHeight;
+			target.width = Math.min(960, window.innerWidth);
+			target.height = target.width / aspect;
+			panorama.width = target.width;
+			panorama.height = target.height;
+		}
 
-			function resize() {
-				var aspect = window.innerWidth / window.innerHeight;
-				target.width = Math.min(960, window.innerWidth);
-				target.height = target.width / aspect;
-				panorama.width = target.width;
-				panorama.height = target.height;
-			}
+		window.onresize = resize;
 
-			window.onresize = resize;
+		seriously = new Seriously();
 
-			seriously = new Seriously();
+		vibrance = seriously.effect('vibrance');
+		vibrance.source = '#image';
+		vibrance.amount = '#saturation';
+		vibrance.hue = 0;
 
-			vibrance = seriously.effect('vibrance');
-			vibrance.source = '#image';
-			vibrance.amount = '#saturation';
-			vibrance.hue = 0;
+		panorama = seriously.effect('panorama');
+		panorama.source = vibrance;
+		panorama.fov = '#fov';
 
-			panorama = seriously.effect('panorama');
-			panorama.source = vibrance;
-			panorama.fov = '#fov';
+		target = seriously.target('#canvas');
+		target.source = panorama;
 
-			target = seriously.target('#canvas');
-			target.source = panorama;
+		resize();
 
-			resize();
-
-			seriously.go(function (now) {
-				panorama.yaw = (now / 200) % 360;
-				//panorama.pitch = Math.sin(Date.now() / 2000) * 10;
-			});
+		seriously.go(function (now) {
+			panorama.yaw = (now / 200) % 360;
+			//panorama.pitch = Math.sin(Date.now() / 2000) * 10;
 		});
 	</script>
 </body>

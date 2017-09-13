@@ -46,20 +46,13 @@
 			</div>
 		</div>
 	</body>
-	<script type="text/javascript" src="../../util/medialoader.js"></script>
-	<script type="text/javascript" src="../../seriously.js"></script>
-	<script type="text/javascript" src="../../sources/seriously.depthmap.js"></script>
-	<script type="text/javascript" src="../../effects/seriously.simplex.js"></script>
-	<script type="text/javascript" src="../../effects/seriously.channels.js"></script>
-	<script type="text/javascript" src="../../effects/seriously.falsecolor.js"></script>
-	<script type="text/javascript" src="../../effects/seriously.blend.js"></script>
-	<script type="text/javascript" src="../../effects/seriously.linear-transfer.js"></script>
+	<script type="text/javascript" src="../util/medialoader.js"></script>
+	<script type="text/javascript" src="../seriously.js"></script>
 	<script type="text/javascript">
 
 	(function () {
 
-		var mediaLoader,
-			seriously = Seriously(),
+		var seriously = Seriously(),
 			transfer = seriously.effect('linear-transfer'),
 			simplex = seriously.effect('simplex'),
 			channels = seriously.effect('channels'),
@@ -144,7 +137,7 @@
 
 		useOriginal.addEventListener('change', refreshImage, false);
 
-		medialoader = new MediaLoader(function (file) {
+		new MediaLoader(function (file) {
 			var element,
 				reader,
 				newMapSource;
