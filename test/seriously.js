@@ -4002,7 +4002,7 @@ TargetNode.prototype.stop = function () {
 
 TargetNode.prototype.render = function () {
 	if (this.seriously.gl && this.plugin && this.plugin.render) {
-		this.plugin.render.call(this, this.seriously.draw, this.seriously.baseShader, this.seriously.rectangleModel);
+		this.plugin.render.call(this, this.seriously.draw.bind(this.seriously), this.seriously.baseShader, this.seriously.rectangleModel);
 	}
 };
 

@@ -4002,7 +4002,7 @@ TargetNode.prototype.stop = function () {
 
 TargetNode.prototype.render = function () {
 	if (this.seriously.gl && this.plugin && this.plugin.render) {
-		this.plugin.render.call(this, this.seriously.draw, this.seriously.baseShader, this.seriously.rectangleModel);
+		this.plugin.render.call(this, this.seriously.draw.bind(this.seriously), this.seriously.baseShader, this.seriously.rectangleModel);
 	}
 };
 
@@ -5839,6 +5839,135 @@ Seriously$2.util = {
 	requestAnimationFrame: requestAnimationFrame
 };
 
+const document$4 = window.document;
+
+let noVideoTextureSupport;
+
+Seriously$2.source('video', function (video, options, force) {
+	const me = this;
+
+	let canvas,
+		ctx2d,
+		destroyed = false,
+		deferTexture = false,
+		isSeeking = false,
+		lastRenderTime = 0;
+
+	function initializeVideo() {
+		video.removeEventListener('loadedmetadata', initializeVideo, true);
+
+		if (destroyed) {
+			return;
+		}
+
+		if (video.videoWidth) {
+			if (me.width !== video.videoWidth || me.height !== video.videoHeight) {
+				me.width = video.videoWidth;
+				me.height = video.videoHeight;
+				me.resize();
+			}
+
+			if (deferTexture) {
+				me.setReady();
+			}
+		} else {
+			//Workaround for Firefox bug https://bugzilla.mozilla.org/show_bug.cgi?id=926753
+			deferTexture = true;
+			window.setTimeout(initializeVideo, 50);
+		}
+	}
+
+	function seeking() {
+		// IE doesn't report .seeking properly so make our own
+		isSeeking = true;
+	}
+
+	function seeked() {
+		isSeeking = false;
+		me.setDirty();
+	}
+
+	if (isInstance(video, 'HTMLVideoElement')) {
+		if (video.readyState) {
+			initializeVideo();
+		} else {
+			deferTexture = true;
+			video.addEventListener('loadedmetadata', initializeVideo, true);
+		}
+
+		video.addEventListener('seeking', seeking, false);
+		video.addEventListener('seeked', seeked, false);
+
+		return {
+			deferTexture: deferTexture,
+			source: video,
+			render: function renderVideo(gl) {
+				let source,
+					error;
+
+				lastRenderTime = video.currentTime;
+
+				if (!video.videoHeight || !video.videoWidth) {
+					return false;
+				}
+
+				if (noVideoTextureSupport) {
+					if (!ctx2d) {
+						ctx2d = document$4.createElement('canvas').getContext('2d');
+						canvas = ctx2d.canvas;
+						canvas.width = me.width;
+						canvas.height = me.height;
+					}
+					source = canvas;
+					ctx2d.drawImage(video, 0, 0, me.width, me.height);
+				} else {
+					source = video;
+				}
+
+				gl.bindTexture(gl.TEXTURE_2D, me.texture);
+				gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, me.flip);
+				gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+				try {
+					gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source);
+
+					//workaround for lack of video texture support in IE
+					if (noVideoTextureSupport === undefined) {
+						error = gl.getError();
+						if (error === gl.INVALID_VALUE) {
+							noVideoTextureSupport = true;
+							return renderVideo(gl);
+						}
+						noVideoTextureSupport = false;
+					}
+					return true;
+				} catch (securityError) {
+					if (securityError.code === window.DOMException.SECURITY_ERR) {
+						me.allowRefresh = false;
+						Seriously$2.logger.error('Unable to access cross-domain image');
+					} else {
+						Seriously$2.logger.error('Error rendering video source', securityError);
+					}
+				}
+				return false;
+			},
+			checkDirty: function () {
+				return !isSeeking && video.currentTime !== lastRenderTime;
+			},
+			compare: function (source) {
+				return me.source === source;
+			},
+			destroy: function () {
+				destroyed = true;
+				video.removeEventListener('seeking', seeking, false);
+				video.removeEventListener('seeked', seeked, false);
+				video.removeEventListener('loadedmetadata', initializeVideo, true);
+			}
+		};
+	}
+}, {
+	title: 'Video'
+});
+
 let getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
 let URL = window.URL || window.webkitURL || window.mozURL || window.msURL;
 
@@ -7410,6 +7539,571 @@ Seriously$2.transform('2d', function (options) {
 }, {
 	title: '2D Transform',
 	description: 'Translate, Rotate, Scale, Skew'
+});
+
+const mat4$5 = Seriously$2.util.mat4;
+
+/*
+ * 3D transform
+ * - translate
+ * - rotate (degrees)
+ * - scale
+ */
+Seriously$2.transform('3d', function (options) {
+	let me = this,
+		degrees = !(options && options.radians),
+		centerX = 0,
+		centerY = 0,
+		centerZ = 0,
+		scaleX = 1,
+		scaleY = 1,
+		scaleZ = 1,
+		translateX = 0,
+		translateY = 0,
+		translateZ = 0,
+		rotationX = 0,
+		rotationY = 0,
+		rotationZ = 0,
+		rotationOrder = 'XYZ';
+
+	function recompute() {
+		let matrix = me.matrix,
+			s, c,
+			m00,
+			m01,
+			m02,
+			m03,
+			m10,
+			m11,
+			m12,
+			m13,
+			m20,
+			m21,
+			m22,
+			m23;
+
+		function translate(x, y, z) {
+			matrix[12] = matrix[0] * x + matrix[4] * y + matrix[8] * z + matrix[12];
+			matrix[13] = matrix[1] * x + matrix[5] * y + matrix[9] * z + matrix[13];
+			matrix[14] = matrix[2] * x + matrix[6] * y + matrix[10] * z + matrix[14];
+			matrix[15] = matrix[3] * x + matrix[7] * y + matrix[11] * z + matrix[15];
+		}
+
+		function rotateX() {
+			let angle;
+
+			if (!rotationX) {
+				return;
+			}
+
+			angle = -(degrees ? rotationX * Math.PI / 180 : rotationX);
+
+			s = Math.sin(angle);
+			c = Math.cos(angle);
+
+			m10 = matrix[4];
+			m11 = matrix[5];
+			m12 = matrix[6];
+			m13 = matrix[7];
+			m20 = matrix[8];
+			m21 = matrix[9];
+			m22 = matrix[10];
+			m23 = matrix[11];
+
+			matrix[4] = m10 * c + m20 * s;
+			matrix[5] = m11 * c + m21 * s;
+			matrix[6] = m12 * c + m22 * s;
+			matrix[7] = m13 * c + m23 * s;
+			matrix[8] = m20 * c - m10 * s;
+			matrix[9] = m21 * c - m11 * s;
+			matrix[10] = m22 * c - m12 * s;
+			matrix[11] = m23 * c - m13 * s;
+		}
+
+		function rotateY() {
+			let angle;
+
+			if (!rotationY) {
+				return;
+			}
+
+			angle = -(degrees ? rotationY * Math.PI / 180 : rotationY);
+
+			s = Math.sin(angle);
+			c = Math.cos(angle);
+
+			m00 = matrix[0];
+			m01 = matrix[1];
+			m02 = matrix[2];
+			m03 = matrix[3];
+			m20 = matrix[8];
+			m21 = matrix[9];
+			m22 = matrix[10];
+			m23 = matrix[11];
+
+			matrix[0] = m00 * c - m20 * s;
+			matrix[1] = m01 * c - m21 * s;
+			matrix[2] = m02 * c - m22 * s;
+			matrix[3] = m03 * c - m23 * s;
+			matrix[8] = m00 * s + m20 * c;
+			matrix[9] = m01 * s + m21 * c;
+			matrix[10] = m02 * s + m22 * c;
+			matrix[11] = m03 * s + m23 * c;
+		}
+
+		function rotateZ() {
+			let angle;
+
+			if (!rotationZ) {
+				return;
+			}
+
+			angle = -(degrees ? rotationZ * Math.PI / 180 : rotationZ);
+
+			s = Math.sin(angle);
+			c = Math.cos(angle);
+
+			m00 = matrix[0];
+			m01 = matrix[1];
+			m02 = matrix[2];
+			m03 = matrix[3];
+			m10 = matrix[4];
+			m11 = matrix[5];
+			m12 = matrix[6];
+			m13 = matrix[7];
+
+			matrix[0] = m00 * c + m10 * s;
+			matrix[1] = m01 * c + m11 * s;
+			matrix[2] = m02 * c + m12 * s;
+			matrix[3] = m03 * c + m13 * s;
+			matrix[4] = m10 * c - m00 * s;
+			matrix[5] = m11 * c - m01 * s;
+			matrix[6] = m12 * c - m02 * s;
+			matrix[7] = m13 * c - m03 * s;
+		}
+
+		if (!translateX &&
+			!translateY &&
+			!translateZ &&
+			!rotationX &&
+			!rotationY &&
+			!rotationZ &&
+			scaleX === 1 &&
+			scaleY === 1 &&
+			scaleZ === 1
+		) {
+			me.transformed = false;
+			return;
+		}
+
+		//calculate transformation matrix
+		mat4$5.identity(matrix);
+
+		translate(translateX + centerX, translateY + centerY, translateZ + centerZ);
+
+		if (rotationOrder === 'XYZ') {
+			rotateX();
+			rotateY();
+			rotateZ();
+		} else if (rotationOrder === 'XZY') {
+			rotateX();
+			rotateZ();
+			rotateY();
+		} else if (rotationOrder === 'YXZ') {
+			rotateY();
+			rotateX();
+			rotateZ();
+		} else if (rotationOrder === 'YZX') {
+			rotateY();
+			rotateZ();
+			rotateX();
+		} else if (rotationOrder === 'ZXY') {
+			rotateZ();
+			rotateX();
+			rotateY();
+		} else { //ZYX
+			rotateZ();
+			rotateY();
+			rotateX();
+		}
+
+		//scale
+		if (scaleX !== 1) {
+			matrix[0] *= scaleX;
+			matrix[1] *= scaleX;
+			matrix[2] *= scaleX;
+			matrix[3] *= scaleX;
+		}
+		if (scaleY !== 1) {
+			matrix[4] *= scaleY;
+			matrix[5] *= scaleY;
+			matrix[6] *= scaleY;
+			matrix[7] *= scaleY;
+		}
+		if (scaleZ !== 1) {
+			matrix[8] *= scaleZ;
+			matrix[9] *= scaleZ;
+			matrix[10] *= scaleZ;
+			matrix[11] *= scaleZ;
+		}
+
+		translate(-centerX, -centerY, -centerZ);
+
+		me.transformed = true;
+	}
+
+	return {
+		inputs: {
+			reset: {
+				method: function () {
+					centerX = 0;
+					centerY = 0;
+					centerZ = 0;
+					scaleX = 1;
+					scaleY = 1;
+					scaleZ = 1;
+					translateX = 0;
+					translateY = 0;
+					translateZ = 0;
+					rotationX = 0;
+					rotationY = 0;
+					rotationZ = 0;
+
+					if (me.transformed) {
+						me.transformed = false;
+						return true;
+					}
+
+					return false;
+				}
+			},
+			translate: {
+				method: function (x, y, z) {
+					if (isNaN(x)) {
+						x = translateX;
+					}
+
+					if (isNaN(y)) {
+						y = translateY;
+					}
+
+					if (isNaN(z)) {
+						z = translateZ;
+					}
+
+					if (x === translateX && y === translateY && z === translateZ) {
+						return false;
+					}
+
+					translateX = x;
+					translateY = y;
+					translateZ = z;
+
+					recompute();
+					return true;
+				},
+				type: [
+					'number',
+					'number',
+					'number'
+				]
+			},
+			translateX: {
+				get: function () {
+					return translateX;
+				},
+				set: function (x) {
+					if (x === translateX) {
+						return false;
+					}
+
+					translateX = x;
+
+					recompute();
+					return true;
+				},
+				type: 'number'
+			},
+			translateY: {
+				get: function () {
+					return translateY;
+				},
+				set: function (y) {
+					if (y === translateY) {
+						return false;
+					}
+
+					translateY = y;
+
+					recompute();
+					return true;
+				},
+				type: 'number'
+			},
+			translateZ: {
+				get: function () {
+					return translateZ;
+				},
+				set: function (z) {
+					if (z === translateZ) {
+						return false;
+					}
+
+					translateZ = z;
+
+					recompute();
+					return true;
+				},
+				type: 'number'
+			},
+			rotationOrder: {
+				get: function () {
+					return rotationOrder;
+				},
+				set: function (order) {
+					if (order === rotationOrder) {
+						return false;
+					}
+
+					rotationOrder = order;
+
+					recompute();
+					return true;
+				},
+				type: 'number'
+			},
+			rotationX: {
+				get: function () {
+					return rotationX;
+				},
+				set: function (angle) {
+					if (angle === rotationX) {
+						return false;
+					}
+
+					//todo: fmod 360deg or Math.PI * 2 radians
+					rotationX = angle;
+
+					recompute();
+					return true;
+				},
+				type: 'number'
+			},
+			rotationY: {
+				get: function () {
+					return rotationY;
+				},
+				set: function (angle) {
+					if (angle === rotationY) {
+						return false;
+					}
+
+					//todo: fmod 360deg or Math.PI * 2 radians
+					rotationY = angle;
+
+					recompute();
+					return true;
+				},
+				type: 'number'
+			},
+			rotationZ: {
+				get: function () {
+					return rotationZ;
+				},
+				set: function (angle) {
+					if (angle === rotationZ) {
+						return false;
+					}
+
+					//todo: fmod 360deg or Math.PI * 2 radians
+					rotationZ = angle;
+
+					recompute();
+					return true;
+				},
+				type: 'number'
+			},
+			center: {
+				method: function (x, y, z) {
+					if (isNaN(x)) {
+						x = centerX;
+					}
+
+					if (isNaN(y)) {
+						y = centerY;
+					}
+
+					if (isNaN(z)) {
+						z = centerZ;
+					}
+
+					if (x === centerX && y === centerY && z === centerZ) {
+						return false;
+					}
+
+					centerX = x;
+					centerY = y;
+					centerZ = z;
+
+					recompute();
+					return true;
+				},
+				type: [
+					'number',
+					'number',
+					'number'
+				]
+			},
+			centerX: {
+				get: function () {
+					return centerX;
+				},
+				set: function (x) {
+					if (x === centerX) {
+						return false;
+					}
+
+					centerX = x;
+
+					recompute();
+					return true;
+				},
+				type: 'number'
+			},
+			centerY: {
+				get: function () {
+					return centerY;
+				},
+				set: function (y) {
+					if (y === centerY) {
+						return false;
+					}
+
+					centerY = y;
+
+					recompute();
+					return true;
+				},
+				type: 'number'
+			},
+			centerZ: {
+				get: function () {
+					return centerZ;
+				},
+				set: function (z) {
+					if (z === centerZ) {
+						return false;
+					}
+
+					centerZ = z;
+
+					recompute();
+					return true;
+				},
+				type: 'number'
+			},
+			scale: {
+				method: function (x, y, z) {
+					var newX, newY, newZ;
+
+					if (isNaN(x)) {
+						newX = scaleX;
+					} else {
+						newX = x;
+					}
+
+					/*
+					 * if only one value is specified, set all to the same scale
+					 */
+					if (isNaN(y)) {
+						if (!isNaN(x) && isNaN(z)) {
+							newY = newX;
+							newZ = newX;
+						} else {
+							newY = scaleY;
+						}
+					} else {
+						newY = y;
+					}
+
+					if (isNaN(z)) {
+						if (newZ === undefined) {
+							newZ = scaleZ;
+						}
+					} else {
+						newZ = z;
+					}
+
+					if (newX === scaleX && newY === scaleY && newZ === scaleZ) {
+						return false;
+					}
+
+					scaleX = newX;
+					scaleY = newY;
+					scaleZ = newZ;
+
+					recompute();
+					return true;
+				},
+				type: [
+					'number',
+					'number',
+					'number'
+				]
+			},
+			scaleX: {
+				get: function () {
+					return scaleX;
+				},
+				set: function (x) {
+					if (x === scaleX) {
+						return false;
+					}
+
+					scaleX = x;
+
+					recompute();
+					return true;
+				},
+				type: 'number'
+			},
+			scaleY: {
+				get: function () {
+					return scaleY;
+				},
+				set: function (y) {
+					if (y === scaleY) {
+						return false;
+					}
+
+					scaleY = y;
+
+					recompute();
+					return true;
+				},
+				type: 'number'
+			},
+			scaleZ: {
+				get: function () {
+					return scaleZ;
+				},
+				set: function (z) {
+					if (z === scaleZ) {
+						return false;
+					}
+
+					scaleZ = z;
+
+					recompute();
+					return true;
+				},
+				type: 'number'
+			}
+		}
+	};
+}, {
+	title: '3D Transform',
+	description: 'Translate, Rotate, Scale'
 });
 
 /*!
@@ -10198,6 +10892,12 @@ const snoise3d = '#ifndef NOISE3D\n' +
 		'	return 42.0 * dot(m*m, vec4(dot(p0, x0), dot(p1, x1), dot(p2, x2), dot(p3, x3)));\n' +
 		'}\n' +
 		'#endif\n';
+const random$1 = '#ifndef RANDOM\n' +
+			'#define RANDOM\n' +
+		'float random(vec2 n) {\n' +
+		'	return 0.5 + 0.5 * fract(sin(dot(n.xy, vec2(12.9898, 78.233)))* 43758.5453);\n' +
+		'}\n' +
+		'#endif\n';
 const makeNoise = 'float makeNoise(float u, float v, float timer) {\n' +
 		'	float x = u * v * mod(timer * 1000.0, 100.0);\n' +
 		'	x = mod(x, 13.0) * mod(x, 127.0);\n' +
@@ -12921,6 +13621,1498 @@ Seriously$2.plugin('opticalflow', function () {
 	},
 	description: 'Horn-Schunke Optical Flow',
 	title: 'Optical Flow'
+});
+
+Seriously$2.plugin('brightness-contrast', {
+	commonShader: true,
+	shader: function (inputs, shaderSource) {
+		shaderSource.fragment = [
+			'precision mediump float;',
+
+			'varying vec2 vTexCoord;',
+
+			'uniform sampler2D source;',
+			'uniform float brightness;',
+			'uniform float saturation;',
+			'uniform float contrast;',
+
+			'const vec3 half3 = vec3(0.5);',
+
+			'void main(void) {',
+			'	vec4 pixel = texture2D(source, vTexCoord);',
+
+			//adjust brightness
+			'	vec3 color = pixel.rgb * brightness;',
+
+			//adjust contrast
+			'	color = (color - half3) * contrast + half3;',
+
+			//keep alpha the same
+			'	gl_FragColor = vec4(color, pixel.a);',
+			'}'
+		].join('\n');
+		return shaderSource;
+	},
+	inPlace: true,
+	inputs: {
+		source: {
+			type: 'image',
+			uniform: 'source'
+		},
+		brightness: {
+			type: 'number',
+			uniform: 'brightness',
+			defaultValue: 1,
+			min: 0
+		},
+		contrast: {
+			type: 'number',
+			uniform: 'contrast',
+			defaultValue: 1,
+			min: 0
+		}
+	},
+	title: 'Brightness/Contrast',
+	description: 'Multiply brightness and contrast values. Works the same as CSS filters.'
+});
+
+/*
+ *	experimental chroma key algorithm
+ *	todo: try allowing some color despill on opaque pixels
+ *	todo: add different modes?
+ */
+
+Seriously$2.plugin('chroma', {
+	shader: function (inputs, shaderSource) {
+		shaderSource.vertex = [
+			'precision mediump float;',
+
+			'attribute vec4 position;',
+			'attribute vec2 texCoord;',
+
+			'uniform vec2 resolution;',
+			'uniform mat4 transform;',
+
+			'varying vec2 vTexCoord;',
+
+			'uniform vec4 screen;',
+			'uniform float balance;',
+			'varying float screenSat;',
+			'varying vec3 screenPrimary;',
+
+			'void main(void) {',
+			'	float fmin = min(min(screen.r, screen.g), screen.b);', //Min. value of RGB
+			'	float fmax = max(max(screen.r, screen.g), screen.b);', //Max. value of RGB
+			'	float secondaryComponents;',
+
+			'	screenPrimary = step(fmax, screen.rgb);',
+			'	secondaryComponents = dot(1.0 - screenPrimary, screen.rgb);',
+			'	screenSat = fmax - mix(secondaryComponents - fmin, secondaryComponents / 2.0, balance);',
+
+			// first convert to screen space
+			'	vec4 screenPosition = vec4(position.xy * resolution / 2.0, position.z, position.w);',
+			'	screenPosition = transform * screenPosition;',
+
+			// convert back to OpenGL coords
+			'	gl_Position = screenPosition;',
+			'	gl_Position.xy = screenPosition.xy * 2.0 / resolution;',
+			'	gl_Position.z = screenPosition.z * 2.0 / (resolution.x / resolution.y);',
+			'	vTexCoord = texCoord;',
+			'}'
+		].join('\n');
+		shaderSource.fragment = [
+			this.inputs.mask ? '#define MASK' : '',
+			'precision mediump float;',
+
+			'varying vec2 vTexCoord;',
+
+			'uniform sampler2D source;',
+			'uniform vec4 screen;',
+			'uniform float screenWeight;',
+			'uniform float balance;',
+			'uniform float clipBlack;',
+			'uniform float clipWhite;',
+			'uniform bool mask;',
+
+			'varying float screenSat;',
+			'varying vec3 screenPrimary;',
+
+			'void main(void) {',
+			'	float pixelSat, secondaryComponents;',
+			'	vec4 sourcePixel = texture2D(source, vTexCoord);',
+
+			'	float fmin = min(min(sourcePixel.r, sourcePixel.g), sourcePixel.b);', //Min. value of RGB
+			'	float fmax = max(max(sourcePixel.r, sourcePixel.g), sourcePixel.b);', //Max. value of RGB
+			//	luminance = fmax
+
+			'	vec3 pixelPrimary = step(fmax, sourcePixel.rgb);',
+
+			'	secondaryComponents = dot(1.0 - pixelPrimary, sourcePixel.rgb);',
+			'	pixelSat = fmax - mix(secondaryComponents - fmin, secondaryComponents / 2.0, balance);', // Saturation
+
+			// solid pixel if primary color component is not the same as the screen color
+			'	float diffPrimary = dot(abs(pixelPrimary - screenPrimary), vec3(1.0));',
+			'	float solid = step(1.0, step(pixelSat, 0.1) + step(fmax, 0.1) + diffPrimary);',
+
+			/*
+			Semi-transparent pixel if the primary component matches but if saturation is less
+			than that of screen color. Otherwise totally transparent
+			*/
+			'	float alpha = max(0.0, 1.0 - pixelSat / screenSat);',
+			'	alpha = smoothstep(clipBlack, clipWhite, alpha);',
+			'	vec4 semiTransparentPixel = vec4((sourcePixel.rgb - (1.0 - alpha) * screen.rgb * screenWeight) / max(0.0001, alpha), alpha);',
+
+			'	vec4 pixel = mix(semiTransparentPixel, sourcePixel, solid);',
+
+			/*
+			Old branching code
+			'	if (pixelSat < 0.1 || fmax < 0.1 || any(notEqual(pixelPrimary, screenPrimary))) {',
+			'		pixel = sourcePixel;',
+
+			'	} else if (pixelSat < screenSat) {',
+			'		float alpha = max(0.0, 1.0 - pixelSat / screenSat);',
+			'		alpha = smoothstep(clipBlack, clipWhite, alpha);',
+			'		pixel = vec4((sourcePixel.rgb - (1.0 - alpha) * screen.rgb * screenWeight) / alpha, alpha);',
+			'	}',
+			//*/
+
+
+			'#ifdef MASK',
+			'	gl_FragColor = vec4(vec3(pixel.a), 1.0);',
+			'#else',
+			'	gl_FragColor = pixel;',
+			'#endif',
+			'}'
+		].join('\n');
+		return shaderSource;
+	},
+	inPlace: true,
+	inputs: {
+		source: {
+			type: 'image',
+			uniform: 'source'
+		},
+		screen: {
+			type: 'color',
+			uniform: 'screen',
+			defaultValue: [66 / 255, 195 / 255, 31 / 255, 1]
+		},
+		weight: {
+			type: 'number',
+			uniform: 'screenWeight',
+			defaultValue: 1,
+			min: 0
+		},
+		balance: {
+			type: 'number',
+			uniform: 'balance',
+			defaultValue: 1,
+			min: 0,
+			max: 1
+		},
+		clipBlack: {
+			type: 'number',
+			uniform: 'clipBlack',
+			defaultValue: 0,
+			min: 0,
+			max: 1
+		},
+		clipWhite: {
+			type: 'number',
+			uniform: 'clipWhite',
+			defaultValue: 1,
+			min: 0,
+			max: 1
+		},
+		mask: {
+			type: 'boolean',
+			defaultValue: false,
+			uniform: 'mask',
+			shaderDirty: true
+		}
+	},
+	title: 'Chroma Key',
+	description: ''
+});
+
+Seriously$2.plugin('color-select', {
+	shader: function (inputs, shaderSource) {
+		shaderSource.vertex = [
+			'precision mediump float;',
+
+			'attribute vec4 position;',
+			'attribute vec2 texCoord;',
+
+			'uniform vec2 resolution;',
+			'uniform mat4 transform;',
+
+			'uniform float hueMin;',
+			'uniform float hueMax;',
+			'uniform float hueMinFalloff;',
+			'uniform float hueMaxFalloff;',
+			'uniform float saturationMin;',
+			'uniform float saturationMax;',
+			'uniform float saturationMinFalloff;',
+			'uniform float saturationMaxFalloff;',
+			'uniform float lightnessMin;',
+			'uniform float lightnessMax;',
+			'uniform float lightnessMinFalloff;',
+			'uniform float lightnessMaxFalloff;',
+
+			'varying vec2 vTexCoord;',
+			'varying vec4 adjustedHueRange;',
+			'varying vec4 saturationRange;',
+			'varying vec4 lightnessRange;',
+
+			'void main(void) {',
+			// first convert to screen space
+			'	vec4 screenPosition = vec4(position.xy * resolution / 2.0, position.z, position.w);',
+			'	screenPosition = transform * screenPosition;',
+
+			// convert back to OpenGL coords
+			'	gl_Position.xy = screenPosition.xy * 2.0 / resolution;',
+			'	gl_Position.z = screenPosition.z * 2.0 / (resolution.x / resolution.y);',
+			'	gl_Position.w = screenPosition.w;',
+			'	vTexCoord = texCoord;',
+
+			'	float hueOffset = hueMin - hueMinFalloff;',
+			'	adjustedHueRange = mod(vec4(' +
+			'hueOffset, ' +
+			'hueMin - hueOffset, ' +
+			'hueMax - hueOffset, ' +
+			'hueMax + hueMaxFalloff - hueOffset' +
+			'), 360.0);',
+			'	if (hueMin != hueMax) {',
+			'		if (adjustedHueRange.z == 0.0) {',
+			'			adjustedHueRange.z = 360.0;',
+			'			adjustedHueRange.w += 360.0;',
+			'		} else if (adjustedHueRange.w == 0.0) {',
+			'			adjustedHueRange.w += 360.0;',
+			'		}',
+			'	}',
+			'	saturationRange = vec4(' +
+			'saturationMin - saturationMinFalloff, ' +
+			'saturationMin, ' +
+			'saturationMax, ' +
+			'saturationMax + saturationMaxFalloff ' +
+			');',
+
+			'	lightnessRange = vec4(' +
+			'lightnessMin - lightnessMinFalloff, ' +
+			'lightnessMin, ' +
+			'lightnessMax, ' +
+			'lightnessMax + lightnessMaxFalloff ' +
+			');',
+			'}'
+		].join('\n');
+
+		shaderSource.fragment = [
+			'precision mediump float;',
+
+			'varying vec2 vTexCoord;',
+
+			'uniform sampler2D source;',
+			'uniform bool mask;',
+
+			'varying vec4 adjustedHueRange;',
+			'varying vec4 saturationRange;',
+			'varying vec4 lightnessRange;',
+
+			'vec3 calcHSL(vec3 c) {',
+			'	float minColor = min(c.r, min(c.g, c.b));',
+			'	float maxColor = max(c.r, max(c.g, c.b));',
+			'	float delta = maxColor - minColor;',
+			'	vec3 hsl = vec3(0.0, 0.0, (maxColor + minColor) / 2.0);',
+			'	if (delta > 0.0) {',
+			'		if (hsl.z < 0.5) {',
+			'			hsl.y = delta / (maxColor + minColor);',
+			'		} else {',
+			'			hsl.y = delta / (2.0 - maxColor - minColor);',
+			'		}',
+			'		if (c.r == maxColor) {',
+			'			hsl.x = (c.g - c.b) / delta;',
+			'		} else if (c.g == maxColor) {',
+			'			hsl.x = 2.0 + (c.b - c.r) / delta;',
+			'		} else {',
+			'			hsl.x = 4.0 + (c.r - c.g) / delta;',
+			'		}',
+			'		hsl.x = hsl.x * 360.0 / 6.0;',
+			'		if (hsl.x < 0.0) {',
+			'			hsl.x += 360.0;',
+			'		} else {',
+			'			hsl.x = mod(hsl.x, 360.0);',
+			'		}',
+			'	}',
+			'	return hsl;',
+			'}',
+
+			'void main(void) {',
+			'	vec4 color = texture2D(source, vTexCoord);',
+			'	vec3 hsl = calcHSL(color.rgb);',
+			'	float adjustedHue = mod(hsl.x - adjustedHueRange.x, 360.0);',
+
+			// calculate hue mask
+			'	float maskValue;',
+			'	if (adjustedHue < adjustedHueRange.y) {',
+			'		maskValue = smoothstep(0.0, adjustedHueRange.y, adjustedHue);',
+			'	} else if (adjustedHue < adjustedHueRange.z) {',
+			'		maskValue = 1.0;',
+			'	} else {',
+			'		maskValue = 1.0 - smoothstep(adjustedHueRange.z, adjustedHueRange.w, adjustedHue);',
+			'	}',
+
+			// calculate saturation maskValue
+			'	if (maskValue > 0.0) {',
+			'		if (hsl.y < saturationRange.y) {',
+			'			maskValue = min(maskValue, smoothstep(saturationRange.x, saturationRange.y, hsl.y));',
+			'		} else {',
+			'			maskValue = min(maskValue, 1.0 - smoothstep(saturationRange.z, saturationRange.w, hsl.y));',
+			'		}',
+			'	}',
+
+			// calculate lightness maskValue
+			'	if (maskValue > 0.0) {',
+			'		if (hsl.z < lightnessRange.y) {',
+			'			maskValue = min(maskValue, smoothstep(lightnessRange.x, lightnessRange.z, hsl.y));',
+			'		} else {',
+			'			maskValue = min(maskValue, 1.0 - smoothstep(lightnessRange.z, lightnessRange.w, hsl.z));',
+			'		}',
+			'	}',
+
+			'	if (mask) {',
+			'		gl_FragColor = vec4(maskValue, maskValue, maskValue, 1.0);',
+			'	} else {',
+			'		color.a = min(color.a, maskValue);',
+			'		gl_FragColor = color;',
+			'	}',
+			'}'
+		].join('\n');
+
+		return shaderSource;
+	},
+	inPlace: true,
+	inputs: {
+		source: {
+			type: 'image',
+			uniform: 'source'
+		},
+		hueMin: {
+			type: 'number',
+			uniform: 'hueMin',
+			defaultValue: 0
+		},
+		hueMax: {
+			type: 'number',
+			uniform: 'hueMax',
+			defaultValue: 360
+		},
+		hueMinFalloff: {
+			type: 'number',
+			uniform: 'hueMinFalloff',
+			defaultValue: 0,
+			min: 0
+		},
+		hueMaxFalloff: {
+			type: 'number',
+			uniform: 'hueMaxFalloff',
+			defaultValue: 0,
+			min: 0
+		},
+		saturationMin: {
+			type: 'number',
+			uniform: 'saturationMin',
+			defaultValue: 0,
+			min: 0,
+			max: 1
+		},
+		saturationMax: {
+			type: 'number',
+			uniform: 'saturationMax',
+			defaultValue: 1,
+			min: 0,
+			max: 1
+		},
+		saturationMinFalloff: {
+			type: 'number',
+			uniform: 'saturationMinFalloff',
+			defaultValue: 0,
+			min: 0
+		},
+		saturationMaxFalloff: {
+			type: 'number',
+			uniform: 'saturationMaxFalloff',
+			defaultValue: 0,
+			min: 0
+		},
+		lightnessMin: {
+			type: 'number',
+			uniform: 'lightnessMin',
+			defaultValue: 0,
+			min: 0,
+			max: 1
+		},
+		lightnessMax: {
+			type: 'number',
+			uniform: 'lightnessMax',
+			defaultValue: 1,
+			min: 0,
+			max: 1
+		},
+		lightnessMinFalloff: {
+			type: 'number',
+			uniform: 'lightnessMinFalloff',
+			defaultValue: 0,
+			min: 0
+		},
+		lightnessMaxFalloff: {
+			type: 'number',
+			uniform: 'lightnessMaxFalloff',
+			defaultValue: 0,
+			min: 0
+		},
+		mask: {
+			type: 'boolean',
+			defaultValue: false,
+			uniform: 'mask'
+		}
+	},
+	title: 'Color Select',
+	description: 'Create a mask by hue, saturation and lightness range.'
+});
+
+/*!
+ * algorithm from http://www.tannerhelland.com/4435/convert-temperature-rgb-algorithm-code/
+ */
+
+Seriously$2.plugin('temperature', {
+	commonShader: true,
+	shader: function (inputs, shaderSource) {
+		shaderSource.vertex = [
+			'precision mediump float;',
+
+			'attribute vec4 position;',
+			'attribute vec2 texCoord;',
+
+			'uniform vec2 resolution;',
+			'uniform mat4 transform;',
+
+			'uniform float temperature;',
+
+			'varying vec2 vTexCoord;',
+			'varying vec3 tempFactor;',
+
+			'const vec3 luma = vec3(0.2125,0.7154,0.0721);',
+
+			'vec3 temperatureRGB(float t) {',
+			'	float temp = t / 100.0;',
+			'	vec3 color = vec3(1.0);',
+			'	if (temp < 66.0) {',
+			'		color.g = 0.3900815787690196 * log(temp) - 0.6318414437886275;',
+			'		color.b = 0.543206789110196 * log(temp - 10.0) - 1.19625408914;',
+			'	} else {',
+			'		color.r = 1.292936186062745 * pow(temp - 60.0, -0.1332047592);',
+			'		color.g = 1.129890860895294 * pow(temp - 60.0, -0.0755148492);',
+			'	}',
+			'	return color;',
+			'}',
+
+			'void main(void) {',
+			// first convert to screen space
+			'	vec4 screenPosition = vec4(position.xy * resolution / 2.0, position.z, position.w);',
+			'	screenPosition = transform * screenPosition;',
+
+			// convert back to OpenGL coords
+			'	gl_Position.xy = screenPosition.xy * 2.0 / resolution;',
+			'	gl_Position.z = screenPosition.z * 2.0 / (resolution.x / resolution.y);',
+			'	gl_Position.w = screenPosition.w;',
+			'	vTexCoord = texCoord;',
+			'	vec3 tempColor = temperatureRGB(temperature);',
+			'	tempFactor = dot(tempColor, luma) / tempColor;',
+			'}\n'
+		].join('\n');
+
+		shaderSource.fragment = [
+			'precision mediump float;',
+
+			'varying vec2 vTexCoord;',
+			'varying vec3 tempFactor;',
+
+			'uniform sampler2D source;',
+
+			'void main(void) {',
+			'	vec4 pixel = texture2D(source, vTexCoord);',
+			'	gl_FragColor = vec4(pixel.rgb * tempFactor, pixel.a);',
+			'}'
+		].join('\n');
+		return shaderSource;
+	},
+	inPlace: true,
+	inputs: {
+		source: {
+			type: 'image',
+			uniform: 'source'
+		},
+		temperature: {
+			type: 'number',
+			uniform: 'temperature',
+			defaultValue: 6500,
+			min: 3000,
+			max: 25000
+		}
+	},
+	title: 'Color Temperature',
+	description: ''
+});
+
+/*!
+ * Shader code:
+ * Adapted from a blog post by Martin Upitis
+ * http://devlog-martinsh.blogspot.com.es/2011/03/glsl-dithering.html
+ */
+
+Seriously$2.plugin('dither', {
+	commonShader: true,
+	shader: function (inputs, shaderSource) {
+		shaderSource.fragment = [
+			'precision mediump float;',
+
+			'#define mod4(a) (a >= 4 ? a - 4 : a)',
+
+			'varying vec2 vTexCoord;',
+
+			'uniform sampler2D source;',
+			'uniform vec2 resolution;',
+
+			'const mat4 dither = mat4(' +
+			'1.0, 33.0, 9.0, 41.0,' +
+			'49.0, 17.0, 57.0, 25.0,' +
+			'13.0, 45.0, 5.0, 37.0,' +
+			'61.0, 29.0, 53.0, 21.0' +
+			');',
+
+			'float find_closest(int x, int y, float c0) {',
+			'	float limit = 0.0;',
+			'	int x4 = mod4(x);',
+			'	int y4 = mod4(y);',
+			//annoying hack since GLSL ES doesn't support variable array index
+			'	for (int i = 0; i < 4; i++) {',
+			'		if (i == x4) {',
+			'			for (int j = 0; j < 4; j++) {',
+			'				if (j == y4) {',
+			'					limit = dither[i][j];',
+			'					break;',
+			'				}',
+			'			}',
+			'		}',
+			'	}',
+			'	if (x < 4) {',
+			'		if (y >= 4) {',
+			'			limit += 3.0;',
+			'		}',
+			'	} else {',
+			'		if (y >= 4) {',
+			'			limit += 1.0;',
+			'		} else {',
+			'			limit += 2.0;',
+			'		}',
+			'	}',
+			'	limit /= 65.0;',
+			'	return c0 < limit ? 0.0 : 1.0;',
+			'}',
+
+			'void main (void)  {',
+			'	vec4 pixel = texture2D(source, vTexCoord);',
+			'	vec2 coord = vTexCoord * resolution;',
+			'	int x = int(mod(coord.x, 8.0));',
+			'	int y = int(mod(coord.y, 8.0));',
+			'	pixel.r = find_closest(x, y, pixel.r);',
+			'	pixel.g = find_closest(x, y, pixel.g);',
+			'	pixel.b = find_closest(x, y, pixel.b);',
+			'	gl_FragColor = pixel;',
+			'}'
+		].join('\n');
+		return shaderSource;
+	},
+	inPlace: false,
+	inputs: {
+		source: {
+			type: 'image',
+			uniform: 'source'
+		}
+	},
+	title: 'Dither'
+});
+
+Seriously$2.plugin('emboss', {
+	commonShader: true,
+	shader: function (inputs, shaderSource) {
+		shaderSource.vertex = [
+			'precision mediump float;',
+
+			'attribute vec4 position;',
+			'attribute vec2 texCoord;',
+
+			'uniform vec2 resolution;',
+			'uniform mat4 transform;',
+
+			'varying vec2 vTexCoord1;',
+			'varying vec2 vTexCoord2;',
+
+			'void main(void) {',
+			// first convert to screen space
+			'	vec4 screenPosition = vec4(position.xy * resolution / 2.0, position.z, position.w);',
+			'	screenPosition = transform * screenPosition;',
+
+			// convert back to OpenGL coords
+			'	gl_Position.xy = screenPosition.xy * 2.0 / resolution;',
+			'	gl_Position.z = screenPosition.z * 2.0 / (resolution.x / resolution.y);',
+			'	gl_Position.w = screenPosition.w;',
+
+			'	vec2 offset = 1.0 / resolution;',
+			'	vTexCoord1 = texCoord - offset;',
+			'	vTexCoord2 = texCoord + offset;',
+			'}'
+		].join('\n');
+
+		shaderSource.fragment = [
+			'precision mediump float;',
+
+			'varying vec2 vTexCoord1;',
+			'varying vec2 vTexCoord2;',
+
+			'uniform sampler2D source;',
+			'uniform float amount;',
+
+			'const vec3 average = vec3(1.0 / 3.0);',
+
+			'void main (void)  {',
+			'	vec4 pixel = vec4(0.5, 0.5, 0.5, 1.0);',
+
+			'	pixel -= texture2D(source, vTexCoord1) * amount;',
+			'	pixel += texture2D(source, vTexCoord2) * amount;',
+			'	pixel.rgb = vec3(dot(pixel.rgb, average));',
+
+			'	gl_FragColor = pixel;',
+			'}'
+		].join('\n');
+		return shaderSource;
+	},
+	inputs: {
+		source: {
+			type: 'image',
+			uniform: 'source'
+		},
+		amount: {
+			type: 'number',
+			uniform: 'amount',
+			defaultValue: 1,
+			min: -255 / 3,
+			max: 255 / 3
+		}
+	},
+	title: 'Emboss',
+	categories: [],
+	description: 'Emboss'
+});
+
+Seriously$2.plugin('exposure', {
+	commonShader: true,
+	shader: function (inputs, shaderSource) {
+		shaderSource.fragment = [
+			'precision mediump float;',
+
+			'varying vec2 vTexCoord;',
+
+			'uniform sampler2D source;',
+
+			'uniform float exposure;',
+
+			'void main (void)  {',
+			'	vec4 pixel = texture2D(source, vTexCoord);',
+			'	gl_FragColor = vec4(pow(2.0, exposure) * pixel.rgb, pixel.a);',
+			'}'
+		].join('\n');
+		return shaderSource;
+	},
+	inPlace: true,
+	inputs: {
+		source: {
+			type: 'image',
+			uniform: 'source',
+			shaderDirty: false
+		},
+		exposure: {
+			type: 'number',
+			uniform: 'exposure',
+			defaultValue: 1,
+			min: -8,
+			max: 8
+		}
+	},
+	title: 'Exposure',
+	categories: ['film'],
+	description: 'Exposure control'
+});
+
+Seriously$2.plugin('freeze', {
+	draw: function (shader, model, uniforms, frameBuffer, draw) {
+		if (!this.inputs.frozen) {
+			draw(shader, model, uniforms, frameBuffer);
+		}
+	},
+	requires: function () {
+		return !this.inputs.frozen;
+	},
+	inPlace: true,
+	inputs: {
+		source: {
+			type: 'image',
+			uniform: 'source'
+		},
+		frozen: {
+			type: 'boolean',
+			defaultValue: false,
+			updateSources: true
+		}
+	},
+	title: 'Freeze',
+	description: 'Freeze Frame'
+});
+
+Seriously$2.plugin('highlights-shadows', {
+	commonShader: true,
+	shader: function (inputs, shaderSource) {
+		shaderSource.fragment = [
+			'precision mediump float;',
+
+			'varying vec2 vTexCoord;',
+
+			'uniform sampler2D source;',
+			'uniform float shadows;',
+			'uniform float highlights;',
+
+			'const vec3 luma = vec3(0.2125, 0.7154, 0.0721);',
+
+			'void main(void) {',
+			'	vec4 pixel = texture2D(source, vTexCoord);',
+			'	float luminance = dot(pixel.rgb, luma);',
+			'	float shadow = clamp((pow(luminance, 1.0 / (shadows + 1.0)) + (-0.76) * pow(luminance, 2.0 / (shadows + 1.0))) - luminance, 0.0, 1.0);',
+			'	float highlight = clamp((1.0 - (pow(1.0 - luminance, 1.0 / (2.0 - highlights)) + (-0.8) * pow(1.0 - luminance, 2.0 / (2.0 - highlights)))) - luminance, -1.0, 0.0);',
+			'	vec3 rgb = (luminance + shadow + highlight) * (pixel.rgb / vec3(luminance));',
+			//'	vec3 rgb = vec3(0.0, 0.0, 0.0) + ((luminance + shadow + highlight) - 0.0) * ((pixel.rgb - vec3(0.0, 0.0, 0.0))/(luminance - 0.0));',
+			'	gl_FragColor = vec4(rgb, pixel.a);',
+			'}'
+		].join('\n');
+		return shaderSource;
+	},
+	inPlace: true,
+	inputs: {
+		source: {
+			type: 'image',
+			uniform: 'source',
+			shaderDirty: false
+		},
+		highlights: {
+			type: 'number',
+			uniform: 'highlights',
+			min: 0,
+			max: 1,
+			defaultValue: 1
+		},
+		shadows: {
+			type: 'number',
+			uniform: 'shadows',
+			min: 0,
+			max: 1,
+			defaultValue: 0
+		}
+	},
+	title: 'Highlights/Shadows',
+	description: 'Darken highlights, lighten shadows'
+});
+
+Seriously$2.plugin('lumakey', {
+	commonShader: true,
+	shader: function (inputs, shaderSource) {
+		shaderSource.fragment = [
+			'precision mediump float;',
+
+			'varying vec2 vTexCoord;',
+
+			'uniform sampler2D source;',
+
+			'uniform float threshold;',
+			'uniform float clipBlack;',
+			'uniform float clipWhite;',
+			'uniform bool invert;',
+
+			'const vec3 lumcoeff = vec3(0.2125,0.7154,0.0721);',
+
+			'void main (void)  {',
+			'	vec4 pixel = texture2D(source, vTexCoord);',
+			'	float luma = dot(pixel.rgb,lumcoeff);',
+			'	float alpha = 1.0 - smoothstep(clipBlack, clipWhite, luma);',
+			'	if (invert) alpha = 1.0 - alpha;',
+			'	gl_FragColor = vec4(pixel.rgb, min(pixel.a, alpha) );',
+			'}'
+		].join('\n');
+		return shaderSource;
+	},
+	inPlace: true,
+	inputs: {
+		source: {
+			type: 'image',
+			uniform: 'source',
+			shaderDirty: false
+		},
+		clipBlack: {
+			type: 'number',
+			uniform: 'clipBlack',
+			defaultValue: 0.9,
+			min: 0,
+			max: 1
+		},
+		clipWhite: {
+			type: 'number',
+			uniform: 'clipWhite',
+			defaultValue: 1,
+			min: 0,
+			max: 1
+		},
+		invert: {
+			type: 'boolean',
+			uniform: 'invert',
+			defaultValue: false
+		}
+	},
+	title: 'Luma Key',
+	categories: ['key'],
+	description: ''
+});
+
+Seriously$2.plugin('fader', {
+	commonShader: true,
+	shader: function (inputs, shaderSource) {
+		shaderSource.fragment = [
+			'precision mediump float;',
+
+			'varying vec2 vTexCoord;',
+
+			'uniform sampler2D source;',
+			'uniform vec4 color;',
+			'uniform float amount;',
+
+			'void main(void) {',
+			'	gl_FragColor = texture2D(source, vTexCoord);',
+			'	gl_FragColor = mix(gl_FragColor, color, amount);',
+			'}'
+		].join('\n');
+		return shaderSource;
+	},
+	requires: function (sourceName, inputs) {
+		return inputs.amount < 1;
+	},
+	inPlace: true,
+	inputs: {
+		source: {
+			type: 'image',
+			uniform: 'source'
+		},
+		color: {
+			type: 'color',
+			uniform: 'color',
+			defaultValue: [0, 0, 0, 1]
+		},
+		amount: {
+			type: 'number',
+			uniform: 'amount',
+			defaultValue: 0.5,
+			min: 0,
+			max: 1
+		}
+	},
+	title: 'Fader',
+	description: 'Fade image to a color'
+});
+
+/*!
+ * Shader adapted from glfx.js by Evan Wallace
+ * License: https://github.com/evanw/glfx.js/blob/master/LICENSE
+ */
+
+Seriously$2.plugin('hex', {
+	commonShader: true,
+	shader: function (inputs, shaderSource) {
+		shaderSource.fragment = [
+			'precision mediump float;\n',
+
+			'varying vec2 vTexCoord;',
+
+			'uniform sampler2D source;',
+			'uniform vec2 resolution;',
+			'uniform vec2 center;',
+			'uniform float size;',
+
+			'void main(void) {',
+			'	vec2 aspect = normalize(resolution);',
+			'	vec2 tex = (vTexCoord * aspect - center) / size;',
+			'	tex.y /= 0.866025404;',
+			'	tex.x -= tex.y * 0.5;',
+			'	vec2 a;',
+			'	if (tex.x + tex.y - floor(tex.x) - floor(tex.y) < 1.0) {',
+			'		a = vec2(floor(tex.x), floor(tex.y));',
+			'	} else {',
+			'		a = vec2(ceil(tex.x), ceil(tex.y));',
+			'	}',
+			'	vec2 b = vec2(ceil(tex.x), floor(tex.y));',
+			'	vec2 c = vec2(floor(tex.x), ceil(tex.y));',
+			'	vec3 tex3 = vec3(tex.x, tex.y, 1.0 - tex.x - tex.y);',
+			'	vec3 a3 = vec3(a.x, a.y, 1.0 - a.x - a.y);',
+			'	vec3 b3 = vec3(b.x, b.y, 1.0 - b.x - b.y);',
+			'	vec3 c3 = vec3(c.x, c.y, 1.0 - c.x - c.y);',
+			'	float alen =length(tex3 - a3);',
+			'	float blen =length(tex3 - b3);',
+			'	float clen =length(tex3 - c3);',
+			'	vec2 choice;',
+			'	if (alen < blen) {',
+			'		if (alen < clen) {',
+			'			choice = a;',
+			'		} else {',
+			'			choice = c;',
+			'		}',
+			'	} else {',
+			'		if (blen < clen) {',
+			'			choice = b;',
+			'		} else {',
+			'			choice = c;',
+			'		}',
+			'	}',
+			'	choice.x += choice.y * 0.5;',
+			'	choice.y *= 0.866025404;',
+			'	choice *= size / aspect;',
+			'	gl_FragColor = texture2D(source, choice + center / aspect);',
+			'}'
+		].join('\n');
+		return shaderSource;
+	},
+	inPlace: false,
+	inputs: {
+		source: {
+			type: 'image',
+			uniform: 'source',
+			shaderDirty: false
+		},
+		size: {
+			type: 'number',
+			uniform: 'size',
+			min: 0,
+			max: 0.4,
+			defaultValue: 0.01
+		},
+		center: {
+			type: 'vector',
+			uniform: 'center',
+			dimensions: 2,
+			defaultValue: [0, 0]
+		}
+	},
+	title: 'Hex',
+	description: 'Hexagonal Pixelate'
+});
+
+Seriously$2.plugin('invert', {
+	commonShader: true,
+	shader: function (inputs, shaderSource) {
+		shaderSource.fragment = [
+			'precision mediump float;',
+
+			'varying vec2 vTexCoord;',
+
+			'uniform sampler2D source;',
+
+			'void main(void) {',
+			'	gl_FragColor = texture2D(source, vTexCoord);',
+			'	gl_FragColor = vec4(1.0 - gl_FragColor.rgb, gl_FragColor.a);',
+			'}'
+		].join('\n');
+		return shaderSource;
+	},
+	inPlace: true,
+	inputs: {
+		source: {
+			type: 'image',
+			uniform: 'source',
+			shaderDirty: false
+		}
+	},
+	title: 'Invert',
+	description: 'Invert image color'
+});
+
+Seriously$2.plugin('noise', {
+	shader: function (inputs, shaderSource, utilities) {
+		const frag = [
+			'precision mediump float;',
+
+			'#define Blend(base, blend, funcf)		vec3(funcf(base.r, blend.r), funcf(base.g, blend.g), funcf(base.b, blend.b))',
+			'#define BlendOverlayf(base, blend) (base < 0.5 ? (2.0 * base * blend) : (1.0 - 2.0 * (1.0 - base) * (1.0 - blend)))',
+			'#define BlendOverlay(base, blend)		Blend(base, blend, BlendOverlayf)',
+			'varying vec2 vTexCoord;',
+
+			'uniform sampler2D source;',
+
+			'uniform vec2 resolution;',
+			'uniform float amount;',
+			'uniform float time;',
+
+			noiseHelpers,
+			snoise3d,
+			random$1,
+
+			'void main(void) {',
+			'	vec4 pixel = texture2D(source, vTexCoord);',
+			'	float r = random(vec2(time * vTexCoord.xy));',
+			'	float noise = snoise(vec3(vTexCoord * (1024.4 + r * 512.0), time)) * 0.5;'
+		];
+
+		if (inputs.overlay) {
+			frag.push('	vec3 overlay = BlendOverlay(pixel.rgb, vec3(noise));');
+			frag.push('	pixel.rgb = mix(pixel.rgb, overlay, amount);');
+		} else {
+			frag.push('	pixel.rgb += noise * amount;');
+		}
+		frag.push('	gl_FragColor = pixel;}');
+
+		shaderSource.fragment = frag.join('\n');
+		return shaderSource;
+	},
+	inPlace: true,
+	inputs: {
+		source: {
+			type: 'image',
+			uniform: 'source',
+			shaderDirty: false
+		},
+		overlay: {
+			type: 'boolean',
+			shaderDirty: true,
+			defaultValue: true
+		},
+		amount: {
+			type: 'number',
+			uniform: 'amount',
+			min: 0,
+			max: 1,
+			defaultValue: 1
+		},
+		time: {
+			type: 'number',
+			uniform: 'time',
+			defaultValue: 0,
+			mod: 65536
+		}
+	},
+	title: 'Noise',
+	description: 'Add noise'
+});
+
+Seriously$2.plugin('pixelate', {
+	commonShader: true,
+	shader: function (inputs, shaderSource) {
+		shaderSource.fragment = [
+			'precision mediump float;',
+
+			'varying vec2 vTexCoord;',
+
+			'uniform sampler2D source;',
+			'uniform vec2 resolution;',
+			'uniform vec2 pixelSize;',
+
+			'void main(void) {',
+			'	vec2 delta = pixelSize / resolution;',
+			'	gl_FragColor = texture2D(source, delta * floor(vTexCoord / delta));',
+			'}'
+		].join('\n');
+		return shaderSource;
+	},
+	inPlace: true,
+	inputs: {
+		source: {
+			type: 'image',
+			uniform: 'source',
+			shaderDirty: false
+		},
+		pixelSize: {
+			type: 'vector',
+			dimensions: 2,
+			defaultValue: [8, 8],
+			min: 0,
+			uniform: 'pixelSize'
+		}
+	},
+	title: 'Pixelate'
+});
+
+Seriously$2.plugin('polar', {
+	commonShader: true,
+	shader: function (inputs, shaderSource) {
+		shaderSource.fragment = [
+			'precision mediump float;',
+
+			'varying vec2 vTexCoord;',
+
+			'uniform sampler2D source;',
+			'uniform float angle;',
+
+			'const float PI = ' + Math.PI + ';',
+
+			'void main(void) {',
+			'	vec2 norm = (1.0 - vTexCoord) * 2.0 - 1.0;',
+			'	float theta = mod(PI + atan(norm.x, norm.y) - angle * (PI / 180.0), PI * 2.0);',
+			'	vec2 polar = vec2(theta / (2.0 * PI), length(norm));',
+			'	gl_FragColor = texture2D(source, polar);',
+			'}'
+		].join('\n');
+		return shaderSource;
+	},
+	inPlace: false,
+	inputs: {
+		source: {
+			type: 'image',
+			uniform: 'source',
+			shaderDirty: false
+		},
+		angle: {
+			type: 'number',
+			uniform: 'angle',
+			defaultValue: 0
+		}
+	},
+	title: 'Polar Coordinates',
+	description: 'Convert cartesian to polar coordinates'
+});
+
+/*!
+ * http://msdn.microsoft.com/en-us/library/bb313868(v=xnagamestudio.10).aspx
+ */
+
+Seriously$2.plugin('ripple', {
+	commonShader: true,
+	shader: function (inputs, shaderSource) {
+		shaderSource.fragment = [
+			'precision mediump float;',
+
+			'varying vec2 vTexCoord;',
+
+			'uniform sampler2D source;',
+			'uniform float wave;',
+			'uniform float distortion;',
+			'uniform vec2 center;',
+
+			'void main(void) {',
+			//todo: can at least move scalar into vertex shader
+			'	float scalar = abs(1.0 - abs(distance(vTexCoord, center)));',
+			'	float sinOffset = sin(wave / scalar);',
+			'	sinOffset = clamp(sinOffset, 0.0, 1.0);',
+			'	float sinSign = cos(wave / scalar);',
+			'	sinOffset = sinOffset * distortion / 32.0;',
+			'	gl_FragColor = texture2D(source, vTexCoord + sinOffset * sinSign);',
+			'}'
+		].join('\n');
+		return shaderSource;
+	},
+	inPlace: false,
+	inputs: {
+		source: {
+			type: 'image',
+			uniform: 'source'
+		},
+		wave: {
+			type: 'number',
+			uniform: 'wave',
+			defaultValue: Math.PI / 0.75
+		},
+		distortion: {
+			type: 'number',
+			uniform: 'distortion',
+			defaultValue: 1
+		},
+		center: {
+			type: 'vector',
+			uniform: 'center',
+			dimensions: 2,
+			defaultValue: [0.5, 0.5]
+		}
+	},
+	title: 'Ripple Distortion',
+	description: ''
+});
+
+Seriously$2.plugin('scanlines', {
+	commonShader: true,
+	shader: function (inputs, shaderSource) {
+		shaderSource.fragment = [
+			'precision mediump float;',
+
+			'varying vec2 vTexCoord;',
+
+			'uniform sampler2D source;',
+			'uniform float lines;',
+			'uniform float width;',
+			'uniform float intensity;',
+
+			//todo: add vertical offset for animating
+
+			'void main(void) {',
+			'	vec4 pixel = texture2D(source, vTexCoord);',
+			'	float darken = 2.0 * abs( fract(vTexCoord.y * lines / 2.0) - 0.5);',
+			'	darken = clamp(darken - width + 0.5, 0.0, 1.0);',
+			'	darken = 1.0 - ((1.0 - darken) * intensity);',
+			'	gl_FragColor = vec4(pixel.rgb * darken, 1.0);',
+			'}'
+		].join('\n');
+		return shaderSource;
+	},
+	inPlace: true,
+	inputs: {
+		source: {
+			type: 'image',
+			uniform: 'source'
+		},
+		lines: {
+			type: 'number',
+			uniform: 'lines',
+			defaultValue: 60
+		},
+		size: {
+			type: 'number',
+			uniform: 'size',
+			defaultValue: 0.2,
+			min: 0,
+			max: 1
+		},
+		intensity: {
+			type: 'number',
+			uniform: 'intensity',
+			defaultValue: 0.1,
+			min: 0,
+			max: 1
+		}
+	},
+	title: 'Scan Lines',
+	description: ''
+});
+
+/*!
+ * sepia coefficients borrowed from:
+ * http://www.techrepublic.com/blog/howdoi/how-do-i-convert-images-to-grayscale-and-sepia-tone-using-c/120
+ */
+
+Seriously$2.plugin('sepia', {
+	commonShader: true,
+	shader: function (inputs, shaderSource) {
+		shaderSource.fragment = [
+			'precision mediump float;',
+
+			'varying vec2 vTexCoord;',
+
+			'uniform sampler2D source;',
+			'uniform vec4 light;',
+			'uniform vec4 dark;',
+			'uniform float desat;',
+			'uniform float toned;',
+
+			'const mat4 coeff = mat4(' +
+			'0.393, 0.349, 0.272, 1.0,' +
+			'0.796, 0.686, 0.534, 1.0, ' +
+			'0.189, 0.168, 0.131, 1.0, ' +
+			'0.0, 0.0, 0.0, 1.0 ' +
+			');',
+
+			'void main(void) {',
+			'	vec4 sourcePixel = texture2D(source, vTexCoord);',
+			'	gl_FragColor = coeff * sourcePixel;',
+			'}'
+		].join('\n');
+		return shaderSource;
+	},
+	inPlace: true,
+	inputs: {
+		source: {
+			type: 'image',
+			uniform: 'source'
+		}
+	},
+	title: 'Sepia',
+	description: ''
+});
+
+/*!
+ * inspired by http://lab.adjazent.com/2009/01/09/more-pixel-bender/
+ */
+
+Seriously$2.plugin('sketch', {
+	commonShader: true,
+	shader: function (inputs, shaderSource) {
+		shaderSource.fragment = [
+			'precision mediump float;',
+
+			//todo: make adjust adjustable
+			'varying vec2 vTexCoord;',
+
+			'uniform sampler2D source;',
+			'uniform vec2 resolution;',
+
+			'float res = resolution.x;',
+			'float n0 = 97.0 / res;',
+			'float n1 = 15.0 / res;',
+			'float n2 = 97.0 / res;',
+			'float n3 = 9.7 / res;',
+			'float total = n2 + ( 4.0 * n0 ) + ( 4.0 * n1 );',
+
+			'const vec3 div3 = vec3(1.0 / 3.0);',
+
+			'void main(void) {',
+			'	float offset, temp1, temp2;',
+			'	vec4 m, p0, p1, p2, p3, p4, p5, p6, p7, p8;',
+			'	offset = n3;',
+
+			'	p0=texture2D(source,vTexCoord);',
+			'	p1=texture2D(source,vTexCoord+vec2(-offset,-offset));',
+			'	p2=texture2D(source,vTexCoord+vec2( offset,-offset));',
+			'	p3=texture2D(source,vTexCoord+vec2( offset, offset));',
+			'	p4=texture2D(source,vTexCoord+vec2(-offset, offset));',
+
+			'	offset=n3*2.0;',
+
+			'	p5=texture2D(source,vTexCoord+vec2(-offset,-offset));',
+			'	p6=texture2D(source,vTexCoord+vec2( offset,-offset));',
+			'	p7=texture2D(source,vTexCoord+vec2( offset, offset));',
+			'	p8=texture2D(source,vTexCoord+vec2(-offset, offset));',
+			'	m = (p0 * n2 + (p1 + p2 + p3 + p4) * n0 + (p5 + p6 + p7 + p8) * n1) / total;',
+
+			//convert to b/w
+			'	temp1 = dot(p0.rgb, div3);',
+			'	temp2 = dot(m.rgb, div3);',
+
+			//color dodge blend mode
+			'	if (temp2 <= 0.0005) {',
+			'		gl_FragColor = vec4( 1.0, 1.0, 1.0, p0.a);',
+			'	} else {',
+			'		gl_FragColor = vec4( vec3(min(temp1 / temp2, 1.0)), p0.a);',
+			'	}',
+			'}'
+		].join('\n');
+		return shaderSource;
+	},
+	inPlace: false,
+	inputs: {
+		source: {
+			type: 'image',
+			uniform: 'source',
+			shaderDirty: false
+		}
+	},
+	title: 'Sketch',
+	description: 'Pencil/charcoal sketch'
+});
+
+Seriously$2.plugin('throttle', function () {
+	let lastDrawTime = 0;
+	return {
+		draw: function (shader, model, uniforms, frameBuffer, draw) {
+			if (this.inputs.frameRate && Date.now() - lastDrawTime >= 1000 / this.inputs.frameRate) {
+				draw(shader, model, uniforms, frameBuffer);
+				lastDrawTime = Date.now();
+			}
+		},
+		requires: function (sourceName, inputs) {
+			if (inputs.frameRate && Date.now() - lastDrawTime >= 1000 / inputs.frameRate) {
+				return true;
+			}
+
+			return false;
+		}
+	};
+}, {
+	inPlace: true,
+	commonShader: true,
+	title: 'Throttle',
+	description: 'Throttle frame rate',
+	inputs: {
+		source: {
+			type: 'image',
+			uniform: 'source'
+		},
+		frameRate: {
+			type: 'number',
+			uniform: 'opacity',
+			defaultValue: 15,
+			min: 0
+		}
+	}
+});
+
+Seriously$2.plugin('tone', {
+	commonShader: true,
+	shader: function (inputs, shaderSource) {
+		shaderSource.fragment = [
+			'precision mediump float;',
+
+			'varying vec2 vTexCoord;',
+
+			'uniform sampler2D source;',
+			'uniform vec4 light;',
+			'uniform vec4 dark;',
+			'uniform float desat;',
+			'uniform float toned;',
+
+			'const vec3 lumcoeff = vec3(0.2125,0.7154,0.0721);',
+
+			'void main(void) {',
+			'	vec4 sourcePixel = texture2D(source, vTexCoord);',
+			'	vec3 sceneColor = light.rgb * sourcePixel.rgb;',
+			'	vec3 gray = vec3(dot(lumcoeff, sceneColor));',
+			'	vec3 muted = mix(sceneColor, gray, desat);',
+			'	vec3 tonedColor = mix(dark.rgb, light.rgb, gray);',
+			'	gl_FragColor = vec4(mix(muted, tonedColor, toned), sourcePixel.a);',
+			'}'
+		].join('\n');
+		return shaderSource;
+	},
+	inPlace: true,
+	inputs: {
+		source: {
+			type: 'image',
+			uniform: 'source'
+		},
+		light: {
+			type: 'color',
+			uniform: 'light',
+			defaultValue: [1, 0.9, 0.5, 1]
+		},
+		dark: {
+			type: 'color',
+			uniform: 'dark',
+			defaultValue: [0.2, 0.05, 0, 1]
+		},
+		toned: {
+			type: 'number',
+			uniform: 'toned',
+			defaultValue: 1,
+			minimumRange: 0,
+			maximumRange: 1
+		},
+		desat: {
+			type: 'number',
+			uniform: 'desat',
+			defaultValue: 0.5,
+			minimumRange: 0,
+			maximumRange: 1
+		}
+	},
+	title: 'Tone',
+	description: ''
 });
 
 return Seriously$2;
