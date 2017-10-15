@@ -332,7 +332,7 @@ function TransformNode (seriously, hook, transform, options) {
 		}
 	}
 
-	Seriously.validateInputSpecs(this.plugin);
+	seriously.constructor.validateInputSpecs(this.plugin);
 
 	// set default value for all inputs (no defaults for methods)
 	defaults = seriously.defaults(hook);

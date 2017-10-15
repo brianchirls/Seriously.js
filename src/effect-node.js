@@ -311,7 +311,7 @@ function EffectNode (seriously, hook, effect, options) {
 		extend(this.effect, this.effectRef.definition.call(this, options));
 	}
 
-	Seriously.validateInputSpecs(this.effect);
+	seriously.constructor.validateInputSpecs(this.effect);
 
 	this.uniforms.transform = identity;
 	this.inputs = {};

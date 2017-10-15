@@ -2060,7 +2060,7 @@ function EffectNode (seriously, hook, effect, options) {
 		extend(this.effect, this.effectRef.definition.call(this, options));
 	}
 
-	Seriously.validateInputSpecs(this.effect);
+	seriously.constructor.validateInputSpecs(this.effect);
 
 	this.uniforms.transform = identity;
 	this.inputs = {};
@@ -3258,7 +3258,7 @@ function TransformNode (seriously, hook, transform, options) {
 		}
 	}
 
-	Seriously.validateInputSpecs(this.plugin);
+	seriously.constructor.validateInputSpecs(this.plugin);
 
 	// set default value for all inputs (no defaults for methods)
 	defaults = seriously.defaults(hook);
@@ -4242,7 +4242,7 @@ function validateInputSpecs(plugin) {
 			input.shaderDirty = !!input.shaderDirty;
 
 			if (typeof input.validate !== 'function') {
-				input.validate = Seriously$2.inputValidators[input.type] || passThrough;
+				input.validate = Seriously$1.inputValidators[input.type] || passThrough;
 			}
 
 			if (!plugin.defaultImageInput && input.type === 'image') {
@@ -4252,11 +4252,11 @@ function validateInputSpecs(plugin) {
 	}
 }
 
-function Seriously$2(options) {
+function Seriously$1(options) {
 
 	//if called without 'new', make a new object and return that
-	if (window === this || !(this instanceof Seriously$2) || this.id !== undefined) {
-		return new Seriously$2(options);
+	if (window === this || !(this instanceof Seriously$1) || this.id !== undefined) {
+		return new Seriously$1(options);
 	}
 
 	//initialize object, private properties
@@ -4926,7 +4926,7 @@ function Seriously$2(options) {
 		if (allTargets) {
 			targetList = allTargets.get(target);
 			if (targetList) {
-				Seriously$2.logger.warn(
+				Seriously$1.logger.warn(
 					'Target already in use by another instance',
 					target,
 					Object.keys(targetList).map(function (key) {
@@ -5091,7 +5091,7 @@ function Seriously$2(options) {
 	this.incompatible = function (hook) {
 		var key,
 			plugin,
-			failure = Seriously$2.incompatible(hook);
+			failure = Seriously$1.incompatible(hook);
 
 		if (failure) {
 			return failure;
@@ -5169,7 +5169,7 @@ function Seriously$2(options) {
 }
 
 //trace back all sources to make sure we're not making a cyclical connection
-Seriously$2.traceSources = function traceSources (node, original) {
+Seriously$1.traceSources = function traceSources (node, original) {
 	let i,
 		source,
 		nodeSources;
@@ -5197,7 +5197,7 @@ Seriously$2.traceSources = function traceSources (node, original) {
 	return false;
 };
 
-Seriously$2.incompatible = function (hook) {
+Seriously$1.incompatible = function (hook) {
 	let canvas, gl, plugin;
 
 	if (incompatibility === undefined) {
@@ -5237,11 +5237,11 @@ Seriously$2.incompatible = function (hook) {
 	return false;
 };
 
-Seriously$2.plugin = function (hook, definition, meta) {
+Seriously$1.plugin = function (hook, definition, meta) {
 	let effect;
 
 	if (seriousEffects[hook]) {
-		Seriously$2.logger.warn('Effect [' + hook + '] already loaded');
+		Seriously$1.logger.warn('Effect [' + hook + '] already loaded');
 		return;
 	}
 
@@ -5281,7 +5281,7 @@ Seriously$2.plugin = function (hook, definition, meta) {
 	return effect;
 };
 
-Seriously$2.removePlugin = function (hook) {
+Seriously$1.removePlugin = function (hook) {
 	let all, effect, plugin;
 
 	if (!hook) {
@@ -5308,11 +5308,11 @@ Seriously$2.removePlugin = function (hook) {
 	return this;
 };
 
-Seriously$2.source = function (hook, definition, meta) {
+Seriously$1.source = function (hook, definition, meta) {
 	let source;
 
 	if (seriousSources[hook]) {
-		Seriously$2.logger.warn('Source [' + hook + '] already loaded');
+		Seriously$1.logger.warn('Source [' + hook + '] already loaded');
 		return;
 	}
 
@@ -5341,7 +5341,7 @@ Seriously$2.source = function (hook, definition, meta) {
 	return source;
 };
 
-Seriously$2.removeSource = function (hook) {
+Seriously$1.removeSource = function (hook) {
 	let all, source, plugin;
 
 	if (!hook) {
@@ -5368,11 +5368,11 @@ Seriously$2.removeSource = function (hook) {
 	return this;
 };
 
-Seriously$2.transform = function (hook, definition, meta) {
+Seriously$1.transform = function (hook, definition, meta) {
 	let transform;
 
 	if (seriousTransforms[hook]) {
-		Seriously$2.logger.warn('Transform [' + hook + '] already loaded');
+		Seriously$1.logger.warn('Transform [' + hook + '] already loaded');
 		return;
 	}
 
@@ -5407,7 +5407,7 @@ Seriously$2.transform = function (hook, definition, meta) {
 	return transform;
 };
 
-Seriously$2.removeTransform = function (hook) {
+Seriously$1.removeTransform = function (hook) {
 	let all, transform, plugin;
 
 	if (!hook) {
@@ -5434,11 +5434,11 @@ Seriously$2.removeTransform = function (hook) {
 	return this;
 };
 
-Seriously$2.target = function (hook, definition, meta) {
+Seriously$1.target = function (hook, definition, meta) {
 	let target;
 
 	if (seriousTargets[hook]) {
-		Seriously$2.logger.warn('Target [' + hook + '] already loaded');
+		Seriously$1.logger.warn('Target [' + hook + '] already loaded');
 		return;
 	}
 
@@ -5467,7 +5467,7 @@ Seriously$2.target = function (hook, definition, meta) {
 	return target;
 };
 
-Seriously$2.removeTarget = function (hook) {
+Seriously$1.removeTarget = function (hook) {
 	let all, target, plugin;
 
 	if (!hook) {
@@ -5494,7 +5494,7 @@ Seriously$2.removeTarget = function (hook) {
 	return this;
 };
 
-Seriously$2.sourcePlugin = function (node, hook, source, options, force) {
+Seriously$1.sourcePlugin = function (node, hook, source, options, force) {
 	let p = seriousSources[hook];
 	if (p && p.definition) {
 		p = p.definition.call(node, source, options, force);
@@ -5507,11 +5507,11 @@ Seriously$2.sourcePlugin = function (node, hook, source, options, force) {
 	return p;
 };
 
-Seriously$2.getTarget = function (hook) {
+Seriously$1.getTarget = function (hook) {
 	return seriousTargets[hook];
 };
 
-Seriously$2.forEachSource = function (fn) {
+Seriously$1.forEachSource = function (fn) {
 	for (let key in seriousSources) {
 		if (seriousSources.hasOwnProperty(key) && seriousSources[key]) {
 			if (fn(key, seriousSources[key]) === false) {
@@ -5521,7 +5521,7 @@ Seriously$2.forEachSource = function (fn) {
 	}
 };
 
-Seriously$2.forEachTarget = function (fn) {
+Seriously$1.forEachTarget = function (fn) {
 	for (let key in seriousTargets) {
 		if (seriousTargets.hasOwnProperty(key) && seriousTargets[key]) {
 			if (fn(key, seriousSources[key]) === false) {
@@ -5532,7 +5532,7 @@ Seriously$2.forEachTarget = function (fn) {
 };
 
 //todo: validators should not allocate new objects/arrays if input is valid
-Seriously$2.inputValidators = {
+Seriously$1.inputValidators = {
 	color: function (value, input, defaultValue, oldValue) {
 		var s,
 			a,
@@ -5607,7 +5607,7 @@ Seriously$2.inputValidators = {
 			colorCtx.fillStyle = value;
 			s = colorCtx.fillStyle;
 			if (s && s !== '#000000') {
-				return Seriously$2.inputValidators.color(s, input, defaultValue, oldValue);
+				return Seriously$1.inputValidators.color(s, input, defaultValue, oldValue);
 			}
 
 			a[0] = a[1] = a[2] = a[3] = 0;
@@ -5753,9 +5753,9 @@ Seriously$2.inputValidators = {
 	//todo: date/time
 };
 
-Seriously$2.validateInputSpecs = validateInputSpecs;
+Seriously$1.validateInputSpecs = validateInputSpecs;
 
-Seriously$2.prototype.effects = Seriously$2.effects = function () {
+Seriously$1.prototype.effects = Seriously$1.effects = function () {
 	let name,
 		effect,
 		manifest,
@@ -5799,11 +5799,11 @@ Seriously$2.prototype.effects = Seriously$2.effects = function () {
 	return effects;
 };
 
-Seriously$2.prototype.getTarget = function (hook) {
+Seriously$1.prototype.getTarget = function (hook) {
 	return seriousTargets[hook];
 };
 
-Seriously$2.prototype.hasTarget = function (hook) {
+Seriously$1.prototype.hasTarget = function (hook) {
 	return !!seriousTargets[hook];
 };
 
@@ -5817,16 +5817,16 @@ if (window.Seriously) {
 					i !== 'plugin' &&
 					typeof window.Seriously[i] === 'object') {
 
-					Seriously$2.plugin(i, window.Seriously[i]);
+					Seriously$1.plugin(i, window.Seriously[i]);
 				}
 			}
 		}());
 	}
 }
 
-Seriously$2.logger = logger;
+Seriously$1.logger = logger;
 
-Seriously$2.util = {
+Seriously$1.util = {
 	mat4: mat4,
 	checkSource: function (source) {
 		return checkSource(source, incompatibility);
@@ -5839,7 +5839,7 @@ Seriously$2.util = {
 	requestAnimationFrame: requestAnimationFrame
 };
 
-Seriously$2.source('array', function (source, options, force) {
+Seriously$1.source('array', function (source, options, force) {
 	var width,
 		height,
 		typedArray;
@@ -5904,7 +5904,7 @@ Seriously$2.source('array', function (source, options, force) {
 	description: 'Array or Uint8Array'
 });
 
-Seriously$2.source('imagedata', function (source) {
+Seriously$1.source('imagedata', function (source) {
 	if (source instanceof Object && source.data &&
 		source.width && source.height &&
 		source.width * source.height * 4 === source.data.length
@@ -5937,7 +5937,7 @@ const document$3 = window.document;
 
 let noVideoTextureSupport;
 
-Seriously$2.source('video', function (video, options, force) {
+Seriously$1.source('video', function (video, options, force) {
 	const me = this;
 
 	let canvas,
@@ -6037,9 +6037,9 @@ Seriously$2.source('video', function (video, options, force) {
 				} catch (securityError) {
 					if (securityError.code === window.DOMException.SECURITY_ERR) {
 						me.allowRefresh = false;
-						Seriously$2.logger.error('Unable to access cross-domain image');
+						Seriously$1.logger.error('Unable to access cross-domain image');
 					} else {
-						Seriously$2.logger.error('Error rendering video source', securityError);
+						Seriously$1.logger.error('Error rendering video source', securityError);
 					}
 				}
 				return false;
@@ -6062,7 +6062,7 @@ Seriously$2.source('video', function (video, options, force) {
 	title: 'Video'
 });
 
-const mat4$1 = Seriously$2.util.mat4;
+const mat4$1 = Seriously$1.util.mat4;
 
 /*
  *	Default transform - 2D
@@ -6072,7 +6072,7 @@ const mat4$1 = Seriously$2.util.mat4;
  *	- scale
  *	- skew
  */
-Seriously$2.transform('2d', function (options) {
+Seriously$1.transform('2d', function (options) {
 	let me = this,
 		degrees = !(options && options.radians),
 
@@ -6465,9 +6465,9 @@ Seriously$2.transform('2d', function (options) {
 	description: 'Translate, Rotate, Scale, Skew'
 });
 
-let mat4$2 = Seriously$2.util.mat4;
+let mat4$2 = Seriously$1.util.mat4;
 
-Seriously$2.transform('flip', function () {
+Seriously$1.transform('flip', function () {
 	let me = this,
 		horizontal = true;
 
@@ -6520,9 +6520,9 @@ Seriously$2.transform('flip', function () {
 	description: 'Flip Horizontal/Vertical'
 });
 
-const mat4$3 = Seriously$2.util.mat4;
+const mat4$3 = Seriously$1.util.mat4;
 
-Seriously$2.transform('reformat', function () {
+Seriously$1.transform('reformat', function () {
 	let me = this,
 		forceWidth,
 		forceHeight,
@@ -6702,7 +6702,7 @@ Seriously$2.transform('reformat', function () {
  *	todo: add different modes?
  */
 
-Seriously$2.plugin('chroma', {
+Seriously$1.plugin('chroma', {
 	shader: function (inputs, shaderSource) {
 		shaderSource.vertex = [
 			'precision mediump float;',
@@ -6855,7 +6855,7 @@ Seriously$2.plugin('chroma', {
 	description: ''
 });
 
-Seriously$2.plugin('invert', {
+Seriously$1.plugin('invert', {
 	commonShader: true,
 	shader: function (inputs, shaderSource) {
 		shaderSource.fragment = [
@@ -6901,7 +6901,7 @@ const channelLookup = {
 		w: 3
 	};
 
-Seriously$2.plugin('channels', function () {
+Seriously$1.plugin('channels', function () {
 	const sources = [],
 		shaders = [],
 		matrices = [],
@@ -7144,7 +7144,7 @@ Seriously$2.plugin('channels', function () {
 				'}'
 			].join('\n');
 
-			shader = new Seriously$2.util.ShaderProgram(this.gl,
+			shader = new Seriously$1.util.ShaderProgram(this.gl,
 				vert,
 				frag);
 
@@ -7246,6 +7246,6 @@ Seriously$2.plugin('channels', function () {
 	title: 'Channel Mapping'
 });
 
-return Seriously$2;
+return Seriously$1;
 
 })));
