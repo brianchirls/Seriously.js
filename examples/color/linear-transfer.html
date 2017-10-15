@@ -22,7 +22,7 @@
 	</style>
 </head>
 <body>
-	<img src="../../examples/images/robot.jpg" id="robot"/>
+	<img src="../images/robot.jpg" id="robot"/>
 	<canvas id="canvas" width="640" height="619"></canvas>
 	<div id="controls">
 		<div>
@@ -41,47 +41,38 @@
 			<label><input type="range" id="alphaIntercept" min="-2" max="2" step="0.001" value="0"/> Alpha</label>
 		</div>
 	</div>
-	<script src="../../lib/require.js"></script>
+	<script src="../seriously.js"></script>
 	<script>
-		require.config({
-			baseUrl: '../../'
-		});
+		// declare our variables
+		var seriously, // the main object that holds the entire composition
+			effect,
+			target, // a wrapper object for our target canvas
+			props = {
+				slope: [1, 1, 1, 1],
+				intercept: [0, 0, 0, 0]
+			};
 
-		require([
-			'seriously',
-			'effects/seriously.linear-transfer'
-		], function (Seriously) {
-			// declare our variables
-			var seriously, // the main object that holds the entire composition
-				effect,
-				target, // a wrapper object for our target canvas
-				props = {
-					slope: [1, 1, 1, 1],
-					intercept: [0, 0, 0, 0]
-				};
+		seriously = new Seriously();
+		target = seriously.target('#canvas');
+		effect = seriously.effect('linear-transfer');
+		effect.source = '#robot';
+		target.source = effect;
+		seriously.go();
 
-			seriously = new Seriously();
-			target = seriously.target('#canvas');
-			effect = seriously.effect('linear-transfer');
-			effect.source = '#robot';
-			target.source = effect;
-			seriously.go();
+		['slope', 'intercept'].forEach(function (prop) {
+			['red', 'green', 'blue', 'alpha'].forEach(function (channel, channelIndex) {
+				var id = prop,
+					input;
 
-			['slope', 'intercept'].forEach(function (prop) {
-				['red', 'green', 'blue', 'alpha'].forEach(function (channel, channelIndex) {
-					var id = prop,
-						input;
+				function update() {
+					props[prop][channelIndex] = parseFloat(input.value);
+					effect[prop] = props[prop];
+				}
 
-					function update() {
-						props[prop][channelIndex] = parseFloat(input.value);
-						effect[prop] = props[prop];
-					}
-
-					id = channel + id[0].toUpperCase() + prop.substr(1);
-					input = document.getElementById(id);
-					input.addEventListener('input', update, false);
-					input.addEventListener('change', update, false);
-				});
+				id = channel + id[0].toUpperCase() + prop.substr(1);
+				input = document.getElementById(id);
+				input.addEventListener('input', update, false);
+				input.addEventListener('change', update, false);
 			});
 		});
 	</script>
