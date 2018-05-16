@@ -264,6 +264,9 @@
 						'uniform sampler2D source;',
 						'uniform float opacity;',
 						'void main(void) {',
+						'	if (vTexCoord.x < 0.0 || vTexCoord.x > 1.0 || vTexCoord.y < 0.0 || vTexCoord.y > 1.0) {',
+						'		discard;',
+						'	}',
 						'	gl_FragColor = texture2D(source, vTexCoord);',
 						'	gl_FragColor.a *= opacity;',
 						'}'
@@ -275,7 +278,6 @@
 				topUniforms = null;
 				bottomUniforms = null;
 
-				//todo: need separate texture coords for different size top/bottom images
 				shaderSource.vertex = [
 					'#define SHADER_NAME seriously.blend.' + mode,
 					'precision mediump float;',
@@ -475,10 +477,14 @@
 					'	return vec4(pow(color.rgb, gamma), color.a);',
 					'}',
 
+					'bool inBounds(vec2 uv) {',
+					'	return uv.x >= 0.0 && uv.x <= 1.0 && uv.y >= 0.0 && uv.y <= 1.0;',
+					'}',
+
 					'void main(void) {',
 					'	vec3 exp = vec3(blendGamma);',
-					'	vec4 topPixel = linear(texture2D(top, texCoordTop), exp);',
-					'	vec4 bottomPixel = texture2D(bottom, texCoordBottom);',
+					'	vec4 topPixel = inBounds(texCoordTop) ? linear(texture2D(top, texCoordTop), exp) : vec4(0.0);',
+					'	vec4 bottomPixel = inBounds(texCoordBottom) ? texture2D(bottom, texCoordBottom) : vec4(0.0);',
 
 					'	if (topPixel.a == 0.0) {',
 					'		gl_FragColor = bottomPixel;',

@@ -144,7 +144,7 @@
 			}
 		}
 
-		gUM = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
+		gUM = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia;
 
 		if (!gUM) {
 			document.body.removeChild(document.getElementById('camera'));
@@ -296,8 +296,8 @@
 						target.width = video.videoWidth;
 					}
 
-					if (window.webkitURL) {
-						video.src = window.webkitURL.createObjectURL(stream);
+					if (window.URL) {
+						video.src = window.URL.createObjectURL(stream);
 					} else {
 						video.src = stream;
 					}

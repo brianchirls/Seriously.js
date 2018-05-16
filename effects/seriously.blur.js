@@ -87,7 +87,7 @@ http://v002.info/plugins/v002-blurs/
 					'const vec2 zero = vec2(0.0);',
 
 					'varying vec2 vTexCoord;',
-					'varying vec4 vTexCoords[4];',
+					'varying vec2 vTexCoords[8];',
 
 					'void main(void) {',
 					// first convert to screen space
@@ -100,18 +100,18 @@ http://v002.info/plugins/v002-blurs/
 					'	gl_Position.z = screenPosition.z * 2.0 / (resolution.x / resolution.y);',
 					'	vTexCoord = texCoord;',
 
-					'	vec2 one = vec2(1.0) * inputScale;',
+					'	vec2 one = vec2(inputScale);',
 					'	if (inputScale < 1.0) {',
 					'		one -= 1.0 / resolution;',
 					'	}',
 
-					'	vTexCoord = max(zero, min(one, texCoord.st * inputScale));',
+					'	vTexCoord = max(zero, min(one, texCoord * inputScale));',
 					'	vec2 amount = direction * (inputScale * amount * 5.0 / resolution);',
 
 					'	for (int i = 0; i < 4; i++) {',
 					'		float s = pow(3.0, float(i));',
-					'		vTexCoords[i].xy = max(zero, min(one, vTexCoord + amount * s));',
-					'		vTexCoords[i].zw = max(zero, min(one, vTexCoord - amount * s));',
+					'		vTexCoords[i * 2] = max(zero, min(one, vTexCoord + amount * s));',
+					'		vTexCoords[i * 2 + 1] = max(zero, min(one, vTexCoord - amount * s));',
 					'	}',
 					'}'
 				].join('\n');
@@ -122,7 +122,7 @@ http://v002.info/plugins/v002-blurs/
 					'uniform float blendGamma;',
 
 					'varying vec2 vTexCoord;',
-					'varying vec4 vTexCoords[4];',
+					'varying vec2 vTexCoords[8];',
 
 					'vec3 exp;',
 
@@ -138,9 +138,8 @@ http://v002.info/plugins/v002-blurs/
 
 					'	gl_FragColor = sample(source, vTexCoord) / 9.0;',
 
-					'	for (int i = 0; i < 4; i++) {',
-					'		gl_FragColor += sample(source, vTexCoords[i].xy) / 9.0;',
-					'		gl_FragColor += sample(source, vTexCoords[i].zw) / 9.0;',
+					'	for (int i = 0; i < 8; i++) {',
+					'		gl_FragColor += sample(source, vTexCoords[i]) / 9.0;',
 					'	}',
 
 					'	gl_FragColor.rgb = pow(gl_FragColor.rgb, 1.0 / exp);',

@@ -95,6 +95,11 @@
 				s = inputs[name];
 				if (!s) {
 					s = me.sources[name] = inputs[name] = inputs.source;
+
+					if (!s) {
+						//no main source to fall back to
+						return;
+					}
 				}
 
 				j = sources.indexOf(s);
