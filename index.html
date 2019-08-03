@@ -296,12 +296,7 @@
 						target.width = video.videoWidth;
 					}
 
-					if (window.URL) {
-						video.src = window.URL.createObjectURL(stream);
-					} else {
-						video.src = stream;
-					}
-
+					video.srcObject = stream;
 					webCamStream = stream;
 
 					video.play();
