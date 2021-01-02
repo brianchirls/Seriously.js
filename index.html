@@ -296,7 +296,9 @@
 						target.width = video.videoWidth;
 					}
 
-					if (window.webkitURL) {
+					if (typeof video.srcObject === "object") {
+						video.srcObject = stream;
+					} else if (window.webkitURL) {
 						video.src = window.webkitURL.createObjectURL(stream);
 					} else {
 						video.src = stream;
