@@ -94,7 +94,9 @@
 				}
 
 				// check for firefox
-				if (video.mozCaptureStream) {
+				if (typeof video.srcObject === "object") {
+					video.srcObject = stream;
+				} else if (video.mozCaptureStream) {
 					video.mozSrcObject = stream;
 				} else {
 					video.src = (URL && URL.createObjectURL(stream)) || stream;
