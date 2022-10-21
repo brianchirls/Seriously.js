@@ -41,6 +41,7 @@ Full documentation is in progress at the [wiki](https://github.com/brianchirls/S
 - Directional Blur
 - Displacement Map
 - Dither
+- Distortion
 - Edge Detect
 - Emboss
 - Exposure Adjust
